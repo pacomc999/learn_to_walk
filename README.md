@@ -1,14 +1,109 @@
 # learn_to_walk
 
-A project where we teach a simulated physical model (a little body with legs and joints) how to walk.
+A 3D duck in a physics simulation teaches itself to walk.
 
-## Status
+The duck has a long body, legs set far back, a bendy neck, a head and beak, folded wings and webbed feet. It has 12 motors: two in the neck, and in each leg a hip swing, a hip side, a knee, an ankle and toes. The motors have limited strength, so falling and struggling are real.
 
-Just getting started. The approach (browser physics in JavaScript, or Python with a physics engine) is still to be decided.
+A small neural network is the duck's brain. It learns by trial and error (reinforcement learning, using a method called PPO). All the stumbling and falling happens during training. While it trains, the project saves snapshots of the brain. At the end you can make one video where each snapshot walks for a few seconds, one after another, so you can watch the duck go from flopping over to walking.
 
-## Ideas
+Everything runs on a CPU only Windows laptop.
 
-- Build a simple body with a torso, legs and motorised joints
-- Let a physics engine handle gravity, friction and collisions
-- Teach it to walk by trial and error (for example a genetic algorithm or reinforcement learning)
-- Show the progress visually, generation by generation
+## Setup
+
+Do this once, from the project folder.
+
+1. Make a virtual environment with Python 3.12:
+
+   `py -3.12 -m venv .venv`
+
+2. Install PyTorch from the CPU index:
+
+   `.venv/Scripts/python -m pip install torch --index-url https://download.pytorch.org/whl/cpu`
+
+3. Install the other libraries:
+
+   `.venv/Scripts/python -m pip install -r requirements.txt`
+
+4. Check that everything works:
+
+   `.venv/Scripts/python -m pytest`
+
+## Commands
+
+All commands run from the project folder, and start with `.venv/Scripts/python`.
+
+Start training for 30 million steps:
+
+`.venv/Scripts/python -m duck.train --run runs/duck_v1 --steps 30000000`
+
+Continue a stopped run:
+
+`.venv/Scripts/python -m duck.train --run runs/duck_v1 --steps 30000000 --resume`
+
+Continue with more curiosity (more random experimenting):
+
+`.venv/Scripts/python -m duck.train --run runs/duck_v1 --steps 30000000 --resume --ent-coef 0.01`
+
+Check progress (draws a chart in the run folder and says if training has stalled):
+
+`.venv/Scripts/python -m duck.progress runs/duck_v1`
+
+Judge whether the duck really walks:
+
+`.venv/Scripts/python -m duck.evaluate runs/duck_v1`
+
+Watch the latest snapshot live in a window:
+
+`.venv/Scripts/python -m duck.view_snapshot runs/duck_v1`
+
+Make the video of all the snapshots:
+
+`.venv/Scripts/python -m duck.video runs/duck_v1`
+
+The video is saved as `evolution.mp4` inside the run folder.
+
+To judge or watch an older snapshot, add `--snapshot` and its step count, for example `--snapshot 1007616`.
+
+## How to start the real run
+
+1. Plug the laptop in.
+2. Open a terminal in the project folder.
+3. Run the start training command above.
+4. Leave it running. Do not shut down the laptop or close the lid.
+
+Training keeps the laptop awake while it runs, so keep it plugged in.
+
+Starting a new run in a folder that already has snapshots is refused. Use `--resume`, or pick a new folder name such as `runs/duck_v2`.
+
+Stopping with Ctrl+C is safe. Resume picks up from the newest complete snapshot, even after a sleep or a reboot. Anything after that snapshot is redone.
+
+Snapshot step counts land on rollout boundaries, not round numbers. For example you will see 1,007,616 instead of 1,000,000. That is normal.
+
+## Speed
+
+On this laptop, with 8 duck worlds side by side, training runs at about 1,600 steps per second (measured: 1,602 and 1,613 on a 1 million step test). That is about 5.8 million steps per hour, so 30 million steps take roughly 5 hours. Walking may need more or fewer steps than that. Training has no time limit, so let it run as long as the score keeps improving, and check progress at least once a day.
+
+## When the score stops improving (the stall rule)
+
+If `duck.progress` says there has been no improvement for an hour:
+
+1. Watch the latest snapshot first, with the live viewer or by making a video. See what the duck is actually doing.
+2. Then resume with more curiosity: add `--resume --ent-coef 0.01` to the training command.
+
+One catch: the stall clock counts real time. If you resume a run that was stopped for a while, wait until training has been going for a full hour before you trust the stall message.
+
+If more curiosity does not help, the spec lists what to try next: fix a reward that rewards a bad habit, add training wheels, or go back to an earlier snapshot. Changing the duck body comes last.
+
+## What counts as walking
+
+The duck walks when it finishes at least 8 out of 10 attempts. Each attempt is 20 seconds without falling, with an average speed of at least 0.2 metres per second, and staying within 0.5 metres of the straight line. `duck.evaluate` checks exactly this.
+
+## Later goals
+
+- Moving wings, trained on top of the walking brain
+- Going around obstacles, which needs steering
+- Sharing the results more easily, for example on a web page
+
+## More detail
+
+The design is in `docs/superpowers/specs/2026-10-28-duck-walker-design.md`. Notes for working on the code are in `CLAUDE.md`.
