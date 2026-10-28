@@ -1,0 +1,8 @@
+mujoco>=3.2
+gymnasium>=1.0
+stable-baselines3>=2.4
+numpy
+matplotlib>=3.9
+pillow>=10
+imageio[ffmpeg]>=2.35
+pytest>=8

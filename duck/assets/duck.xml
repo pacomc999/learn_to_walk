@@ -1,0 +1,152 @@
+<!--
+  Duck B: a 3D duck with real duck proportions and 12 position motors.
+  Built by hand from the three.js mockup duck-joints.html, scaled by 0.25
+  (mockup units to metres) and turned so that z is up and +x is forward.
+  Left is +y, right is -y.
+-->
+<mujoco model="duck">
+
+  <!-- Simulation settings: 200 physics steps per second -->
+  <option timestep="0.005" integrator="implicitfast"/>
+
+  <!-- Colours used by the duck and the ground -->
+  <asset>
+    <texture name="grid" type="2d" builtin="checker" width="512" height="512"
+             rgb1="0.55 0.75 0.5" rgb2="0.6 0.8 0.55"/>
+    <material name="grass" texture="grid" texrepeat="8 8"/>
+    <material name="yellow" rgba="0.96 0.77 0.19 1"/>
+    <material name="wing_yellow" rgba="0.88 0.69 0.13 1"/>
+    <material name="orange" rgba="1 0.55 0.1 1"/>
+    <material name="white" rgba="1 1 1 1"/>
+    <material name="dark" rgba="0.13 0.13 0.13 1"/>
+  </asset>
+
+  <!-- Shared settings for joints, shapes and motors -->
+  <default>
+    <!-- Joints: a little damping and armature keep the light limbs stable -->
+    <joint type="hinge" axis="0 1 0" limited="true" damping="0.1" armature="0.005"/>
+    <!-- Duck shapes only touch the floor, never each other -->
+    <geom contype="1" conaffinity="0" friction="1 0.05 0.01" material="yellow"/>
+    <!-- Motors: hold a target angle with limited force -->
+    <position kp="20" forcelimited="true"/>
+    <!-- Eyes are only for looks: no collisions and no mass -->
+    <default class="eye">
+      <geom contype="0" conaffinity="0" mass="0"/>
+    </default>
+  </default>
+
+  <worldbody>
+    <!-- Light and flat ground -->
+    <light name="sun" pos="0 0 3" dir="0 0 -1" directional="true"/>
+    <geom name="floor" type="plane" size="0 0 0.05" material="grass"
+          contype="1" conaffinity="1"/>
+
+    <!-- Torso: the main body, free to move and turn in any direction -->
+    <body name="torso" pos="0 0 0.25">
+      <freejoint name="root"/>
+      <!-- Camera that follows the duck from its right side, so it walks left to right on screen -->
+      <camera name="follow" mode="trackcom" pos="0 -1.3 0.2" xyaxes="1 0 0 0 0.1 1"/>
+
+      <!-- Long body, tilted slightly forward -->
+      <geom name="body" type="ellipsoid" size="0.1875 0.106 0.094" euler="0 0.12 0" mass="0.8"/>
+      <!-- Small tail at the back, a bit heavy to balance the neck and head -->
+      <geom name="tail" type="ellipsoid" size="0.0585 0.036 0.027" pos="-0.1875 0 0.0375" mass="0.2"/>
+      <!-- Folded wings, fixed to the body -->
+      <geom name="left_wing" type="ellipsoid" size="0.13 0.025 0.05" pos="-0.025 0.09 0.02"
+            material="wing_yellow" mass="0.05"/>
+      <geom name="right_wing" type="ellipsoid" size="0.13 0.025 0.05" pos="-0.025 -0.09 0.02"
+            material="wing_yellow" mass="0.05"/>
+
+      <!-- Neck, lower half: tilts the neck forward and back -->
+      <body name="neck_lower" pos="0.1375 0 0.075">
+        <joint name="neck_base" range="-0.6 0.6"/>
+        <geom name="neck_lower" type="capsule" fromto="0 0 0 0.0325 0 0.075" size="0.0275" mass="0.04"/>
+
+        <!-- Neck, upper half with the head: tilts the head forward and back -->
+        <body name="neck_upper" pos="0.0325 0 0.075">
+          <joint name="neck_top" range="-0.8 0.8"/>
+          <geom name="neck_upper" type="capsule" fromto="0 0 0 0.0175 0 0.055" size="0.025" mass="0.04"/>
+          <geom name="head" type="sphere" size="0.06" pos="0.03 0 0.0875" mass="0.06"/>
+          <geom name="beak" type="box" size="0.0375 0.021 0.009" pos="0.105 0 0.075"
+                material="orange" mass="0.01"/>
+          <!-- Eyes: white balls with dark pupils -->
+          <geom class="eye" type="sphere" size="0.0132" pos="0.06 0.045 0.1025" material="white"/>
+          <geom class="eye" type="sphere" size="0.0132" pos="0.06 -0.045 0.1025" material="white"/>
+          <geom class="eye" type="sphere" size="0.0066" pos="0.0672 0.0528 0.1043" material="dark"/>
+          <geom class="eye" type="sphere" size="0.0066" pos="0.0672 -0.0528 0.1043" material="dark"/>
+        </body>
+      </body>
+
+      <!-- Left leg, set far back under the body -->
+      <body name="left_thigh" pos="-0.075 0.05 -0.0875">
+        <!-- Hip swing: forward and back. Hip side: out to the side (about x) -->
+        <joint name="left_hip_swing" range="-1.0 1.0"/>
+        <joint name="left_hip_side" axis="1 0 0" range="-0.4 0.4"/>
+        <geom name="left_thigh" type="capsule" fromto="0 0 0 0.025 0 -0.0675" size="0.015"
+              material="orange" mass="0.06"/>
+        <body name="left_shin" pos="0.025 0 -0.0675">
+          <joint name="left_knee" range="-1.0 1.0"/>
+          <geom name="left_shin" type="capsule" fromto="0 0 0 -0.02 0 -0.075" size="0.011"
+                material="orange" mass="0.04"/>
+          <!-- Webbed foot: the back part touches the ground, the toes curl -->
+          <body name="left_foot" pos="-0.02 0 -0.075">
+            <joint name="left_ankle" range="-0.8 0.8"/>
+            <geom name="left_foot" type="box" size="0.0325 0.025 0.004" pos="0.0325 0 -0.016"
+                  material="orange" mass="0.03"/>
+            <body name="left_toes" pos="0.065 0 -0.016">
+              <joint name="left_toes" range="-0.6 0.6"/>
+              <geom name="left_toes" type="box" size="0.0125 0.035 0.004" pos="0.0125 0 0"
+                    material="orange" mass="0.01"/>
+            </body>
+          </body>
+        </body>
+      </body>
+
+      <!-- Right leg, a mirror image of the left leg -->
+      <body name="right_thigh" pos="-0.075 -0.05 -0.0875">
+        <joint name="right_hip_swing" range="-1.0 1.0"/>
+        <joint name="right_hip_side" axis="1 0 0" range="-0.4 0.4"/>
+        <geom name="right_thigh" type="capsule" fromto="0 0 0 0.025 0 -0.0675" size="0.015"
+              material="orange" mass="0.06"/>
+        <body name="right_shin" pos="0.025 0 -0.0675">
+          <joint name="right_knee" range="-1.0 1.0"/>
+          <geom name="right_shin" type="capsule" fromto="0 0 0 -0.02 0 -0.075" size="0.011"
+                material="orange" mass="0.04"/>
+          <body name="right_foot" pos="-0.02 0 -0.075">
+            <joint name="right_ankle" range="-0.8 0.8"/>
+            <geom name="right_foot" type="box" size="0.0325 0.025 0.004" pos="0.0325 0 -0.016"
+                  material="orange" mass="0.03"/>
+            <body name="right_toes" pos="0.065 0 -0.016">
+              <joint name="right_toes" range="-0.6 0.6"/>
+              <geom name="right_toes" type="box" size="0.0125 0.035 0.004" pos="0.0125 0 0"
+                    material="orange" mass="0.01"/>
+            </body>
+          </body>
+        </body>
+      </body>
+    </body>
+  </worldbody>
+
+  <!-- The 12 motors, in the order the brain uses. Each target range equals its joint range -->
+  <actuator>
+    <position name="neck_base" kp="4" joint="neck_base" ctrlrange="-0.6 0.6" forcerange="-1 1"/>
+    <position name="neck_top" kp="4" joint="neck_top" ctrlrange="-0.8 0.8" forcerange="-1 1"/>
+    <position name="left_hip_swing" joint="left_hip_swing" ctrlrange="-1.0 1.0" forcerange="-4 4"/>
+    <position name="left_hip_side" joint="left_hip_side" ctrlrange="-0.4 0.4" forcerange="-4 4"/>
+    <position name="left_knee" joint="left_knee" ctrlrange="-1.0 1.0" forcerange="-4 4"/>
+    <position name="left_ankle" joint="left_ankle" ctrlrange="-0.8 0.8" forcerange="-3 3"/>
+    <position name="left_toes" kp="5" joint="left_toes" ctrlrange="-0.6 0.6" forcerange="-0.5 0.5"/>
+    <position name="right_hip_swing" joint="right_hip_swing" ctrlrange="-1.0 1.0" forcerange="-4 4"/>
+    <position name="right_hip_side" joint="right_hip_side" ctrlrange="-0.4 0.4" forcerange="-4 4"/>
+    <position name="right_knee" joint="right_knee" ctrlrange="-1.0 1.0" forcerange="-4 4"/>
+    <position name="right_ankle" joint="right_ankle" ctrlrange="-0.8 0.8" forcerange="-3 3"/>
+    <position name="right_toes" kp="5" joint="right_toes" ctrlrange="-0.6 0.6" forcerange="-0.5 0.5"/>
+  </actuator>
+
+  <!-- Starting pose: standing upright with every motor holding angle 0 -->
+  <keyframe>
+    <key name="stand" qpos="0 0 0.25 1 0 0 0  0 0  0 0 0 0 0  0 0 0 0 0"
+         ctrl="0 0 0 0 0 0 0 0 0 0 0 0"/>
+  </keyframe>
+
+</mujoco>
