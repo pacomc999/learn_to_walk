@@ -1,5 +1,6 @@
 """Tests for the duck model file and its helper functions."""
 import mujoco
+import pytest
 from duck.model import (load_duck_model, MOTOR_NAMES, STANDING_HEIGHT,
                         MIN_TORSO_HEIGHT, torso_height, torso_up_z, foot_contacts)
 
@@ -68,3 +69,11 @@ def test_toes_count_as_foot_contact():
         model.geom(side).contype = 0  # the main foot boxes can no longer touch the floor
     mujoco.mj_forward(model, data)
     assert foot_contacts(model, data) == (True, True)
+
+
+# Joint ranges in duck.xml are written in radians, so the knee can bend 1.0 radian
+# (about 57 degrees) each way, not 1 degree
+def test_joint_ranges_are_read_as_radians():
+    model = load_duck_model()
+    knee_range = model.jnt_range[model.joint("left_knee").id]
+    assert knee_range == pytest.approx([-1.0, 1.0])

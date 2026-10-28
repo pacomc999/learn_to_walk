@@ -6,6 +6,9 @@
 -->
 <mujoco model="duck">
 
+  <!-- All angles in this file (joint ranges, the body tilt) are in radians -->
+  <compiler angle="radian"/>
+
   <!-- Simulation settings: 200 physics steps per second -->
   <option timestep="0.005" integrator="implicitfast"/>
 
