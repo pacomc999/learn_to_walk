@@ -8,7 +8,7 @@ The video is saved as evolution.mp4 inside the run folder.
 import argparse
 from pathlib import Path
 
-import imageio.v3 as iio
+import imageio
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont
 
@@ -103,14 +103,17 @@ def make_video(run_dir: Path, out_path: Path | None = None, max_snapshots: int =
     chosen = choose_for_video(snapshots, max_snapshots)
     out_path = out_path or run_dir / "evolution.mp4"
 
-    all_frames = []
-    for position, snapshot in enumerate(chosen, start=1):
-        print(f"Recording snapshot {position} of {len(chosen)}")
-        clip = record_clip(load_policy(snapshot), seconds_per_clip, fps)
-        caption = caption_text(position, len(chosen), snapshot.steps)
-        all_frames.extend(add_caption(frame, caption) for frame in clip)
-
-    iio.imwrite(out_path, np.stack(all_frames), fps=fps, codec="libx264")
+    # Write each clip to disk as soon as it is made, so only one clip is in memory
+    writer = imageio.get_writer(out_path, fps=fps, codec="libx264")
+    try:
+        for position, snapshot in enumerate(chosen, start=1):
+            print(f"Recording snapshot {position} of {len(chosen)}")
+            clip = record_clip(load_policy(snapshot), seconds_per_clip, fps)
+            caption = caption_text(position, len(chosen), snapshot.steps)
+            for frame in clip:
+                writer.append_data(add_caption(frame, caption))
+    finally:
+        writer.close()
     print(f"Saved the video to {out_path}")
     return out_path
 

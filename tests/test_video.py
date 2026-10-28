@@ -10,6 +10,7 @@ def test_captions():
     assert caption_text(3, 25, 250_000) == "Snapshot 3 of 25, after 250 thousand steps"
     assert caption_text(25, 25, 30_000_000) == "Snapshot 25 of 25, after 30 million steps"
     assert caption_text(2, 25, 1_007_616) == "Snapshot 2 of 25, after 1 million steps"
+    assert caption_text(1, 2, 999_500) == "Snapshot 1 of 2, after 1 million steps"
     assert caption_text(2, 25, 512) == "Snapshot 2 of 25, after 512 steps"
 
 def test_caption_keeps_image_size():
