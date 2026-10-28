@@ -383,7 +383,7 @@ def test_chart_is_saved(tmp_path):
 - Produces (in `duck/train.py`):
   - `build_vec_env(n_envs: int, seed: int, use_subprocess: bool = True) -> VecNormalize`: `n_envs` copies of `Monitor(DuckWalkEnv())` in `SubprocVecEnv` (or `DummyVecEnv`), wrapped in `VecNormalize(norm_obs=True, norm_reward=True)`
   - `train(run_dir: Path, total_steps: int, snapshot_every: int = 1_000_000, n_envs: int = 8, ent_coef: float | None = None, resume: bool = False, use_subprocess: bool = True, ppo_overrides: dict | None = None) -> PPO`
-    - new run: create PPO (`MlpPolicy`, `device="cpu"`, `ent_coef` if given), save snapshot at step 0 before learning; with `total_steps=0` it stops there (Task 8's test relies on this)
+    - new run: create PPO (`MlpPolicy`, `device="cpu"`, `policy_kwargs={"net_arch": {"pi": [256, 256], "vf": [256, 256]}}` so the actor and the critic each have 2 hidden layers of 256, `ent_coef` if given), save snapshot at step 0 before learning; with `total_steps=0` it stops there (Task 8's test relies on this)
     - resume: load `latest_snapshot` brain and `VecNormalize.load(norm_path, venv)`; if `ent_coef` given, set `model.ent_coef`; continue with `reset_num_timesteps=False` until `total_steps` in total
     - a callback saves a snapshot each time `num_timesteps` passes a multiple of `snapshot_every`, plus the final step
     - a callback appends a progress row at each rollout end when `model.ep_info_buffer` has episodes (mean of `r`)
@@ -419,6 +419,10 @@ def test_zero_steps_saves_only_untrained_snapshot(tmp_path):
     train(tmp_path, total_steps=0, **FAST)
     assert [s.steps for s in list_snapshots(tmp_path)] == [0]
 
+def test_brain_has_two_layers_of_256(tmp_path):
+    model = train(tmp_path, total_steps=0, **FAST)
+    assert model.policy.net_arch == {"pi": [256, 256], "vf": [256, 256]}
+
 def test_progress_is_logged(tmp_path):
     train(tmp_path, total_steps=4096, snapshot_every=4096, **FAST)
     assert len(read_progress(tmp_path)) >= 1
@@ -426,7 +430,7 @@ def test_progress_is_logged(tmp_path):
 
 - [ ] **Step 2: Run to verify failure**: expected `ModuleNotFoundError`.
 - [ ] **Step 3: Implement `duck/train.py`.**
-- [ ] **Step 4: Run to verify pass**: expected 4 passed. Then try the real launcher for 1 minute: `.venv/Scripts/python -m duck.train --run runs/try --steps 50000 --snapshot-every 25000` and check it runs with `SubprocVecEnv` and prints steps per second. Delete `runs/try` afterwards.
+- [ ] **Step 4: Run to verify pass**: expected 5 passed. Then try the real launcher for 1 minute: `.venv/Scripts/python -m duck.train --run runs/try --steps 50000 --snapshot-every 25000` and check it runs with `SubprocVecEnv` and prints steps per second. Delete `runs/try` afterwards.
 - [ ] **Step 5: Commit** with message `Add PPO training with snapshots`.
 
 ---
