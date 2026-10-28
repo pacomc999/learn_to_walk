@@ -1,7 +1,7 @@
 import imageio.v3 as iio
 import numpy as np
 import pytest
-from duck.video import caption_text, add_caption, make_video
+from duck.video import caption_text, add_caption, make_video, record_clip
 from duck.train import train
 
 def test_captions():
@@ -34,3 +34,12 @@ def test_video_with_a_single_snapshot(tmp_path):
     path = make_video(tmp_path, seconds_per_clip=0.5, fps=30)
     assert path.exists()
     assert len(iio.imread(path)) == 15
+
+
+# record_clip reports every picture it takes, with the observation and whether the duck has fallen
+def test_record_clip_reports_each_frame():
+    reports = []
+    frames = record_clip(lambda observation: np.zeros(12), seconds=0.5, fps=10, width=80, height=60,
+                         on_frame=lambda observation, fallen: reports.append((observation.shape, fallen)))
+    assert len(reports) == len(frames) == 5
+    assert reports[0] == ((39,), False)

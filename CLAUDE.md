@@ -11,7 +11,7 @@ A 3D MuJoCo duck (design B, 12 motors) that learns to walk with PPO on a CPU-onl
 - `duck/progress.py`: progress log (`time,timesteps,mean_reward,mean_distance`), stall check, chart with score and distance panels. Broken rows are skipped; a locked log only prints a warning
 - `duck/policy.py`: load a snapshot as a walking policy
 - `duck/evaluate.py`, `duck/view_snapshot.py`, `duck/video.py`: judge, watch live, make the video
-- `duck/dashboard.py` + `duck/dashboard.html`: live browser dashboard (standard library web server on 127.0.0.1:8765, `/status.json`, `/latest.gif`); films the newest snapshot to `<run>/dashboard_latest.gif` in the main thread, the server runs in a background thread. The page is vanilla JS with hand drawn SVG charts
+- `duck/dashboard.py` + `duck/dashboard.html`: live browser dashboard (standard library web server on 127.0.0.1:8765, `/status.json`, `/latest.mp4`, `/latest_brain.json`); films the newest snapshot to `<run>/dashboard_latest.mp4` plus `dashboard_latest_brain.json` (senses, both hidden layers as -100 to 100, 12 motor commands, per frame; null after a fall) in the main thread; `/latest.mp4` answers Range requests. `load_brain` in `duck/policy.py` runs the policy layers one by one and matches `load_policy` exactly. Motor direction words in the page were measured on the model (positive hip swing moves the foot back, positive ankle points it down), the server runs in a background thread. The page is vanilla JS with hand drawn SVG charts
 - `tests/`: one test file per module
 - `runs/`: training output, git-ignored
 

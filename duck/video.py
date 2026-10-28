@@ -7,6 +7,7 @@ The video is saved as evolution.mp4 inside the run folder.
 """
 import argparse
 from pathlib import Path
+from typing import Callable
 
 import imageio
 import numpy as np
@@ -74,13 +75,17 @@ def add_caption(frame: np.ndarray, text: str) -> np.ndarray:
 
 # Walk one attempt and keep a picture each time simulated time reaches the next 1/fps mark.
 # After a fall the duck keeps being simulated with zero actions, so it stays on screen lying down.
+# on_frame, if given, is told the observation and whether the duck has fallen at every picture
 def record_clip(policy, seconds: float = 6.0, fps: int = 30, width: int = 640,
-                height: int = 480, seed: int = 0) -> list[np.ndarray]:
+                height: int = 480, seed: int = 0,
+                on_frame: Callable[[np.ndarray, bool], None] | None = None) -> list[np.ndarray]:
     frame_count = round(seconds * fps)
     env = DuckWalkEnv(render_mode="rgb_array", target_speed=EVALUATION_TARGET_SPEED, width=width, height=height)
     try:
         observation, _ = env.reset(seed=seed)
         frames = [env.render()]  # the first picture comes right after the reset
+        if on_frame:
+            on_frame(observation, False)
         fallen = False
         while len(frames) < frame_count:
             action = np.zeros(env.motor_count) if fallen else policy(observation)
@@ -89,6 +94,8 @@ def record_clip(policy, seconds: float = 6.0, fps: int = 30, width: int = 640,
             # Simulated time, not the clock, decides when a picture is taken
             if env.data.time >= len(frames) / fps - 1e-9:
                 frames.append(env.render())
+                if on_frame:
+                    on_frame(observation, fallen)
         return frames
     finally:
         env.close()

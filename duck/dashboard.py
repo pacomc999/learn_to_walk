@@ -3,7 +3,8 @@
 Run it from the project root in a second terminal while training runs, for example:
     python -m duck.dashboard runs/duck_v1 --steps 30000000
 It opens a page that refreshes itself: score and distance charts, how far the run is,
-and a GIF of the newest snapshot walking. Press Ctrl+C to stop it; training is not affected.
+and a film of the newest snapshot walking with its brain activity shown frame by frame.
+Press Ctrl+C to stop it; training is not affected.
 """
 import argparse
 import json
@@ -12,11 +13,12 @@ import time
 import webbrowser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
+from typing import Callable
 
+import imageio
 import numpy as np
-from PIL import Image
 
-from duck.policy import load_policy
+from duck.policy import BrainReading, load_brain, load_policy
 from duck.progress import ProgressRow, minutes_since_improvement, read_progress
 from duck.snapshots import Snapshot, latest_snapshot, replace_with_retry
 from duck.video import record_clip
@@ -24,15 +26,23 @@ from duck.video import record_clip
 # The page itself, kept next to this file
 PAGE_PATH = Path(__file__).with_name("dashboard.html")
 
-# The GIF of the newest snapshot, and a note of which snapshot it shows
-GIF_NAME = "dashboard_latest.gif"
-GIF_STEPS_NAME = "dashboard_latest_steps.txt"
+# The film of the newest snapshot, its brain activity per frame,
+# and a note of which snapshot they show (written last, once both are ready)
+CLIP_NAME = "dashboard_latest.mp4"
+BRAIN_NAME = "dashboard_latest_brain.json"
+CLIP_STEPS_NAME = "dashboard_latest_steps.txt"
 
-# GIF size and length: small enough to make in a few seconds while training runs
-GIF_SECONDS = 8.0
-GIF_FPS = 15
-GIF_WIDTH = 400
-GIF_HEIGHT = 300
+# Film size and length: small enough to make in a few seconds while training runs.
+# Both sides are multiples of 16, which video files need
+CLIP_SECONDS = 8.0
+CLIP_FPS = 15
+CLIP_WIDTH = 448
+CLIP_HEIGHT = 336
+
+# Where things sit in the duck's 39 number observation
+QUATERNION = slice(2, 6)
+FORWARD_SPEED = 6
+LEFT_FOOT, RIGHT_FOOT, TARGET_SPEED = 36, 37, 38
 
 # How often to look for a new snapshot, in seconds
 CHECK_SECONDS = 20
@@ -54,10 +64,10 @@ def recent_steps_per_second(rows: list[ProgressRow]) -> float | None:
     return (recent[-1].timesteps - recent[0].timesteps) / seconds
 
 
-# Which snapshot the current GIF shows, or None if there is no GIF yet
-def _gif_steps(run_dir: Path) -> int | None:
+# Which snapshot the current film shows, or None if there is no film yet
+def _clip_steps(run_dir: Path) -> int | None:
     try:
-        return int((run_dir / GIF_STEPS_NAME).read_text())
+        return int((run_dir / CLIP_STEPS_NAME).read_text())
     except (OSError, ValueError):
         return None
 
@@ -86,7 +96,7 @@ def run_status(run_dir: Path, total_steps: int | None) -> dict:
         "minutes_left": minutes_left,
         "steps_per_second": recent_steps_per_second(rows),
         "minutes_since_improvement": minutes_since_improvement(rows),
-        "gif_steps": _gif_steps(run_dir),
+        "clip_steps": _clip_steps(run_dir),
         "points": [
             {"steps": row.timesteps, "score": row.mean_reward, "distance": row.mean_distance}
             for row in rows
@@ -94,36 +104,98 @@ def run_status(run_dir: Path, total_steps: int | None) -> dict:
     }
 
 
-# Save pictures as a looping GIF, under a temp name first so the page never sees half a file
-def save_gif(frames: list[np.ndarray], path: Path, fps: int = GIF_FPS) -> None:
-    images = [Image.fromarray(frame) for frame in frames]
-    temp_path = path.with_suffix(".tmp.gif")
-    images[0].save(temp_path, save_all=True, append_images=images[1:],
-                   duration=round(1000 / fps), loop=0)
+# How far the body is tipped nose down (positive) or nose up, in degrees,
+# from its orientation quaternion (w, x, y, z)
+def lean_degrees(quaternion: np.ndarray) -> float:
+    w, x, y, z = quaternion
+    return float(np.degrees(np.arcsin(np.clip(2 * (w * y - z * x), -1.0, 1.0))))
+
+
+# Brain cells as whole numbers from -100 to 100, which keeps the file small
+def _cells_as_percent(cells: np.ndarray) -> list[int]:
+    return [int(value) for value in np.round(cells * 100)]
+
+
+# Everything the page shows for one frame: what the duck senses, how its two layers
+# of brain cells fire, and the command it sends to each of the 12 motors
+def frame_reading(brain: Callable[[np.ndarray], BrainReading], observation: np.ndarray) -> dict:
+    reading = brain(observation)
+    return {
+        "senses": {
+            "left_foot": bool(observation[LEFT_FOOT] > 0.5),
+            "right_foot": bool(observation[RIGHT_FOOT] > 0.5),
+            "speed": round(float(observation[FORWARD_SPEED]), 2),
+            "target": round(float(observation[TARGET_SPEED]), 2),
+            "lean": round(lean_degrees(observation[QUATERNION]), 1),
+        },
+        "layer1": _cells_as_percent(reading.layer1),
+        "layer2": _cells_as_percent(reading.layer2),
+        "motors": [round(float(value), 2) for value in reading.action],
+    }
+
+
+# Save pictures as a video, under a temp name first so the page never sees half a file
+def save_mp4(frames: list[np.ndarray], path: Path, fps: int = CLIP_FPS) -> None:
+    temp_path = path.with_suffix(".tmp.mp4")
+    writer = imageio.get_writer(temp_path, fps=fps, codec="libx264", pixelformat="yuv420p")
+    try:
+        for frame in frames:
+            writer.append_data(frame)
+    finally:
+        writer.close()
     replace_with_retry(temp_path, path)
 
 
-# Film a snapshot walking at the judging speed and save it as the dashboard GIF
-def make_snapshot_gif(run_dir: Path, snapshot: Snapshot) -> None:
-    frames = record_clip(load_policy(snapshot), seconds=GIF_SECONDS, fps=GIF_FPS,
-                         width=GIF_WIDTH, height=GIF_HEIGHT)
-    save_gif(frames, run_dir / GIF_NAME)
-    (run_dir / GIF_STEPS_NAME).write_text(str(snapshot.steps))
+# Save data as JSON, under a temp name first like the video
+def _save_json(data: dict, path: Path) -> None:
+    temp_path = path.with_suffix(".tmp.json")
+    temp_path.write_text(json.dumps(data, separators=(",", ":")))
+    replace_with_retry(temp_path, path)
 
 
-# Make a new GIF if there is a snapshot newer than the one the GIF shows
-def refresh_gif(run_dir: Path) -> None:
+# Film a snapshot walking at the judging speed and keep its brain activity for every frame.
+# After a fall the brain is no longer in control, so those frames have no reading
+def make_snapshot_clip(run_dir: Path, snapshot: Snapshot) -> None:
+    brain = load_brain(snapshot)
+    readings = []
+
+    def keep_reading(observation: np.ndarray, fallen: bool) -> None:
+        readings.append(None if fallen else frame_reading(brain, observation))
+
+    frames = record_clip(load_policy(snapshot), seconds=CLIP_SECONDS, fps=CLIP_FPS,
+                         width=CLIP_WIDTH, height=CLIP_HEIGHT, on_frame=keep_reading)
+    save_mp4(frames, run_dir / CLIP_NAME)
+    _save_json({"steps": snapshot.steps, "fps": CLIP_FPS, "frames": readings}, run_dir / BRAIN_NAME)
+    (run_dir / CLIP_STEPS_NAME).write_text(str(snapshot.steps))
+
+
+# Make a new film if there is a snapshot newer than the one the film shows
+def refresh_clip(run_dir: Path) -> None:
     snapshot = latest_snapshot(run_dir)
-    if snapshot is None or snapshot.steps == _gif_steps(run_dir):
+    if snapshot is None or snapshot.steps == _clip_steps(run_dir):
         return
     print(f"Filming the snapshot from {snapshot.steps:,} steps for the dashboard", flush=True)
     try:
-        make_snapshot_gif(run_dir, snapshot)
+        make_snapshot_clip(run_dir, snapshot)
     except Exception as error:  # a snapshot being written right now can fail to load
         print(f"Could not film that snapshot yet ({error}). Trying again soon.", flush=True)
 
 
-# A web server that answers the page, the status and the GIF for one run
+# The first and last byte asked for in a header like "bytes=200-999" or "bytes=200-".
+# None when there is no usable header, so the whole file is sent
+def byte_range(header: str | None, size: int) -> tuple[int, int] | None:
+    if not header or not header.startswith("bytes="):
+        return None
+    first_text, _, last_text = header[len("bytes="):].partition("-")
+    try:
+        first = int(first_text) if first_text else 0
+        last = min(int(last_text), size - 1) if last_text else size - 1
+    except ValueError:
+        return None
+    return (first, last) if first <= last else None
+
+
+# A web server that answers the page, the status, the film and its brain data for one run
 def make_server(run_dir: Path, total_steps: int | None, port: int = DEFAULT_PORT) -> ThreadingHTTPServer:
 
     class DashboardHandler(BaseHTTPRequestHandler):
@@ -135,7 +207,23 @@ def make_server(run_dir: Path, total_steps: int | None, port: int = DEFAULT_PORT
             self.end_headers()
             self.wfile.write(body)
 
-        # The three things the page asks for
+        # Send the film, or just the piece of it the video player asks for
+        def _send_video(self, path: Path) -> None:
+            body = path.read_bytes()
+            wanted = byte_range(self.headers.get("Range"), len(body))
+            if wanted is None:
+                self._send(body, "video/mp4")
+                return
+            first, last = wanted
+            self.send_response(206)
+            self.send_header("Content-Type", "video/mp4")
+            self.send_header("Content-Range", f"bytes {first}-{last}/{len(body)}")
+            self.send_header("Accept-Ranges", "bytes")
+            self.send_header("Cache-Control", "no-store")
+            self.end_headers()
+            self.wfile.write(body[first:last + 1])
+
+        # The four things the page asks for
         def do_GET(self) -> None:
             route = self.path.split("?")[0]
             if route == "/":
@@ -143,8 +231,10 @@ def make_server(run_dir: Path, total_steps: int | None, port: int = DEFAULT_PORT
             elif route == "/status.json":
                 body = json.dumps(run_status(run_dir, total_steps)).encode()
                 self._send(body, "application/json")
-            elif route == "/latest.gif" and (run_dir / GIF_NAME).exists():
-                self._send((run_dir / GIF_NAME).read_bytes(), "image/gif")
+            elif route == "/latest.mp4" and (run_dir / CLIP_NAME).exists():
+                self._send_video(run_dir / CLIP_NAME)
+            elif route == "/latest_brain.json" and (run_dir / BRAIN_NAME).exists():
+                self._send((run_dir / BRAIN_NAME).read_bytes(), "application/json")
             else:
                 self.send_error(404)
 
@@ -162,7 +252,7 @@ def main() -> None:
     parser.add_argument("--port", type=int, default=DEFAULT_PORT, help="web page port")
     arguments = parser.parse_args()
 
-    # The web page runs in the background; filming GIFs happens here in the main thread
+    # The web page runs in the background; filming happens here in the main thread
     server = make_server(arguments.run_dir, arguments.steps, arguments.port)
     threading.Thread(target=server.serve_forever, daemon=True).start()
     address = f"http://127.0.0.1:{arguments.port}/"
@@ -170,7 +260,7 @@ def main() -> None:
     webbrowser.open(address)
     try:
         while True:
-            refresh_gif(arguments.run_dir)
+            refresh_clip(arguments.run_dir)
             time.sleep(CHECK_SECONDS)
     except KeyboardInterrupt:
         print("Dashboard stopped.")
