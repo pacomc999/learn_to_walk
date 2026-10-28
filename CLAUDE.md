@@ -26,7 +26,7 @@ Position motors with limited force. Wings are fixed to the body.
 ## Reward (per step) and fall rules
 - Forward: +3.0 per metre per second of forward speed, no cap. Speed is the distance moved over the control step (0.02 s) divided by that time, not a single velocity sample
 - Alive: +0.2 per step (so standing still for 20 s scores only about 200)
-- Effort: -0.01 times the sum of squared actions
+- Energy: -1.5 per joule of motor work, summed over the 4 physics substeps of each control step as |actuator force x actuator velocity| x timestep. Replaced the old squared action penalty, which did not measure energy
 - Sideways: -0.5 per metre of drift from the straight line
 - Fall: torso height below `MIN_TORSO_HEIGHT`, or `up_z` below 0.64 (about 50 degrees of tilt)
 - An attempt also ends after 20 simulated seconds

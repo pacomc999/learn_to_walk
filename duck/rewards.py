@@ -1,15 +1,13 @@
 """Reward and fall rules for the duck walker."""
 from dataclasses import dataclass
 
-import numpy as np
-
 
 # How much each part of the reward counts for
 @dataclass
 class RewardWeights:
     forward: float = 3.0   # points per metre per second of forward speed
     alive: float = 0.2     # points for staying upright every step (small, so standing still does not pay)
-    effort: float = 0.01   # penalty per squared motor action
+    energy: float = 1.5    # penalty per joule of work the motors do
     sideways: float = 0.5  # penalty per metre of sideways drift
 
 
@@ -23,9 +21,9 @@ def _alive_part(weights: RewardWeights) -> float:
     return weights.alive
 
 
-# Penalty for using large motor actions, so the duck saves energy
-def _effort_part(action: np.ndarray, weights: RewardWeights) -> float:
-    return -weights.effort * float(np.sum(np.square(action)))
+# Penalty for the real energy the motors used, so wasteful moves like hopping cost more
+def _energy_part(energy_joules: float, weights: RewardWeights) -> float:
+    return -weights.energy * energy_joules
 
 
 # Penalty for drifting away from the straight line, the same on both sides
@@ -37,13 +35,13 @@ def _sideways_part(sideways_offset: float, weights: RewardWeights) -> float:
 def compute_reward(
     forward_velocity: float,
     sideways_offset: float,
-    action: np.ndarray,
+    energy_joules: float,
     weights: RewardWeights = RewardWeights(),
 ) -> tuple[float, dict[str, float]]:
     parts = {
         "forward": _forward_part(forward_velocity, weights),
         "alive": _alive_part(weights),
-        "effort": _effort_part(action, weights),
+        "energy": _energy_part(energy_joules, weights),
         "sideways": _sideways_part(sideways_offset, weights),
     }
     total = sum(parts.values())

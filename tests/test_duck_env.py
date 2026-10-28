@@ -78,3 +78,25 @@ def test_info_has_forward_distance():
     for _ in range(10):
         _, _, _, _, info = env.step(np.ones(12))
     assert info["forward_distance"] == pytest.approx(info["x_position"] - start_x)
+
+
+# Once settled, holding the standing pose uses almost no motor energy.
+# The first 2 seconds cost a little while the duck sways out the reset jitter
+def test_standing_uses_almost_no_energy():
+    env = DuckWalkEnv()
+    env.reset(seed=0)
+    for _ in range(200):
+        _, _, _, _, info = env.step(np.zeros(12))
+    assert -0.001 < info["reward_parts"]["energy"] <= 0.0
+
+
+# Swinging the legs hard costs energy points
+def test_flailing_costs_energy():
+    env = DuckWalkEnv()
+    env.reset(seed=0)
+    energy = 0.0
+    for step in range(10):
+        action = np.ones(12) if step % 2 else -np.ones(12)
+        _, _, _, _, info = env.step(action)
+        energy += info["reward_parts"]["energy"]
+    assert energy < -0.1

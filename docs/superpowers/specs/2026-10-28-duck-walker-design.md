@@ -56,7 +56,7 @@ Francisco wants to do this "the proper way": research-style reinforcement learni
 - **Ground:** flat.
 - **Effort penalty:** yes, include a penalty for wasted effort.
 - **Speed:** as fast as it safely can; forward reward is not capped.
-- **Gait style:** does not matter.
+- **Gait style:** at first it did not matter. After the pilot run (2026-10-28) the duck hopped, with both feet in the air about 65 percent of the time, and Francisco decided he wants it to learn two legged walking by itself: no rhythm clock and no copied animation. The walk must emerge from the reward.
 - **Viewing:** a video of each snapshot walking, one after another.
 - **Hardware:** train on his laptop first and see how fast it is.
 - **Motors:** the full duck, all 12 motors active from the start (seen in the motor mockup, `duck-joints.html`): neck base, neck top, and on each leg hip swing, hip side, knee, ankle and toes. Simpler 10, 8 and 6 motor versions were shown and not chosen.
@@ -77,7 +77,7 @@ Francisco saw a summary covering MuJoCo, PyTorch with Stable-Baselines3 instead 
 - **Reward, each time step:**
   - plus forward speed (distance moved forward per step, no cap);
   - plus a small constant for staying upright ("still alive" reward);
-  - minus a small effort penalty (squared size of the motor commands);
+  - minus an energy penalty: 1.5 points per joule of real motor work (force times joint speed). This replaced the first effort penalty (squared motor commands), which did not measure energy and let hopping go almost unpunished (pilot hop: about 0.8 J per step, about 70 J per metre);
   - minus a penalty for drifting sideways from the straight line.
 - **An attempt ends** when the body drops below a height threshold or tips past a tilt limit, or after about 20 seconds of simulated time.
 - **Parallel training:** run several simulated ducks at once to use the laptop's 12 threads.

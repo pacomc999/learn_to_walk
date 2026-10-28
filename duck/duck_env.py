@@ -126,22 +126,32 @@ class DuckWalkEnv(gymnasium.Env):
     # Reward for the step just taken; a broken simulation gives a plain zero.
     # Forward speed is the distance moved over the whole step divided by its time,
     # so quick back and forth jiggles cannot fake speed
-    def _reward(self, action: np.ndarray, x_before: float) -> tuple[float, dict[str, float]]:
+    def _reward(self, x_before: float, energy_joules: float) -> tuple[float, dict[str, float]]:
         if not self._state_is_finite():
             return 0.0, {}
         forward_velocity = (float(self.data.qpos[0]) - x_before) / self._control_step_seconds()
         sideways_offset = float(self.data.qpos[1])
-        return compute_reward(forward_velocity, sideways_offset, action, self.reward_weights)
+        return compute_reward(forward_velocity, sideways_offset, energy_joules, self.reward_weights)
+
+    # Run the small physics steps of one control step and add up the motor work.
+    # Work is force times joint speed times time; it counts both pushing and braking
+    def _simulate_and_measure_energy(self) -> float:
+        energy_joules = 0.0
+        for _ in range(FRAME_SKIP):
+            mujoco.mj_step(self.model, self.data)
+            power = np.abs(self.data.actuator_force * self.data.actuator_velocity)
+            energy_joules += float(np.sum(power)) * self.model.opt.timestep
+        return energy_joules
 
     # Move the motors, let the physics run a few small steps, then report back
     def step(self, action: np.ndarray):
         action = np.clip(np.asarray(action, dtype=np.float64), -1.0, 1.0)
         x_before = float(self.data.qpos[0])
         self.data.ctrl[:] = self._scale_action(action)
-        mujoco.mj_step(self.model, self.data, nstep=FRAME_SKIP)
+        energy_joules = self._simulate_and_measure_energy()
         self.step_count += 1
 
-        reward, reward_parts = self._reward(action, x_before)
+        reward, reward_parts = self._reward(x_before, energy_joules)
         terminated = self._is_terminated()
         truncated = self.step_count >= self.max_steps
         return self._observation(), reward, terminated, truncated, self._info(reward_parts)
