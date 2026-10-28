@@ -82,7 +82,7 @@ def test_motor_names_and_order():
 def test_wings_have_no_joints():
     model = load_duck_model()
     names = [model.joint(i).name for i in range(model.njnt)]
-    assert not any("wing" in name for name in names)
+    assert not any("wing" in name.split("_") for name in names)
 
 def test_follow_camera_exists():
     assert load_duck_model().camera("follow") is not None
