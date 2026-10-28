@@ -156,6 +156,7 @@
         <button data-rate="0.5">Half speed</button>
         <button data-rate="0.25">Quarter speed</button>
         <button id="pause">Pause</button>
+        <button id="toggle-brain">Hide brain</button>
       </div>
 
       <!-- The brain, synchronised with the film -->
@@ -370,7 +371,8 @@ async function showClip(status) {
   lastFrameIndex = -1;
   const video = document.getElementById("clip");
   video.src = "/latest.mp4?steps=" + status.clip_steps;
-  for (const id of ["clip", "speeds", "brain"]) document.getElementById(id).hidden = false;
+  for (const id of ["clip", "speeds"]) document.getElementById(id).hidden = false;
+  document.getElementById("brain").hidden = brainHidden;
   document.getElementById("clip-empty").hidden = true;
   document.getElementById("clip-caption").textContent =
     "After " + stepsInWords(status.clip_steps) + " steps, asked to walk at 0.4 m/s";
@@ -493,6 +495,27 @@ function followVideo() {
   video.addEventListener("seeked", () => showBrainFrame(frameAt(video.currentTime)));
 }
 
+// Whether the brain panel is hidden. The choice is remembered in this browser;
+// if the browser blocks storage, the panel simply starts visible
+const BRAIN_HIDDEN_KEY = "duck-dashboard-brain-hidden";
+let brainHidden = false;
+try { brainHidden = localStorage.getItem(BRAIN_HIDDEN_KEY) === "yes"; } catch (error) {}
+
+// The Hide brain / Show brain button
+function setUpBrainToggle() {
+  const button = document.getElementById("toggle-brain");
+  const apply = () => {
+    button.textContent = brainHidden ? "Show brain" : "Hide brain";
+    if (brainData) document.getElementById("brain").hidden = brainHidden;
+  };
+  button.addEventListener("click", () => {
+    brainHidden = !brainHidden;
+    try { localStorage.setItem(BRAIN_HIDDEN_KEY, brainHidden ? "yes" : "no"); } catch (error) {}
+    apply();
+  });
+  apply();
+}
+
 // Speed buttons, the pause button, and pausing by clicking the film
 function setUpPlaybackControls() {
   const video = document.getElementById("clip");
@@ -536,6 +559,7 @@ function drawCharts() {
 window.addEventListener("resize", drawCharts);
 buildMotorRows();
 setUpPlaybackControls();
+setUpBrainToggle();
 followVideo();
 refresh();
 setInterval(refresh, REFRESH_MS);
