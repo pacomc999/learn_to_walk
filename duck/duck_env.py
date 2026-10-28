@@ -25,9 +25,9 @@ FREE_JOINT_QVEL_SIZE = 6
 # How far each joint angle may start away from the standing pose, in radians
 START_NOISE = 0.02
 
-# Torso height (1) + orientation (4) + linear velocity (3) + angular velocity (3)
-# + 12 joint angles + 12 joint velocities + 2 foot contacts
-OBSERVATION_SIZE = 37
+# Torso height (1) + sideways position (1) + orientation (4) + linear velocity (3)
+# + angular velocity (3) + 12 joint angles + 12 joint velocities + 2 foot contacts
+OBSERVATION_SIZE = 38
 
 # Observation values are kept within this limit (a finite bound, not infinity)
 OBSERVATION_LIMIT = 1e6
@@ -82,7 +82,7 @@ class DuckWalkEnv(gymnasium.Env):
     def _state_is_finite(self) -> bool:
         return bool(np.all(np.isfinite(self.data.qpos)) and np.all(np.isfinite(self.data.qvel)))
 
-    # Everything the duck can sense, as one list of 37 numbers
+    # Everything the duck can sense, as one list of 38 numbers
     def _observation(self) -> np.ndarray:
         if not self._state_is_finite():
             return np.zeros(OBSERVATION_SIZE, dtype=np.float32)
@@ -90,6 +90,7 @@ class DuckWalkEnv(gymnasium.Env):
         left_contact, right_contact = foot_contacts(self.model, self.data)
         observation = np.concatenate([
             [torso_height(self.data)],
+            [qpos[1]],                      # sideways drift from the straight line
             qpos[3:7],                      # torso orientation quaternion
             qvel[0:6],                      # torso linear then angular velocity
             qpos[FREE_JOINT_QPOS_SIZE:],    # 12 joint angles

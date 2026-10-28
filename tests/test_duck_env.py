@@ -9,7 +9,7 @@ def test_passes_gymnasium_checks():
 
 def test_spaces():
     env = DuckWalkEnv()
-    assert env.observation_space.shape == (37,)
+    assert env.observation_space.shape == (38,)
     assert env.action_space.shape == (12,)
     assert env.action_space.low.min() == -1 and env.action_space.high.max() == 1
 
@@ -61,3 +61,10 @@ def test_forward_reward_uses_distance_moved():
     expected = env.reward_weights.forward * speed
     assert info["reward_parts"]["forward"] == pytest.approx(expected)
     assert info["reward_parts"]["forward"] != pytest.approx(env.reward_weights.forward * float(env.data.qvel[0]))
+
+# The duck can sense how far it has drifted sideways (the second number it sees)
+def test_observation_includes_sideways_position():
+    env = DuckWalkEnv()
+    env.reset(seed=0)
+    env.data.qpos[1] = 0.3
+    assert env._observation()[1] == pytest.approx(0.3)
