@@ -52,6 +52,12 @@ Check progress (draws a chart in the run folder, prints the latest average dista
 
 `.venv/Scripts/python -m duck.progress runs/duck_v1`
 
+Or follow training live in the browser. In a second terminal, while training runs:
+
+`.venv/Scripts/python -m duck.dashboard runs/duck_v1 --steps 30000000`
+
+It opens a page at http://127.0.0.1:8765/ that refreshes itself every 15 seconds: steps trained, time left, distance per attempt, whether the score is still improving, score and distance charts (hover for exact values), and a GIF of the newest snapshot walking at 0.4 m/s, filmed again each time a new snapshot is saved. `--steps` should match the training command, so it can show the percentage and time left. Press Ctrl+C to stop it; training carries on.
+
 Judge whether the duck really walks:
 
 `.venv/Scripts/python -m duck.evaluate runs/duck_v1`

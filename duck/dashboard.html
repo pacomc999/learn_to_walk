@@ -1,0 +1,319 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Duck Training</title>
+<style>
+  /* Colours: light mode first, then dark mode with its own steps */
+  :root {
+    --surface: #f4f3ef;
+    --card: #fcfcfb;
+    --ink: #0b0b0b;
+    --ink-soft: #52514e;
+    --grid: #e3e2dc;
+    --line: #2a78d6;
+    --line-fill: rgba(42, 120, 214, 0.10);
+    --good: #0ca30c;
+    --warning: #b07a00;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --surface: #121211;
+      --card: #1a1a19;
+      --ink: #f0efec;
+      --ink-soft: #c3c2b7;
+      --grid: #2c2c2a;
+      --line: #3987e5;
+      --line-fill: rgba(57, 135, 229, 0.14);
+      --good: #3fc53f;
+      --warning: #fab219;
+    }
+  }
+
+  /* Page layout */
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }  /* hidden always wins over the layout rules below */
+  body {
+    margin: 0;
+    background: var(--surface);
+    color: var(--ink);
+    font: 15px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  main { max-width: 1100px; margin: 0 auto; padding: 24px 16px 40px; }
+  header { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 16px; margin-bottom: 20px; }
+  h1 { font-size: 24px; margin: 0; }
+  .updated { color: var(--ink-soft); font-size: 13px; }
+
+  /* Number tiles across the top */
+  .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-bottom: 16px; }
+  .tile, .card { background: var(--card); border-radius: 12px; padding: 14px 16px; }
+  .tile .label { color: var(--ink-soft); font-size: 13px; }
+  .tile .value { font-size: 26px; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .tile .note { color: var(--ink-soft); font-size: 13px; }
+  .bar { height: 6px; border-radius: 3px; background: var(--grid); margin-top: 8px; overflow: hidden; }
+  .bar div { height: 100%; width: 0; background: var(--line); border-radius: 3px; transition: width 0.6s; }
+
+  /* The duck GIF beside the two charts */
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .duck { grid-row: span 2; display: flex; flex-direction: column; }
+  .duck img { width: 100%; border-radius: 8px; background: var(--grid); aspect-ratio: 4 / 3; object-fit: cover; }
+  .duck .empty { aspect-ratio: 4 / 3; display: grid; place-items: center; color: var(--ink-soft); background: var(--grid); border-radius: 8px; }
+  @media (max-width: 760px) { .grid { grid-template-columns: 1fr; } .duck { grid-row: auto; } }
+  h2 { font-size: 15px; margin: 0 0 2px; }
+  .sub { color: var(--ink-soft); font-size: 13px; margin: 0 0 8px; }
+
+  /* Charts */
+  .chart { position: relative; }
+  .chart svg { display: block; width: 100%; height: 220px; overflow: visible; }
+  .chart text { fill: var(--ink-soft); font-size: 11px; font-variant-numeric: tabular-nums; }
+  .tooltip {
+    position: absolute; pointer-events: none; display: none;
+    background: var(--ink); color: var(--card); font-size: 12px;
+    padding: 5px 8px; border-radius: 6px; white-space: nowrap; transform: translate(-50%, -120%);
+  }
+  .status-good { color: var(--good); }
+  .status-warning { color: var(--warning); }
+</style>
+</head>
+<body>
+<main>
+  <!-- Title and last refresh time -->
+  <header>
+    <h1>Duck training: <span id="run-name">loading</span></h1>
+    <span class="updated" id="updated"></span>
+  </header>
+
+  <!-- Number tiles -->
+  <section class="tiles">
+    <div class="tile">
+      <div class="label">Steps trained</div>
+      <div class="value" id="steps">0</div>
+      <div class="note" id="percent"></div>
+      <div class="bar"><div id="percent-bar"></div></div>
+    </div>
+    <div class="tile">
+      <div class="label">Time left</div>
+      <div class="value" id="time-left">?</div>
+      <div class="note" id="speed"></div>
+    </div>
+    <div class="tile">
+      <div class="label">Distance per attempt</div>
+      <div class="value" id="distance">?</div>
+      <div class="note">average of recent attempts</div>
+    </div>
+    <div class="tile">
+      <div class="label">Best score reached</div>
+      <div class="value" id="since-best">?</div>
+      <div class="note" id="stall-note"></div>
+    </div>
+  </section>
+
+  <!-- Newest snapshot and the two charts -->
+  <section class="grid">
+    <div class="card duck">
+      <h2>Newest snapshot</h2>
+      <p class="sub" id="gif-caption">Waiting for the first snapshot</p>
+      <div class="empty" id="gif-empty">No film yet</div>
+      <img id="gif" alt="The duck from the newest snapshot, asked to walk at 0.4 metres per second" hidden>
+    </div>
+    <div class="card">
+      <h2>Score</h2>
+      <p class="sub">Average points per attempt</p>
+      <div class="chart" id="score-chart"></div>
+    </div>
+    <div class="card">
+      <h2>Distance</h2>
+      <p class="sub">Average metres forward per attempt</p>
+      <div class="chart" id="distance-chart"></div>
+    </div>
+  </section>
+</main>
+
+<script>
+// How often the page asks for fresh numbers, in milliseconds
+const REFRESH_MS = 15000;
+const SVG_NS = "http://www.w3.org/2000/svg";
+
+// Turn 1234567 into "1.23 million" and smaller numbers into "45,000"
+function stepsInWords(steps) {
+  if (steps >= 1e6) return (steps / 1e6).toFixed(2) + " million";
+  return Math.round(steps).toLocaleString("en");
+}
+
+// Turn minutes into "1 h 05 min" or "12 min"
+function minutesInWords(minutes) {
+  const rounded = Math.round(minutes);
+  if (rounded < 60) return rounded + " min";
+  const hours = Math.floor(rounded / 60);
+  return hours + " h " + String(rounded % 60).padStart(2, "0") + " min";
+}
+
+// Make an SVG element with attributes
+function svgElement(tag, attributes) {
+  const element = document.createElementNS(SVG_NS, tag);
+  for (const [name, value] of Object.entries(attributes)) element.setAttribute(name, value);
+  return element;
+}
+
+// A few round numbers for axis labels. With cover = true they reach past low and high,
+// so the whole line fits inside the chart; otherwise they stay inside the range
+function niceTicks(low, high, count, cover) {
+  const span = high - low || 1;
+  const rough = span / count;
+  const power = Math.pow(10, Math.floor(Math.log10(rough)));
+  const step = [1, 2, 5, 10].map(m => m * power).find(s => s >= rough);
+  const first = (cover ? Math.floor(low / step) : Math.ceil(low / step)) * step;
+  const last = (cover ? Math.ceil(high / step) : Math.floor(high / step)) * step;
+  const ticks = [];
+  for (let t = first; t <= last + 1e-9; t += step) ticks.push(+t.toFixed(10));
+  return ticks;
+}
+
+// Draw one line chart of points[key] against steps, with a hover crosshair and tooltip
+function drawChart(container, points, key, formatValue) {
+  container.innerHTML = "";
+  if (points.length < 2) {
+    container.textContent = "Not enough data yet";
+    return;
+  }
+  const width = container.clientWidth, height = 220;
+  const pad = { left: 44, right: 12, top: 10, bottom: 26 };
+  const xs = points.map(p => p.steps), ys = points.map(p => p[key]);
+  const xMax = Math.max(...xs);
+  // Dips below zero smaller than 2% of the range are noise, so the axis can still start at 0
+  const yMax = Math.max(...ys);
+  const yMin = Math.min(0, ...ys) > -0.02 * Math.abs(yMax) ? 0 : Math.min(...ys);
+  const yTicks = niceTicks(yMin, yMax, 4, true);
+  const yLow = yTicks[0], yHigh = yTicks[yTicks.length - 1];
+  const xAt = s => pad.left + (s / xMax) * (width - pad.left - pad.right);
+  const yAt = v => pad.top + (1 - (v - yLow) / (yHigh - yLow || 1)) * (height - pad.top - pad.bottom);
+
+  const svg = svgElement("svg", { viewBox: `0 0 ${width} ${height}`, role: "img" });
+
+  // Grid lines and value labels
+  for (const t of yTicks) {
+    svg.append(svgElement("line", { x1: pad.left, x2: width - pad.right, y1: yAt(t), y2: yAt(t),
+      stroke: "var(--grid)", "stroke-width": 1 }));
+    const label = svgElement("text", { x: pad.left - 6, y: yAt(t) + 4, "text-anchor": "end" });
+    label.textContent = formatValue(t);
+    svg.append(label);
+  }
+
+  // Step labels along the bottom, in millions
+  for (const t of niceTicks(0, xMax / 1e6, 4, false)) {
+    const label = svgElement("text", { x: xAt(t * 1e6), y: height - 6, "text-anchor": "middle" });
+    label.textContent = t === 0 ? "0" : t + "M";
+    svg.append(label);
+  }
+
+  // Soft area under the line, then the line itself
+  const path = points.map((p, i) => (i ? "L" : "M") + xAt(p.steps) + " " + yAt(p[key])).join(" ");
+  const floor = yAt(Math.max(yLow, 0));
+  svg.append(svgElement("path", { d: `${path} L${xAt(xMax)} ${floor} L${xAt(0)} ${floor} Z`, fill: "var(--line-fill)" }));
+  svg.append(svgElement("path", { d: path, fill: "none", stroke: "var(--line)", "stroke-width": 2,
+    "stroke-linejoin": "round", "stroke-linecap": "round" }));
+
+  // Hover layer: a vertical line and a dot that follow the mouse
+  const crosshair = svgElement("line", { y1: pad.top, y2: height - pad.bottom, stroke: "var(--ink-soft)",
+    "stroke-width": 1, "stroke-dasharray": "3 3", visibility: "hidden" });
+  const dot = svgElement("circle", { r: 4.5, fill: "var(--line)", stroke: "var(--card)", "stroke-width": 2, visibility: "hidden" });
+  svg.append(crosshair, dot);
+  container.append(svg);
+
+  const tooltip = document.createElement("div");
+  tooltip.className = "tooltip";
+  container.append(tooltip);
+
+  // Find the point nearest the mouse and show its numbers
+  function showNearest(event) {
+    const box = svg.getBoundingClientRect();
+    const mouseSteps = ((event.clientX - box.left) - pad.left) / (width - pad.left - pad.right) * xMax;
+    let nearest = points[0];
+    for (const p of points) if (Math.abs(p.steps - mouseSteps) < Math.abs(nearest.steps - mouseSteps)) nearest = p;
+    const x = xAt(nearest.steps), y = yAt(nearest[key]);
+    crosshair.setAttribute("x1", x); crosshair.setAttribute("x2", x);
+    dot.setAttribute("cx", x); dot.setAttribute("cy", y);
+    crosshair.setAttribute("visibility", "visible"); dot.setAttribute("visibility", "visible");
+    tooltip.style.display = "block";
+    tooltip.style.left = x + "px";
+    tooltip.style.top = y + "px";
+    tooltip.textContent = formatValue(nearest[key]) + " after " + stepsInWords(nearest.steps) + " steps";
+  }
+  function hideHover() {
+    crosshair.setAttribute("visibility", "hidden"); dot.setAttribute("visibility", "hidden");
+    tooltip.style.display = "none";
+  }
+  svg.addEventListener("pointermove", showNearest);
+  svg.addEventListener("pointerleave", hideHover);
+}
+
+// Fill the number tiles
+function showTiles(status) {
+  document.getElementById("run-name").textContent = status.run;
+  const steps = status.latest_steps;
+  document.getElementById("steps").textContent = steps === null ? "0" : stepsInWords(steps);
+
+  const percent = status.percent_done;
+  document.getElementById("percent").textContent = percent === null
+    ? "start with --steps to see the total" : percent.toFixed(0) + "% of " + stepsInWords(status.total_steps);
+  document.getElementById("percent-bar").style.width = (percent === null ? 0 : Math.min(100, percent)) + "%";
+
+  const left = status.minutes_left;
+  document.getElementById("time-left").textContent = left === null ? "?" : (left < 0.5 ? "done" : minutesInWords(left));
+  document.getElementById("speed").textContent = status.steps_per_second === null
+    ? "" : Math.round(status.steps_per_second).toLocaleString("en") + " steps per second";
+
+  const last = status.points[status.points.length - 1];
+  document.getElementById("distance").textContent = last ? last.distance.toFixed(2) + " m" : "?";
+
+  // More than an hour without a better score is the agreed stall signal
+  const sinceBest = status.minutes_since_improvement;
+  const stalled = sinceBest >= 60;
+  document.getElementById("since-best").textContent = last ? (sinceBest < 1 ? "just now" : minutesInWords(sinceBest) + " ago") : "?";
+  const note = document.getElementById("stall-note");
+  note.textContent = !last ? "" : stalled ? "⚠ Stalled for over an hour: time for more curiosity" : "✓ Still improving";
+  note.className = "note " + (stalled ? "status-warning" : "status-good");
+}
+
+// Swap in a new GIF only when a newer snapshot has been filmed
+let shownGifSteps = null;
+function showGif(status) {
+  if (status.gif_steps === null || status.gif_steps === shownGifSteps) return;
+  shownGifSteps = status.gif_steps;
+  const gif = document.getElementById("gif");
+  gif.src = "/latest.gif?steps=" + status.gif_steps;
+  gif.hidden = false;
+  document.getElementById("gif-empty").hidden = true;
+  document.getElementById("gif-caption").textContent =
+    "After " + stepsInWords(status.gif_steps) + " steps, asked to walk at 0.4 m/s";
+}
+
+// Ask the server for fresh numbers and redraw everything
+let lastStatus = null;
+async function refresh() {
+  try {
+    const response = await fetch("/status.json", { cache: "no-store" });
+    lastStatus = await response.json();
+    showTiles(lastStatus);
+    showGif(lastStatus);
+    drawCharts();
+    document.getElementById("updated").textContent = "Updated " + new Date().toLocaleTimeString();
+  } catch (error) {
+    document.getElementById("updated").textContent = "Cannot reach the dashboard. Is it still running?";
+  }
+}
+
+// Draw both charts from the last status (also used when the window is resized)
+function drawCharts() {
+  if (!lastStatus) return;
+  drawChart(document.getElementById("score-chart"), lastStatus.points, "score", v => Math.round(v).toLocaleString("en"));
+  drawChart(document.getElementById("distance-chart"), lastStatus.points, "distance", v => v.toFixed(1) + " m");
+}
+
+window.addEventListener("resize", drawCharts);
+refresh();
+setInterval(refresh, REFRESH_MS);
+</script>
+</body>
+</html>

@@ -11,6 +11,7 @@ A 3D MuJoCo duck (design B, 12 motors) that learns to walk with PPO on a CPU-onl
 - `duck/progress.py`: progress log (`time,timesteps,mean_reward,mean_distance`), stall check, chart with score and distance panels. Broken rows are skipped; a locked log only prints a warning
 - `duck/policy.py`: load a snapshot as a walking policy
 - `duck/evaluate.py`, `duck/view_snapshot.py`, `duck/video.py`: judge, watch live, make the video
+- `duck/dashboard.py` + `duck/dashboard.html`: live browser dashboard (standard library web server on 127.0.0.1:8765, `/status.json`, `/latest.gif`); films the newest snapshot to `<run>/dashboard_latest.gif` in the main thread, the server runs in a background thread. The page is vanilla JS with hand drawn SVG charts
 - `tests/`: one test file per module
 - `runs/`: training output, git-ignored
 
