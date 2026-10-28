@@ -30,6 +30,11 @@ def torso_up_z(data: mujoco.MjData) -> float:
     return float(rotation[8])  # z part of the torso's own up axis
 
 
+# The geoms that make up each foot: the webbed foot and its toes
+LEFT_FOOT_GEOMS = ["left_foot", "left_toes"]
+RIGHT_FOOT_GEOMS = ["right_foot", "right_toes"]
+
+
 # Whether one geom is touching the floor right now
 def _touches_floor(model: mujoco.MjModel, data: mujoco.MjData, geom_name: str) -> bool:
     geom_id = model.geom(geom_name).id
@@ -40,10 +45,15 @@ def _touches_floor(model: mujoco.MjModel, data: mujoco.MjData, geom_name: str) -
     return False
 
 
-# Whether the left and right feet touch the floor
+# Whether any part of one foot (foot or toes) touches the floor
+def _foot_touches_floor(model: mujoco.MjModel, data: mujoco.MjData, geom_names: list[str]) -> bool:
+    return any(_touches_floor(model, data, name) for name in geom_names)
+
+
+# Whether the left and right feet touch the floor, counting the toes as part of the foot
 def foot_contacts(model: mujoco.MjModel, data: mujoco.MjData) -> tuple[bool, bool]:
-    left = _touches_floor(model, data, "left_foot")
-    right = _touches_floor(model, data, "right_foot")
+    left = _foot_touches_floor(model, data, LEFT_FOOT_GEOMS)
+    right = _foot_touches_floor(model, data, RIGHT_FOOT_GEOMS)
     return left, right
 
 

@@ -1,7 +1,7 @@
 """Tests for the duck model file and its helper functions."""
 import mujoco
 from duck.model import (load_duck_model, MOTOR_NAMES, STANDING_HEIGHT,
-                        MIN_TORSO_HEIGHT, torso_height, torso_up_z)
+                        MIN_TORSO_HEIGHT, torso_height, torso_up_z, foot_contacts)
 
 
 # The XML must be found even when Python runs from another folder
@@ -43,3 +43,28 @@ def test_duck_stands_when_holding_pose():
         mujoco.mj_step(model, data)
     assert torso_height(data) > 0.8 * STANDING_HEIGHT
     assert torso_up_z(data) > 0.9
+
+
+# The duck holding its standing pose for a moment, ready for contact checks
+def _settled_duck():
+    model = load_duck_model()
+    data = mujoco.MjData(model)
+    mujoco.mj_resetDataKeyframe(model, data, model.key("stand").id)
+    while data.time < 1.0:
+        mujoco.mj_step(model, data)
+    return model, data
+
+
+# After settling, both feet are on the ground
+def test_both_feet_touch_ground_after_settling():
+    model, data = _settled_duck()
+    assert foot_contacts(model, data) == (True, True)
+
+
+# Standing on the toes alone still counts as the foot touching the ground
+def test_toes_count_as_foot_contact():
+    model, data = _settled_duck()
+    for side in ("left_foot", "right_foot"):
+        model.geom(side).contype = 0  # the main foot boxes can no longer touch the floor
+    mujoco.mj_forward(model, data)
+    assert foot_contacts(model, data) == (True, True)
