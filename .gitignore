@@ -16,6 +16,7 @@ node_modules/
 checkpoints/
 runs/
 *.log
+MUJOCO_LOG.TXT
 
 # Brainstorming mockups
 .superpowers/
