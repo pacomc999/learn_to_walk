@@ -115,7 +115,7 @@ If more curiosity does not help, the spec lists what to try next: fix a reward t
 
 ## How the duck is scored
 
-On every control step (50 per second) the duck gets 3 points per metre per second of forward speed, measured from how far it really moved during that step, plus 0.2 points for staying upright. It loses 1.5 points for every joule of work its motors do (force times joint speed), and 0.5 points per metre it has drifted from the straight line. Standing still for a whole 20 second attempt scores only about 200. The energy cost is there so the duck finds walking on its own: hopping lifts the whole body again and again and wastes energy, while stepping is cheap. The duck senses 38 numbers, including how far it has drifted sideways.
+On every control step (50 per second) the duck gets 3 points per metre per second of forward speed, measured from how far it really moved during that step, plus 0.2 points for staying upright. It loses 3.0 points for every joule of work its motors do (force times joint speed), and 0.5 points per metre it has drifted from the straight line. Standing still for a whole 20 second attempt scores only about 200. The energy cost is there so the duck finds walking on its own: hopping lifts the whole body again and again and wastes energy, while stepping is cheap. The duck senses 38 numbers, including how far it has drifted sideways.
 
 ## What counts as walking
 

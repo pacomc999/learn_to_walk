@@ -9,11 +9,11 @@ def test_moving_forward_upright_with_no_energy():
     assert total == pytest.approx(3.2)
 
 
-# Energy costs 1.5 points per joule of motor work: 0.8 J costs 1.2 points
+# Energy costs 3.0 points per joule of motor work: 0.8 J costs 2.4 points
 def test_energy_penalty_per_joule():
     total, parts = compute_reward(1.0, 0.0, 0.8)
-    assert parts["energy"] == pytest.approx(-1.2)
-    assert total == pytest.approx(2.0)
+    assert parts["energy"] == pytest.approx(-2.4)
+    assert total == pytest.approx(0.8)
 
 
 # Drifting left or right costs the same amount

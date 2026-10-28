@@ -7,7 +7,7 @@ from dataclasses import dataclass
 class RewardWeights:
     forward: float = 3.0   # points per metre per second of forward speed
     alive: float = 0.2     # points for staying upright every step (small, so standing still does not pay)
-    energy: float = 1.5    # penalty per joule of work the motors do
+    energy: float = 3.0    # penalty per joule of work the motors do
     sideways: float = 0.5  # penalty per metre of sideways drift
 
 

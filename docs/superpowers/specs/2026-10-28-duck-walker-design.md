@@ -77,7 +77,7 @@ Francisco saw a summary covering MuJoCo, PyTorch with Stable-Baselines3 instead 
 - **Reward, each time step:**
   - plus forward speed (distance moved forward per step, no cap);
   - plus a small constant for staying upright ("still alive" reward);
-  - minus an energy penalty: 1.5 points per joule of real motor work (force times joint speed). This replaced the first effort penalty (squared motor commands), which did not measure energy and let hopping go almost unpunished (pilot hop: about 0.8 J per step, about 70 J per metre);
+  - minus an energy penalty: 3.0 points per joule of real motor work (force times joint speed). At 1.5 per joule the duck still hopped, using about 36 J per metre, so the price was doubled; above about 4.2 per joule that hop would earn nothing, which risks the standing trap. This replaced the first effort penalty (squared motor commands), which did not measure energy and let hopping go almost unpunished (pilot hop: about 0.8 J per step, about 70 J per metre);
   - minus a penalty for drifting sideways from the straight line.
 - **An attempt ends** when the body drops below a height threshold or tips past a tilt limit, or after about 20 seconds of simulated time.
 - **Parallel training:** run several simulated ducks at once to use the laptop's 12 threads.
