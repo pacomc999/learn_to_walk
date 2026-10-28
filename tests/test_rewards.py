@@ -9,11 +9,25 @@ def test_moving_forward_upright_with_no_energy():
     assert total == pytest.approx(3.2)
 
 
-# Energy costs 3.0 points per joule of motor work: 0.8 J costs 2.4 points
+# Energy costs 1.5 points per joule of motor work: 0.8 J costs 1.2 points
 def test_energy_penalty_per_joule():
     total, parts = compute_reward(1.0, 0.0, 0.8)
-    assert parts["energy"] == pytest.approx(-2.4)
-    assert total == pytest.approx(0.8)
+    assert parts["energy"] == pytest.approx(-1.2)
+    assert total == pytest.approx(2.0)
+
+
+# Going faster than the target speed earns no extra forward points
+def test_forward_points_stop_at_target_speed():
+    _, slow = compute_reward(0.3, 0.0, 0.0, target_speed=0.4)
+    _, fast = compute_reward(0.9, 0.0, 0.0, target_speed=0.4)
+    assert slow["forward"] == pytest.approx(0.9)
+    assert fast["forward"] == pytest.approx(1.2)
+
+
+# Walking backwards still loses points when there is a target speed
+def test_backwards_loses_points_with_target_speed():
+    _, parts = compute_reward(-0.5, 0.0, 0.0, target_speed=0.4)
+    assert parts["forward"] == pytest.approx(-1.5)
 
 
 # Drifting left or right costs the same amount

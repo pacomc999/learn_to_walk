@@ -5,7 +5,7 @@ A 3D MuJoCo duck (design B, 12 motors) that learns to walk with PPO on a CPU-onl
 ## Layout
 - `duck/model.py`: loads `duck/assets/duck.xml`, body constants (standing height, `MIN_TORSO_HEIGHT` = 0.6 of standing height)
 - `duck/rewards.py`: reward parts and the fall rule
-- `duck/duck_env.py`: Gymnasium environment `DuckWalkEnv` (frame skip 4, 20 s attempts, 38 number observation: torso height, sideways position, orientation, velocities, 12 joint angles, 12 joint velocities, 2 foot contacts where toes count as foot)
+- `duck/duck_env.py`: Gymnasium environment `DuckWalkEnv` (frame skip 4, 20 s attempts, 39 number observation: torso height, sideways position, orientation, velocities, 12 joint angles, 12 joint velocities, 2 foot contacts where toes count as foot, target speed)
 - `duck/train.py`: PPO training, snapshot and progress callbacks, resume
 - `duck/snapshots.py`: save, list and pick snapshot files
 - `duck/progress.py`: progress log (`time,timesteps,mean_reward,mean_distance`), stall check, chart with score and distance panels. Broken rows are skipped; a locked log only prints a warning
@@ -24,9 +24,10 @@ Run from the project root with the virtual environment:
 Position motors with limited force. Wings are fixed to the body.
 
 ## Reward (per step) and fall rules
-- Forward: +3.0 per metre per second of forward speed, no cap. Speed is the distance moved over the control step (0.02 s) divided by that time, not a single velocity sample
+- Target speed: each attempt picks one at random from `TARGET_SPEED_RANGE` (0.2 to 0.7 m/s); `DuckWalkEnv(target_speed=...)` fixes it. Evaluate and video use `EVALUATION_TARGET_SPEED` (0.4), the viewer takes `--speed`
+- Forward: +3.0 per metre per second of forward speed, up to the target speed and no more. Speed is the distance moved over the control step (0.02 s) divided by that time, not a single velocity sample
 - Alive: +0.2 per step (so standing still for 20 s scores only about 200)
-- Energy: -3.0 per joule of motor work, summed over the 4 physics substeps of each control step as |actuator force x actuator velocity| x timestep. Replaced the old squared action penalty, which did not measure energy. Raised from 1.5 after the 1.5 pilot still hopped (36 J per metre)
+- Energy: -1.5 per joule of motor work, summed over the 4 physics substeps of each control step as |actuator force x actuator velocity| x timestep. Replaced the old squared action penalty, which did not measure energy. At 1.5 with no speed target the duck hopped; at 3.0 it dove forward and fell after 0.9 s
 - Sideways: -0.5 per metre of drift from the straight line
 - Fall: torso height below `MIN_TORSO_HEIGHT`, or `up_z` below 0.64 (about 50 degrees of tilt)
 - An attempt also ends after 20 simulated seconds

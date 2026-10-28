@@ -12,7 +12,7 @@ import imageio
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont
 
-from duck.duck_env import DuckWalkEnv
+from duck.duck_env import EVALUATION_TARGET_SPEED, DuckWalkEnv
 from duck.policy import load_policy
 from duck.snapshots import choose_for_video, list_snapshots
 
@@ -77,7 +77,7 @@ def add_caption(frame: np.ndarray, text: str) -> np.ndarray:
 def record_clip(policy, seconds: float = 6.0, fps: int = 30, width: int = 640,
                 height: int = 480, seed: int = 0) -> list[np.ndarray]:
     frame_count = round(seconds * fps)
-    env = DuckWalkEnv(render_mode="rgb_array", width=width, height=height)
+    env = DuckWalkEnv(render_mode="rgb_array", target_speed=EVALUATION_TARGET_SPEED, width=width, height=height)
     try:
         observation, _ = env.reset(seed=seed)
         frames = [env.render()]  # the first picture comes right after the reset

@@ -29,7 +29,6 @@ Francisco wants to do this "the proper way": research-style reinforcement learni
 
 - Simulated muscles and tendons. Joints are driven by motors.
 - Hills, steps, slopes or uneven terrain.
-- A required or capped speed.
 - Cloud or GPU training (Google Colab, MJX). Possible later if laptop training proves too slow.
 - TensorFlow. See Tools.
 
@@ -55,7 +54,7 @@ Francisco wants to do this "the proper way": research-style reinforcement learni
 - **Learning:** a neural network trained by reinforcement learning.
 - **Ground:** flat.
 - **Effort penalty:** yes, include a penalty for wasted effort.
-- **Speed:** as fast as it safely can; forward reward is not capped.
+- **Speed:** at first as fast as it safely can, with no cap. After the energy pilots Francisco chose a target speed instead: each training attempt asks for a random speed, the duck senses it, and forward points stop at that speed. He does not want walking to come from hand tuning many small parameters; the target speed only makes the task precise and leaves energy to choose the gait.
 - **Gait style:** at first it did not matter. After the pilot run (2026-10-28) the duck hopped, with both feet in the air about 65 percent of the time, and Francisco decided he wants it to learn two legged walking by itself: no rhythm clock and no copied animation. The walk must emerge from the reward.
 - **Viewing:** a video of each snapshot walking, one after another.
 - **Hardware:** train on his laptop first and see how fast it is.
@@ -73,11 +72,11 @@ Francisco saw a summary covering MuJoCo, PyTorch with Stable-Baselines3 instead 
 - **Environment: a custom Gymnasium environment** wrapping the MuJoCo duck, modelled on Gymnasium's built-in Ant and Walker2d environments.
 - **Motor control: position targets.** The brain outputs a target angle for each joint, and a strength-limited motor tries to reach it. Brains usually learn faster this way than when controlling raw force, and physics stays honest.
 - **Side-to-side hips:** the first body mockup showed 10 motors whose leg joints only swing forward and back. A 3D duck also needs to stop tipping sideways, so a side-to-side hip joint was added to each leg, giving the 12 motors Francisco then chose.
-- **What the duck senses:** body height, body tilt (orientation), body speed and spin, every joint angle and joint speed, and whether each foot touches the ground.
+- **What the duck senses:** body height, body tilt (orientation), body speed and spin, every joint angle and joint speed, and whether each foot touches the ground, and the target speed for the attempt.
 - **Reward, each time step:**
-  - plus forward speed (distance moved forward per step, no cap);
+  - plus forward speed (distance moved forward per step), up to the target speed for that attempt (random between 0.2 and 0.7 m/s in training, 0.4 m/s when judging and for videos);
   - plus a small constant for staying upright ("still alive" reward);
-  - minus an energy penalty: 3.0 points per joule of real motor work (force times joint speed). At 1.5 per joule the duck still hopped, using about 36 J per metre, so the price was doubled; above about 4.2 per joule that hop would earn nothing, which risks the standing trap. This replaced the first effort penalty (squared motor commands), which did not measure energy and let hopping go almost unpunished (pilot hop: about 0.8 J per step, about 70 J per metre);
+  - minus an energy penalty: 1.5 points per joule of real motor work (force times joint speed). With no speed target, 1.5 per joule gave a hop using about 36 J per metre, and 3.0 per joule gave a duck that dove forward and fell after 0.9 s, so energy went back to 1.5 and the target speed was added. This replaced the first effort penalty (squared motor commands), which did not measure energy and let hopping go almost unpunished (pilot hop: about 0.8 J per step, about 70 J per metre);
   - minus a penalty for drifting sideways from the straight line.
 - **An attempt ends** when the body drops below a height threshold or tips past a tilt limit, or after about 20 seconds of simulated time.
 - **Parallel training:** run several simulated ducks at once to use the laptop's 12 threads.

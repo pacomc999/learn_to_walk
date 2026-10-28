@@ -9,7 +9,7 @@ def test_passes_gymnasium_checks():
 
 def test_spaces():
     env = DuckWalkEnv()
-    assert env.observation_space.shape == (38,)
+    assert env.observation_space.shape == (39,)
     assert env.action_space.shape == (12,)
     assert env.action_space.low.min() == -1 and env.action_space.high.max() == 1
 
@@ -58,7 +58,7 @@ def test_forward_reward_uses_distance_moved():
     x_before = float(env.data.qpos[0])
     _, _, _, _, info = env.step(np.ones(12))
     speed = (info["x_position"] - x_before) / control_step_seconds
-    expected = env.reward_weights.forward * speed
+    expected = env.reward_weights.forward * min(speed, env.target_speed)
     assert info["reward_parts"]["forward"] == pytest.approx(expected)
     assert info["reward_parts"]["forward"] != pytest.approx(env.reward_weights.forward * float(env.data.qvel[0]))
 
@@ -100,3 +100,25 @@ def test_flailing_costs_energy():
         _, _, _, _, info = env.step(action)
         energy += info["reward_parts"]["energy"]
     assert energy < -0.1
+
+
+# Each attempt picks a new target speed inside the range, and the duck senses it as its last number
+def test_random_target_speed_each_attempt():
+    env = DuckWalkEnv()
+    low, high = duck_env_module.TARGET_SPEED_RANGE
+    targets = set()
+    for seed in range(20):
+        observation, _ = env.reset(seed=seed)
+        assert low <= env.target_speed <= high
+        assert observation[-1] == pytest.approx(env.target_speed)
+        targets.add(round(env.target_speed, 4))
+    assert len(targets) > 10
+
+
+# A fixed target speed, as used for judging and videos, stays the same every attempt
+def test_fixed_target_speed():
+    env = DuckWalkEnv(target_speed=0.4)
+    for seed in range(3):
+        observation, _ = env.reset(seed=seed)
+        assert env.target_speed == 0.4
+        assert observation[-1] == pytest.approx(0.4)

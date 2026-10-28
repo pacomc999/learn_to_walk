@@ -25,9 +25,16 @@ FREE_JOINT_QVEL_SIZE = 6
 # How far each joint angle may start away from the standing pose, in radians
 START_NOISE = 0.02
 
+# Each training attempt asks for a random speed in this range, in metres per second
+TARGET_SPEED_RANGE = (0.2, 0.7)
+
+# The speed asked for when judging the duck and making videos
+EVALUATION_TARGET_SPEED = 0.4
+
 # Torso height (1) + sideways position (1) + orientation (4) + linear velocity (3)
 # + angular velocity (3) + 12 joint angles + 12 joint velocities + 2 foot contacts
-OBSERVATION_SIZE = 38
+# + target speed (1)
+OBSERVATION_SIZE = 39
 
 # Observation values are kept within this limit (a finite bound, not infinity)
 OBSERVATION_LIMIT = 1e6
@@ -40,11 +47,15 @@ class DuckWalkEnv(gymnasium.Env):
         self,
         render_mode: str | None = None,
         reward_weights: RewardWeights = RewardWeights(),
+        target_speed: float | None = None,
         width: int = 640,
         height: int = 480,
     ):
         self.render_mode = render_mode
         self.reward_weights = reward_weights
+        # A fixed target speed, or None to pick a random one for each attempt
+        self.fixed_target_speed = target_speed
+        self.target_speed = target_speed if target_speed is not None else EVALUATION_TARGET_SPEED
         self.model = load_duck_model()
         self.data = mujoco.MjData(self.model)
         self.max_steps = round(MAX_EPISODE_SECONDS / self._control_step_seconds())
@@ -63,9 +74,17 @@ class DuckWalkEnv(gymnasium.Env):
         if render_mode == "rgb_array":
             self.renderer = mujoco.Renderer(self.model, height=height, width=width)
 
-    # Put the duck back in its standing pose with a tiny random wobble in the joints
+    # The speed this attempt asks for: the fixed one, or a random one from the range
+    def _pick_target_speed(self) -> float:
+        if self.fixed_target_speed is not None:
+            return self.fixed_target_speed
+        return float(self.np_random.uniform(*TARGET_SPEED_RANGE))
+
+    # Put the duck back in its standing pose with a tiny random wobble in the joints,
+    # and choose the speed it should walk at this time
     def reset(self, seed: int | None = None, options: dict | None = None):
         super().reset(seed=seed)
+        self.target_speed = self._pick_target_speed()
         mujoco.mj_resetDataKeyframe(self.model, self.data, self.model.key("stand").id)
         joint_noise = self.np_random.uniform(-START_NOISE, START_NOISE, self.motor_count)
         self.data.qpos[FREE_JOINT_QPOS_SIZE:] += joint_noise
@@ -84,7 +103,7 @@ class DuckWalkEnv(gymnasium.Env):
     def _state_is_finite(self) -> bool:
         return bool(np.all(np.isfinite(self.data.qpos)) and np.all(np.isfinite(self.data.qvel)))
 
-    # Everything the duck can sense, as one list of 38 numbers
+    # Everything the duck can sense, as one list of 39 numbers
     def _observation(self) -> np.ndarray:
         if not self._state_is_finite():
             return np.zeros(OBSERVATION_SIZE, dtype=np.float32)
@@ -98,6 +117,7 @@ class DuckWalkEnv(gymnasium.Env):
             qpos[FREE_JOINT_QPOS_SIZE:],    # 12 joint angles
             qvel[FREE_JOINT_QVEL_SIZE:],    # 12 joint velocities
             [float(left_contact), float(right_contact)],
+            [self.target_speed],            # how fast this attempt asks it to go
         ])
         return observation.astype(np.float32)
 
@@ -131,7 +151,9 @@ class DuckWalkEnv(gymnasium.Env):
             return 0.0, {}
         forward_velocity = (float(self.data.qpos[0]) - x_before) / self._control_step_seconds()
         sideways_offset = float(self.data.qpos[1])
-        return compute_reward(forward_velocity, sideways_offset, energy_joules, self.reward_weights)
+        return compute_reward(
+            forward_velocity, sideways_offset, energy_joules, self.reward_weights, self.target_speed
+        )
 
     # Run the small physics steps of one control step and add up the motor work.
     # Work is force times joint speed times time; it counts both pushing and braking

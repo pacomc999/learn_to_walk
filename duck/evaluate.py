@@ -8,7 +8,7 @@ import argparse
 from dataclasses import dataclass
 from pathlib import Path
 
-from duck.duck_env import DuckWalkEnv
+from duck.duck_env import EVALUATION_TARGET_SPEED, DuckWalkEnv
 from duck.policy import choose_snapshot_or_exit, load_policy
 from duck.snapshots import Snapshot
 
@@ -50,7 +50,7 @@ def _run_attempt(env: DuckWalkEnv, policy, seed: int) -> bool:
 # Run several attempts with different starting wobbles and count the successes
 def evaluate_snapshot(snapshot: Snapshot, attempts: int = 10, seed: int = 0) -> EvaluationResult:
     policy = load_policy(snapshot)
-    env = DuckWalkEnv()
+    env = DuckWalkEnv(target_speed=EVALUATION_TARGET_SPEED)
     successes = sum(_run_attempt(env, policy, seed + i) for i in range(attempts))
     env.close()
     needed = REQUIRED_SUCCESSES * attempts / 10
