@@ -44,6 +44,11 @@ MAIN_PROCESS_THREADS = 2
 KEEP_AWAKE_FLAGS = 0x80000000 | 0x00000001  # ES_CONTINUOUS | ES_SYSTEM_REQUIRED
 NORMAL_SLEEP_FLAGS = 0x80000000  # ES_CONTINUOUS alone restores normal sleep
 
+# Shown when a new run is started in a folder that already holds a run
+USED_RUN_FOLDER_MESSAGE = (
+    "This run folder already has snapshots. Use --resume to continue it, or pick a new run folder."
+)
+
 
 # One duck world with a Monitor that records each attempt's score and length.
 # It lives at module level so Windows can start it in a new process (spawn).
@@ -78,7 +83,7 @@ def _save_snapshot_once(model: PPO, vec_normalize: VecNormalize, run_dir: Path, 
     return True
 
 
-# Saves a snapshot each time training passes a multiple of snapshot_every, plus at the end
+# Saves a snapshot at the first rollout boundary past each multiple of snapshot_every, plus at the end
 class SnapshotCallback(BaseCallback):
     def __init__(self, run_dir: Path, vec_normalize: VecNormalize, snapshot_every: int):
         super().__init__()
@@ -96,13 +101,17 @@ class SnapshotCallback(BaseCallback):
         self.last_time = time.perf_counter()
         self.last_steps = steps
 
-    # Called after every step of all worlds together
+    # Nothing to do per step; snapshots are checked between rollouts
     def _on_step(self) -> bool:
+        return True
+
+    # A rollout starts right after the previous brain update, so a snapshot
+    # saved here holds everything learned from the steps it is named after
+    def _on_rollout_start(self) -> None:
         if self.num_timesteps >= self.next_snapshot_steps:
             self._save_and_report()
             # Skip ahead past every multiple already passed
             self.next_snapshot_steps = (self.num_timesteps // self.snapshot_every + 1) * self.snapshot_every
-        return True
 
     # The final snapshot, saved when learning stops
     def _on_training_end(self) -> None:
@@ -153,23 +162,29 @@ def keep_awake():
             ctypes.windll.kernel32.SetThreadExecutionState(NORMAL_SLEEP_FLAGS)
 
 
+# Stop before a new run mixes its snapshots and progress log with an older run's
+def _refuse_used_run_folder(run_dir: Path) -> None:
+    if latest_snapshot(run_dir) is not None:
+        raise FileExistsError(USED_RUN_FOLDER_MESSAGE)
+
+
 # A brand new untrained brain, saved as the step 0 snapshot
 def _new_model(run_dir: Path, n_envs: int, use_subprocess: bool,
                ent_coef: float | None, ppo_overrides: dict | None) -> tuple[PPO, VecNormalize]:
+    _refuse_used_run_folder(run_dir)
     vec_normalize = build_vec_env(n_envs, seed=0, use_subprocess=use_subprocess)
     settings = {**DEFAULT_PPO_SETTINGS, **(ppo_overrides or {})}
     if ent_coef is not None:
         settings["ent_coef"] = ent_coef
     model = PPO("MlpPolicy", vec_normalize, device="cpu", seed=0, verbose=0,
                 policy_kwargs={"net_arch": NET_ARCH}, **settings)
-    _save_snapshot_once(model, vec_normalize, run_dir, steps=0)
-    print("Untrained snapshot saved at 0 steps.", flush=True)
+    if _save_snapshot_once(model, vec_normalize, run_dir, steps=0):
+        print("Untrained snapshot saved at 0 steps.", flush=True)
     return model, vec_normalize
 
 
 # The brain and statistics from the newest snapshot, ready to keep learning
-def _resumed_model(run_dir: Path, n_envs: int, use_subprocess: bool,
-                   ent_coef: float | None) -> tuple[PPO, VecNormalize]:
+def load_latest_snapshot(run_dir: Path, n_envs: int, use_subprocess: bool) -> tuple[PPO, VecNormalize]:
     snap = latest_snapshot(run_dir)
     if snap is None:
         raise FileNotFoundError(f"No complete snapshot to resume from in {run_dir}")
@@ -178,9 +193,16 @@ def _resumed_model(run_dir: Path, n_envs: int, use_subprocess: bool,
     vec_normalize = VecNormalize.load(str(snap.norm_path), venv)
     vec_normalize.training = True  # keep updating the statistics while learning
     model = PPO.load(str(snap.model_path), env=vec_normalize, device="cpu")
+    print(f"Resuming from the snapshot at {snap.steps:,} steps.", flush=True)
+    return model, vec_normalize
+
+
+# The newest snapshot's brain, with a new curiosity value if one is given
+def _resumed_model(run_dir: Path, n_envs: int, use_subprocess: bool,
+                   ent_coef: float | None) -> tuple[PPO, VecNormalize]:
+    model, vec_normalize = load_latest_snapshot(run_dir, n_envs, use_subprocess)
     if ent_coef is not None:
         model.ent_coef = ent_coef  # more curiosity from here on
-    print(f"Resuming from the snapshot at {snap.steps:,} steps.", flush=True)
     return model, vec_normalize
 
 
@@ -218,8 +240,12 @@ def main() -> None:
     args = parser.parse_args()
 
     torch.set_num_threads(MAIN_PROCESS_THREADS)
-    train(args.run, args.steps, snapshot_every=args.snapshot_every, n_envs=args.envs,
-          ent_coef=args.ent_coef, resume=args.resume)
+    try:
+        train(args.run, args.steps, snapshot_every=args.snapshot_every, n_envs=args.envs,
+              ent_coef=args.ent_coef, resume=args.resume)
+    except FileExistsError as error:
+        print(error)  # a plain message, no traceback
+        raise SystemExit(1)
     print("Training finished.")
 
 

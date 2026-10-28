@@ -1,4 +1,7 @@
-from duck.train import train
+import pytest
+import torch
+
+from duck.train import load_latest_snapshot, train
 from duck.snapshots import list_snapshots
 from duck.progress import read_progress
 
@@ -30,9 +33,19 @@ def test_progress_is_logged(tmp_path):
     train(tmp_path, total_steps=4096, snapshot_every=4096, **FAST)
     assert len(read_progress(tmp_path)) >= 1
 
-def test_existing_snapshot_is_never_overwritten(tmp_path):
+def test_new_run_in_used_folder_is_refused(tmp_path):
     train(tmp_path, total_steps=0, **FAST)
     first = list_snapshots(tmp_path)[0]
     saved_time = first.model_path.stat().st_mtime_ns
-    train(tmp_path, total_steps=0, **FAST)
+    with pytest.raises(FileExistsError, match="Use --resume"):
+        train(tmp_path, total_steps=0, **FAST)
     assert first.model_path.stat().st_mtime_ns == saved_time
+
+def test_resumed_brain_keeps_its_learning(tmp_path):
+    trained = train(tmp_path, total_steps=1024, snapshot_every=1024, **FAST)
+    loaded, vec_normalize = load_latest_snapshot(tmp_path, n_envs=2, use_subprocess=False)
+    vec_normalize.close()
+    assert loaded.num_timesteps == list_snapshots(tmp_path)[-1].steps
+    trained_weights = trained.policy.state_dict()
+    for name, weights in loaded.policy.state_dict().items():
+        assert torch.equal(weights, trained_weights[name]), name
