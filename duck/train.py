@@ -50,10 +50,10 @@ USED_RUN_FOLDER_MESSAGE = (
 )
 
 
-# One duck world with a Monitor that records each attempt's score and length.
+# One duck world with a Monitor that records each attempt's score, length and forward distance.
 # It lives at module level so Windows can start it in a new process (spawn).
 def make_duck_env() -> Monitor:
-    return Monitor(DuckWalkEnv())
+    return Monitor(DuckWalkEnv(), info_keywords=("forward_distance",))
 
 
 # Several duck worlds side by side, each in its own process or all in this one
@@ -130,7 +130,7 @@ class SnapshotCallback(BaseCallback):
         self.last_steps = steps
 
 
-# Writes the average score of recent attempts to the progress log after each rollout
+# Writes the average score and distance of recent attempts to the progress log after each rollout
 class ProgressCallback(BaseCallback):
     def __init__(self, run_dir: Path):
         super().__init__()
@@ -140,13 +140,14 @@ class ProgressCallback(BaseCallback):
     def _on_step(self) -> bool:
         return True
 
-    # Log the mean score of the finished attempts the model remembers, if there are any
+    # Log the mean score and distance of the finished attempts the model remembers, if there are any
     def _on_rollout_end(self) -> None:
         episodes = self.model.ep_info_buffer
         if not episodes:
             return
         mean_reward = float(np.mean([episode["r"] for episode in episodes]))
-        append_progress(self.run_dir, self.num_timesteps, mean_reward, datetime.now())
+        mean_distance = float(np.mean([episode["forward_distance"] for episode in episodes]))
+        append_progress(self.run_dir, self.num_timesteps, mean_reward, mean_distance, datetime.now())
 
 
 # Keep Windows awake inside this block, and always restore normal sleep afterwards

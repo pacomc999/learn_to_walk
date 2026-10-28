@@ -68,3 +68,13 @@ def test_observation_includes_sideways_position():
     env.reset(seed=0)
     env.data.qpos[1] = 0.3
     assert env._observation()[1] == pytest.approx(0.3)
+
+# Each step reports how far the duck has moved forward since the attempt began
+def test_info_has_forward_distance():
+    env = DuckWalkEnv()
+    _, info = env.reset(seed=0)
+    assert info["forward_distance"] == 0.0
+    start_x = info["x_position"]
+    for _ in range(10):
+        _, _, _, _, info = env.step(np.ones(12))
+    assert info["forward_distance"] == pytest.approx(info["x_position"] - start_x)

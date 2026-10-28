@@ -31,7 +31,9 @@ def test_brain_has_two_layers_of_256(tmp_path):
 
 def test_progress_is_logged(tmp_path):
     train(tmp_path, total_steps=4096, snapshot_every=4096, **FAST)
-    assert len(read_progress(tmp_path)) >= 1
+    logged = read_progress(tmp_path)
+    assert len(logged) >= 1
+    assert all(abs(row.mean_distance) < 10 for row in logged)  # a real distance in metres
 
 def test_new_run_in_used_folder_is_refused(tmp_path):
     train(tmp_path, total_steps=0, **FAST)

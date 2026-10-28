@@ -49,6 +49,7 @@ class DuckWalkEnv(gymnasium.Env):
         self.data = mujoco.MjData(self.model)
         self.max_steps = round(MAX_EPISODE_SECONDS / self._control_step_seconds())
         self.step_count = 0
+        self.start_x = 0.0
         self.motor_count = self.model.nu
 
         # Actions in [-1, 1] are scaled to each motor's own range
@@ -70,6 +71,7 @@ class DuckWalkEnv(gymnasium.Env):
         self.data.qpos[FREE_JOINT_QPOS_SIZE:] += joint_noise
         mujoco.mj_forward(self.model, self.data)
         self.step_count = 0
+        self.start_x = float(self.data.qpos[0])  # where this attempt began, for its distance
         return self._observation(), self._info({})
 
     # Turn actions in [-1, 1] into motor targets inside each motor's range
@@ -99,12 +101,15 @@ class DuckWalkEnv(gymnasium.Env):
         ])
         return observation.astype(np.float32)
 
-    # Extra facts about the duck, for logging and videos
+    # Extra facts about the duck, for logging and videos.
+    # forward_distance is how far the duck moved forward since the attempt began
     def _info(self, reward_parts: dict[str, float]) -> dict:
         finite = self._state_is_finite()
+        x_position = float(self.data.qpos[0]) if finite else 0.0
         return {
-            "x_position": float(self.data.qpos[0]) if finite else 0.0,
+            "x_position": x_position,
             "y_position": float(self.data.qpos[1]) if finite else 0.0,
+            "forward_distance": x_position - self.start_x if finite else 0.0,
             "reward_parts": reward_parts,
         }
 
