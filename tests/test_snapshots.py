@@ -1,5 +1,8 @@
 """Tests for saving, finding and choosing snapshot files."""
+import os
 from pathlib import Path
+import pytest
+import duck.snapshots as snapshots_module
 from duck.snapshots import (snapshot_paths, save_snapshot, list_snapshots,
                             latest_snapshot, choose_for_video)
 
@@ -47,3 +50,31 @@ def test_choose_for_video_spreads_evenly():
     assert chosen[0] == snaps[0] and chosen[-1] == snaps[-1]
     assert choose_for_video(snaps[:3]) == snaps[:3]
     assert choose_for_video(snaps[:1]) == snaps[:1]
+
+
+# A file briefly locked by Windows (for example by a virus scanner) is retried, not fatal
+def test_locked_file_is_retried(tmp_path, monkeypatch):
+    real_replace = os.replace
+    failures_left = [2]
+    def flaky_replace(source, target):
+        if failures_left[0] > 0:
+            failures_left[0] -= 1
+            raise PermissionError("locked")
+        real_replace(source, target)
+    monkeypatch.setattr(snapshots_module.os, "replace", flaky_replace)
+    monkeypatch.setattr(snapshots_module.time, "sleep", lambda seconds: None)
+    snap = save_snapshot(FakeSaver(), FakeSaver(), tmp_path, 2048)
+    assert snap.model_path.exists() and snap.norm_path.exists()
+
+
+# A file that stays locked still raises an error after a few tries
+def test_file_locked_for_good_raises(tmp_path, monkeypatch):
+    tries = []
+    def locked_replace(source, target):
+        tries.append(1)
+        raise PermissionError("locked")
+    monkeypatch.setattr(snapshots_module.os, "replace", locked_replace)
+    monkeypatch.setattr(snapshots_module.time, "sleep", lambda seconds: None)
+    with pytest.raises(PermissionError):
+        save_snapshot(FakeSaver(), FakeSaver(), tmp_path, 2048)
+    assert len(tries) == 5

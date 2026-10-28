@@ -21,10 +21,15 @@ from stable_baselines3.common.vec_env import DummyVecEnv, SubprocVecEnv, VecEnv,
 
 from duck.duck_env import DuckWalkEnv
 from duck.progress import append_progress
-from duck.snapshots import latest_snapshot, save_snapshot, snapshot_paths
+from duck.snapshots import (Snapshot, latest_snapshot, list_snapshots, save_snapshot,
+                            set_aside_broken_snapshot, snapshot_paths)
 
 # Brain shape: the actor (pi) and the critic (vf) each get 2 hidden layers of 256
 NET_ARCH = {"pi": [256, 256], "vf": [256, 256]}
+
+# A new brain starts with calmer random moves: log_std -1 is a spread of about 0.37
+# per motor, instead of 1.0, so early attempts are not pure flailing
+START_LOG_STD = -1.0
 
 # PPO settings used unless a caller overrides them (8 envs x 1024 steps = 8192 steps per rollout)
 DEFAULT_PPO_SETTINGS = {
@@ -178,24 +183,41 @@ def _new_model(run_dir: Path, n_envs: int, use_subprocess: bool,
     if ent_coef is not None:
         settings["ent_coef"] = ent_coef
     model = PPO("MlpPolicy", vec_normalize, device="cpu", seed=0, verbose=0,
-                policy_kwargs={"net_arch": NET_ARCH}, **settings)
+                policy_kwargs={"net_arch": NET_ARCH, "log_std_init": START_LOG_STD}, **settings)
     if _save_snapshot_once(model, vec_normalize, run_dir, steps=0):
         print("Untrained snapshot saved at 0 steps.", flush=True)
     return model, vec_normalize
 
 
-# The brain and statistics from the newest snapshot, ready to keep learning
-def load_latest_snapshot(run_dir: Path, n_envs: int, use_subprocess: bool) -> tuple[PPO, VecNormalize]:
-    snap = latest_snapshot(run_dir)
-    if snap is None:
-        raise FileNotFoundError(f"No complete snapshot to resume from in {run_dir}")
-    # A new seed per resume so the worlds do not replay the same starts
-    venv = _build_raw_vec_env(n_envs, seed=snap.steps, use_subprocess=use_subprocess)
+# The brain and statistics of one snapshot, attached to the given duck worlds
+def _load_snapshot(snap: Snapshot, venv: VecEnv) -> tuple[PPO, VecNormalize]:
     vec_normalize = VecNormalize.load(str(snap.norm_path), venv)
     vec_normalize.training = True  # keep updating the statistics while learning
     model = PPO.load(str(snap.model_path), env=vec_normalize, device="cpu")
-    print(f"Resuming from the snapshot at {snap.steps:,} steps.", flush=True)
     return model, vec_normalize
+
+
+# The brain and statistics from the newest snapshot that loads, ready to keep learning.
+# A broken snapshot (for example a damaged file) is set aside with a warning,
+# and the one before it is tried instead
+def load_latest_snapshot(run_dir: Path, n_envs: int, use_subprocess: bool) -> tuple[PPO, VecNormalize]:
+    snapshots = list_snapshots(run_dir)
+    if not snapshots:
+        raise FileNotFoundError(f"No complete snapshot to resume from in {run_dir}")
+    # A new seed per resume so the worlds do not replay the same starts
+    venv = _build_raw_vec_env(n_envs, seed=snapshots[-1].steps, use_subprocess=use_subprocess)
+    for snap in reversed(snapshots):
+        try:
+            model, vec_normalize = _load_snapshot(snap, venv)
+        except Exception:
+            print(f"Warning: could not load the snapshot {snap.model_path.name}. "
+                  "Setting it aside and trying the one before it.", flush=True)
+            set_aside_broken_snapshot(snap)
+            continue
+        print(f"Resuming from the snapshot at {snap.steps:,} steps.", flush=True)
+        return model, vec_normalize
+    venv.close()
+    raise FileNotFoundError(f"No snapshot in {run_dir} could be loaded")
 
 
 # The newest snapshot's brain, with a new curiosity value if one is given

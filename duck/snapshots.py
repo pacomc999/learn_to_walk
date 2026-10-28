@@ -5,8 +5,13 @@ A snapshot only counts as complete when both final files exist.
 """
 import os
 import re
+import time
 from dataclasses import dataclass
 from pathlib import Path
+
+# Windows can lock a file for a moment (for example a virus scanner), so renames are retried
+RENAME_TRIES = 5
+RENAME_WAIT_SECONDS = 0.2
 
 
 # One saved point in training: its step count and the two file paths
@@ -30,10 +35,22 @@ def snapshot_paths(run_dir: Path, steps: int) -> Snapshot:
     return Snapshot(steps, model_path, norm_path)
 
 
+# Move a file onto a new name, trying again a few times if Windows has it locked
+def replace_with_retry(source: Path, target: Path) -> None:
+    for attempt in range(1, RENAME_TRIES + 1):
+        try:
+            os.replace(source, target)
+            return
+        except PermissionError:
+            if attempt == RENAME_TRIES:
+                raise  # still locked after every try
+            time.sleep(RENAME_WAIT_SECONDS)
+
+
 # Save one file under a temp name, then move it onto its final name
 def _save_via_temp(save_function, temp_path: Path, final_path: Path) -> None:
     save_function(str(temp_path))
-    os.replace(temp_path, final_path)
+    replace_with_retry(temp_path, final_path)
 
 
 # Save the brain and then the statistics, so the statistics file comes last
@@ -45,6 +62,14 @@ def save_snapshot(model, vec_normalize, run_dir: Path, steps: int) -> Snapshot:
     _save_via_temp(model.save, temp_model, snap.model_path)
     _save_via_temp(vec_normalize.save, temp_norm, snap.norm_path)
     return snap
+
+
+# Rename a broken snapshot's files with a ".broken" ending, so it no longer counts
+# as complete and a new snapshot can be saved at the same step count later
+def set_aside_broken_snapshot(snap: Snapshot) -> None:
+    for path in (snap.model_path, snap.norm_path):
+        if path.exists():
+            replace_with_retry(path, path.with_name(path.name + ".broken"))
 
 
 # Find the step count from a brain file name, or None if the name does not match

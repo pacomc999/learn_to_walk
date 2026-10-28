@@ -51,3 +51,20 @@ def test_resumed_brain_keeps_its_learning(tmp_path):
     trained_weights = trained.policy.state_dict()
     for name, weights in loaded.policy.state_dict().items():
         assert torch.equal(weights, trained_weights[name]), name
+
+
+# A new brain starts with calmer random moves (log_std of -1 for every motor)
+def test_new_brain_starts_with_log_std_minus_one(tmp_path):
+    model = train(tmp_path, total_steps=0, **FAST)
+    assert torch.allclose(model.policy.log_std, torch.full((12,), -1.0))
+
+# A broken newest snapshot is skipped with a warning, and the one before it is used
+def test_corrupt_newest_snapshot_falls_back(tmp_path, capsys):
+    train(tmp_path, total_steps=1024, snapshot_every=1024, **FAST)
+    previous, newest = list_snapshots(tmp_path)[-2:]
+    newest.model_path.write_bytes(b"not a real zip file")
+    loaded, vec_normalize = load_latest_snapshot(tmp_path, n_envs=2, use_subprocess=False)
+    vec_normalize.close()
+    assert loaded.num_timesteps == previous.steps
+    assert newest.model_path.name in capsys.readouterr().out
+    assert list_snapshots(tmp_path)[-1] == previous  # the broken one no longer counts
