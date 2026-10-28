@@ -4,30 +4,30 @@ import pytest
 from duck.rewards import compute_reward, has_fallen, RewardWeights
 
 
-# Moving forward, upright, with no effort: forward 1.0 plus alive 0.5
+# Moving forward, upright, with no effort: forward 3.0 plus alive 0.2
 def test_moving_forward_upright_with_no_effort():
     total, parts = compute_reward(1.0, 0.0, np.zeros(12))
-    assert total == pytest.approx(1.5)
+    assert total == pytest.approx(3.2)
 
 
 # Effort is the sum of squared actions times 0.01: twelve 1s give 0.12
 def test_effort_penalty_uses_squared_actions():
     total, parts = compute_reward(1.0, 0.0, np.ones(12))
     assert parts["effort"] == pytest.approx(-0.12)
-    assert total == pytest.approx(1.38)
+    assert total == pytest.approx(3.08)
 
 
 # Drifting left or right costs the same amount
 def test_sideways_penalty_same_on_both_sides():
     left, _ = compute_reward(0.0, -0.4, np.zeros(12))
     right, _ = compute_reward(0.0, 0.4, np.zeros(12))
-    assert left == right == pytest.approx(0.3)
+    assert left == right == pytest.approx(0.0)
 
 
-# Walking backwards gives a negative forward score that cancels the alive bonus
+# Walking backwards gives a negative forward score bigger than the alive bonus
 def test_moving_backward_loses_points():
     total, _ = compute_reward(-0.5, 0.0, np.zeros(12))
-    assert total == pytest.approx(0.0)
+    assert total == pytest.approx(-1.3)
 
 
 # The four parts must add up to the total reward

@@ -7,8 +7,8 @@ import numpy as np
 # How much each part of the reward counts for
 @dataclass
 class RewardWeights:
-    forward: float = 1.0   # points per metre per second of forward speed
-    alive: float = 0.5     # points for staying upright every step
+    forward: float = 3.0   # points per metre per second of forward speed
+    alive: float = 0.2     # points for staying upright every step (small, so standing still does not pay)
     effort: float = 0.01   # penalty per squared motor action
     sideways: float = 0.5  # penalty per metre of sideways drift
 

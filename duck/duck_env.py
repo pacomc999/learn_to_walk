@@ -47,7 +47,7 @@ class DuckWalkEnv(gymnasium.Env):
         self.reward_weights = reward_weights
         self.model = load_duck_model()
         self.data = mujoco.MjData(self.model)
-        self.max_steps = round(MAX_EPISODE_SECONDS / (self.model.opt.timestep * FRAME_SKIP))
+        self.max_steps = round(MAX_EPISODE_SECONDS / self._control_step_seconds())
         self.step_count = 0
         self.motor_count = self.model.nu
 
@@ -113,22 +113,29 @@ class DuckWalkEnv(gymnasium.Env):
             return True
         return bool(has_fallen(torso_height(self.data), torso_up_z(self.data), MIN_TORSO_HEIGHT))
 
-    # Reward for the step just taken; a broken simulation gives a plain zero
-    def _reward(self, action: np.ndarray) -> tuple[float, dict[str, float]]:
+    # Seconds of simulated time in one control step
+    def _control_step_seconds(self) -> float:
+        return self.model.opt.timestep * FRAME_SKIP
+
+    # Reward for the step just taken; a broken simulation gives a plain zero.
+    # Forward speed is the distance moved over the whole step divided by its time,
+    # so quick back and forth jiggles cannot fake speed
+    def _reward(self, action: np.ndarray, x_before: float) -> tuple[float, dict[str, float]]:
         if not self._state_is_finite():
             return 0.0, {}
-        forward_velocity = float(self.data.qvel[0])
+        forward_velocity = (float(self.data.qpos[0]) - x_before) / self._control_step_seconds()
         sideways_offset = float(self.data.qpos[1])
         return compute_reward(forward_velocity, sideways_offset, action, self.reward_weights)
 
     # Move the motors, let the physics run a few small steps, then report back
     def step(self, action: np.ndarray):
         action = np.clip(np.asarray(action, dtype=np.float64), -1.0, 1.0)
+        x_before = float(self.data.qpos[0])
         self.data.ctrl[:] = self._scale_action(action)
         mujoco.mj_step(self.model, self.data, nstep=FRAME_SKIP)
         self.step_count += 1
 
-        reward, reward_parts = self._reward(action)
+        reward, reward_parts = self._reward(action, x_before)
         terminated = self._is_terminated()
         truncated = self.step_count >= self.max_steps
         return self._observation(), reward, terminated, truncated, self._info(reward_parts)

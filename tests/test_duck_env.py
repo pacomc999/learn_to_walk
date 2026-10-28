@@ -1,3 +1,4 @@
+import pytest
 import numpy as np
 from gymnasium.utils.env_checker import check_env
 import duck.duck_env as duck_env_module
@@ -48,3 +49,15 @@ def test_render_gives_an_image():
     env = DuckWalkEnv(render_mode="rgb_array", width=160, height=120)
     env.reset(seed=0)
     assert env.render().shape == (120, 160, 3)
+
+# The forward reward uses the distance moved over the whole control step, not one speed sample
+def test_forward_reward_uses_distance_moved():
+    env = DuckWalkEnv()
+    env.reset(seed=0)
+    control_step_seconds = env.model.opt.timestep * duck_env_module.FRAME_SKIP
+    x_before = float(env.data.qpos[0])
+    _, _, _, _, info = env.step(np.ones(12))
+    speed = (info["x_position"] - x_before) / control_step_seconds
+    expected = env.reward_weights.forward * speed
+    assert info["reward_parts"]["forward"] == pytest.approx(expected)
+    assert info["reward_parts"]["forward"] != pytest.approx(env.reward_weights.forward * float(env.data.qvel[0]))
