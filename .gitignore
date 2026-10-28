@@ -16,3 +16,6 @@ node_modules/
 checkpoints/
 runs/
 *.log
+
+# Brainstorming mockups
+.superpowers/
