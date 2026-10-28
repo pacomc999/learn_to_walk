@@ -30,7 +30,7 @@ Do this once, from the project folder.
 
 ## Commands
 
-All commands run from the project folder, and start with `.venv/Scripts/python`.
+All commands run from the project folder, and start with `.venv/Scripts/python`. Type them in PowerShell (or Git Bash). They do not work in the old cmd.exe window, because of the forward slashes.
 
 Start training for 30 million steps:
 
@@ -40,11 +40,15 @@ Continue a stopped run:
 
 `.venv/Scripts/python -m duck.train --run runs/duck_v1 --steps 30000000 --resume`
 
+To keep training past 30 million steps, resume with a bigger `--steps` value. The number is the total for the whole run, not extra steps. For example, this trains on until 50 million:
+
+`.venv/Scripts/python -m duck.train --run runs/duck_v1 --steps 50000000 --resume`
+
 Continue with more curiosity (more random experimenting):
 
 `.venv/Scripts/python -m duck.train --run runs/duck_v1 --steps 30000000 --resume --ent-coef 0.01`
 
-Check progress (draws a chart in the run folder and says if training has stalled):
+Check progress (draws a chart in the run folder, prints the latest average distance per attempt, and says if training has stalled):
 
 `.venv/Scripts/python -m duck.progress runs/duck_v1`
 
@@ -63,6 +67,21 @@ Make the video of all the snapshots:
 The video is saved as `evolution.mp4` inside the run folder.
 
 To judge or watch an older snapshot, add `--snapshot` and its step count, for example `--snapshot 1007616`.
+
+## Try a short pilot run first
+
+Before the long run, do a short test of about 3 million steps (around 30 minutes) in its own folder:
+
+`.venv/Scripts/python -m duck.train --run runs/pilot --steps 3000000`
+
+When it finishes:
+
+1. Run `.venv/Scripts/python -m duck.progress runs/pilot`. Check that the average distance per attempt is rising, not just the score. The score can rise while the duck only learns to stand still; the distance shows that it moves forward.
+2. Run `.venv/Scripts/python -m duck.evaluate runs/pilot`. After only 3 million steps it will most likely say "Not there yet". That is fine, this just checks that everything works.
+3. Watch it once in the live viewer: `.venv/Scripts/python -m duck.view_snapshot runs/pilot`
+4. Make a video once: `.venv/Scripts/python -m duck.video runs/pilot`
+
+If all of that works, start the real run in a new folder such as `runs/duck_v1`. Do not resume the pilot folder for the real run.
 
 ## How to start the real run
 
@@ -93,6 +112,10 @@ If `duck.progress` says there has been no improvement for an hour:
 One catch: the stall clock counts real time. If you resume a run that was stopped for a while, wait until training has been going for a full hour before you trust the stall message.
 
 If more curiosity does not help, the spec lists what to try next: fix a reward that rewards a bad habit, add training wheels, or go back to an earlier snapshot. Changing the duck body comes last.
+
+## How the duck is scored
+
+On every control step (50 per second) the duck gets 3 points per metre per second of forward speed, measured from how far it really moved during that step, plus 0.2 points for staying upright. It loses 0.01 times the sum of its squared motor actions, and 0.5 points per metre it has drifted from the straight line. Standing still for a whole 20 second attempt scores only about 200, while walking at 0.2 metres per second scores about 800. The duck senses 38 numbers, including how far it has drifted sideways.
 
 ## What counts as walking
 
