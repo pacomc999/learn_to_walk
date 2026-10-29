@@ -22,12 +22,17 @@ Duck 2 without its wobble fell in the first second in 34 of 60 starts. A check s
 
 ## Training history
 
-- `runs/duck_02_1/from_zero` (, 0 to 4.0M): running
+- `runs/duck_02_1/from_zero` (2026-10-29 23:07 to 2026-10-30 00:19, 0 to 4.0M): Like Duck 2 up to 1.25M (all exams fall), then 212 at 1.5M and 916 with 0 falls at 1.75M, where Duck 2 had 460. From there it held between 828 and 986 with at most 2 falls, ending on its best, 986 with 0 falls at 4.0M. No collapse. The step size fell to about 0.00002 by the end
 
 ## Best brain
 
-No brain kept yet.
+![duck_02_1.gif](duck_02_1.gif)
+
+- From `runs/duck_02_1/from_zero/best` at 4,005,888 steps (measured 2026-10-30 00:19)
+- Exam (12 fixed attempts, no wobble): score 986, falls 0 of 12
+- Walking test: 10 of 10 attempts walked
+- At 0.4 m/s: speed 0.46 m/s, 12.3 J per metre, feet in the air 18%, one foot down 74%, both down 8%
 
 ## Notes
 
-(none)
+Walks every start of the exam and 10 of 10 walking test attempts, at 12.3 J per metre (Duck 2: 15 to 18). The exam ceiling at its efficiency is about 980 to 1,000, so on flat ground it is close to the most our scoring can tell. It still walks a little faster than asked (7.5 m per exam attempt where the asked speeds give 6.3 m). Duck 3 starts from this brain.
