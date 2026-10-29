@@ -10,6 +10,13 @@ from duck.model import (
     torso_height,
     torso_up_z,
 )
+from duck.floor import (
+    MAX_ROUGHNESS,
+    floor_heights,
+    highest_floor_near,
+    load_floor_model,
+    set_floor,
+)
 from duck.rewards import RewardWeights, compute_reward, has_fallen
 
 # Physics steps per control step (0.005 s each, so the duck is controlled at 50 Hz)
@@ -41,6 +48,9 @@ EVALUATION_TARGET_SPEED = 0.4
 # + target speed (1)
 OBSERVATION_SIZE = 39
 
+# The torso is lifted above the highest floor point within this distance of the start, in metres
+START_CLEARANCE_RADIUS = 0.15
+
 # Observation values are kept within this limit (a finite bound, not infinity)
 OBSERVATION_LIMIT = 1e6
 
@@ -55,13 +65,19 @@ class DuckWalkEnv(gymnasium.Env):
         target_speed: float | None = None,
         width: int = 640,
         height: int = 480,
+        roughness: float | None = None,
     ):
         self.render_mode = render_mode
         self.reward_weights = reward_weights
         # A fixed target speed, or None to pick a random one for each attempt
         self.fixed_target_speed = target_speed
         self.target_speed = target_speed if target_speed is not None else EVALUATION_TARGET_SPEED
-        self.model = load_duck_model()
+        # A fixed floor roughness, or None to pick a random one for each attempt.
+        # Exactly 0.0 keeps the old flat plane floor and draws nothing
+        self.fixed_roughness = roughness
+        self.roughness = roughness if roughness is not None else 0.0
+        self.floor = None  # height map of this attempt in metres, None on the flat plane
+        self.model = load_duck_model() if roughness == 0.0 else load_floor_model()
         self.data = mujoco.MjData(self.model)
         self.max_steps = round(MAX_EPISODE_SECONDS / self._control_step_seconds())
         self.step_count = 0
@@ -86,7 +102,7 @@ class DuckWalkEnv(gymnasium.Env):
         return float(self.np_random.uniform(*TARGET_SPEED_RANGE))
 
     # Put the duck back in its standing pose with a tiny random wobble in the joints,
-    # one leg slightly ahead, and choose the speed it should walk at this time
+    # one leg slightly ahead, choose the speed it should walk at this time and lay a new floor
     def reset(self, seed: int | None = None, options: dict | None = None):
         super().reset(seed=seed)
         self.target_speed = self._pick_target_speed()
@@ -94,10 +110,36 @@ class DuckWalkEnv(gymnasium.Env):
         joint_noise = self.np_random.uniform(-START_NOISE, START_NOISE, self.motor_count)
         self.data.qpos[FREE_JOINT_QPOS_SIZE:] += joint_noise
         self._take_stride_stance()
+        self._lay_new_floor()
         mujoco.mj_forward(self.model, self.data)
         self.step_count = 0
         self.start_x = float(self.data.qpos[0])  # where this attempt began, for its distance
         return self._observation(), self._info({})
+
+    # The roughness of this attempt: the fixed one, or a random one up to the maximum
+    def _pick_roughness(self) -> float:
+        if self.fixed_roughness is not None:
+            return self.fixed_roughness
+        return float(self.np_random.uniform(0.0, MAX_ROUGHNESS))
+
+    # Draw a new floor, show it to the renderer, and lift the duck above the stones near its start.
+    # The flat plane model has no floor to draw
+    def _lay_new_floor(self) -> None:
+        self.roughness = self._pick_roughness()
+        if self.fixed_roughness == 0.0:
+            return
+        self.floor = floor_heights(self.np_random, self.roughness)
+        set_floor(self.model, self.floor)
+        self._upload_floor_to_renderer()
+        start_x, start_y = self.data.qpos[0], self.data.qpos[1]
+        self.data.qpos[2] += highest_floor_near(self.floor, start_x, start_y, START_CLEARANCE_RADIUS)
+
+    # The renderer keeps its own copy of the height field, so send it the new one
+    def _upload_floor_to_renderer(self) -> None:
+        if self.renderer is None:
+            return
+        self.renderer._gl_context.make_current()
+        mujoco.mjr_uploadHField(self.model, self.renderer._mjr_context, self.model.geom("floor").dataid[0])
 
     # A coin flip picks the leading leg; its hip swings one way and the other hip the opposite way
     def _take_stride_stance(self) -> None:

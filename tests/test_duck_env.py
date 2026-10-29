@@ -1,8 +1,10 @@
+import mujoco
 import pytest
 import numpy as np
 from gymnasium.utils.env_checker import check_env
 import duck.duck_env as duck_env_module
 from duck.duck_env import DuckWalkEnv
+from duck.floor import MAX_ROUGHNESS
 
 def test_passes_gymnasium_checks():
     check_env(DuckWalkEnv(), skip_render_check=True)
@@ -46,13 +48,13 @@ def test_extreme_actions_stay_finite():
             obs, _ = env.reset()
 
 def test_render_gives_an_image():
-    env = DuckWalkEnv(render_mode="rgb_array", width=160, height=120)
+    env = DuckWalkEnv(render_mode="rgb_array", width=160, height=120, roughness=0.0)
     env.reset(seed=0)
     assert env.render().shape == (120, 160, 3)
 
 # The forward reward uses the distance moved over the whole control step, not one speed sample
 def test_forward_reward_uses_distance_moved():
-    env = DuckWalkEnv()
+    env = DuckWalkEnv(roughness=0.0)
     env.reset(seed=0)
     control_step_seconds = env.model.opt.timestep * duck_env_module.FRAME_SKIP
     x_before = float(env.data.qpos[0])
@@ -83,7 +85,7 @@ def test_info_has_forward_distance():
 # Once settled, holding the standing pose uses almost no motor energy.
 # The first 2 seconds cost a little while the duck sways out the reset jitter
 def test_standing_uses_almost_no_energy():
-    env = DuckWalkEnv()
+    env = DuckWalkEnv(roughness=0.0)
     env.reset(seed=0)
     for _ in range(200):
         _, _, _, _, info = env.step(np.zeros(12))
@@ -92,7 +94,7 @@ def test_standing_uses_almost_no_energy():
 
 # Swinging the legs hard costs energy points
 def test_flailing_costs_energy():
-    env = DuckWalkEnv()
+    env = DuckWalkEnv(roughness=0.0)
     env.reset(seed=0)
     energy = 0.0
     for step in range(10):
@@ -131,7 +133,7 @@ def _start_hip_gap(env):
     return (env.data.qpos[left] - stand[left]) - (env.data.qpos[right] - stand[right])
 
 def test_stride_start_never_leaves_the_hips_level():
-    env = DuckWalkEnv()
+    env = DuckWalkEnv(roughness=0.0)
     gaps = []
     for seed in range(200):
         env.reset(seed=seed)
@@ -141,3 +143,68 @@ def test_stride_start_never_leaves_the_hips_level():
     assert np.abs(gaps).min() >= 2 * duck_env_module.START_NOISE - 1e-9
     # A coin flip picks the leading leg, so both legs lead sometimes
     assert (gaps > 0).sum() > 50 and (gaps < 0).sum() > 50
+
+
+# The seed 0 start of the old flat world, captured before the rough floor was added
+OLD_FLAT_SEED_0_START = np.array([
+    0.25, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+    -0.009208531118929386, -0.018361059948801994, 0.02066110633313656, 0.01253080926835537,
+    0.01651022396981716, 0.004265430849045515, 0.009179862216114998, -0.0382549986243248,
+    0.017402896657586098, 0.01263414230197668, -0.01989045925438404, 0.014296171255409718,
+    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+    1.0, 0.0, 0.5184808373451233,
+], dtype=np.float32)
+
+
+# Roughness exactly 0 is the old world: plane floor, nothing drawn, same start as before
+def test_zero_roughness_is_the_old_flat_world():
+    env = DuckWalkEnv(roughness=0.0)
+    assert env.model.geom("floor").type == mujoco.mjtGeom.mjGEOM_PLANE
+    first, _ = env.reset(seed=0)
+    assert env.floor is None and env.roughness == 0.0
+    assert np.array_equal(first, OLD_FLAT_SEED_0_START)
+
+
+# With no roughness given, every attempt draws its own roughness from 0 to the maximum
+def test_random_roughness_each_attempt():
+    env = DuckWalkEnv()
+    values = [(env.reset(seed=s), env.roughness)[1] for s in range(30)]
+    assert all(0.0 <= v <= MAX_ROUGHNESS for v in values) and len(set(values)) == 30
+
+
+# A new layout every attempt, and the same layout again for the same seed
+def test_new_layout_every_attempt_same_for_same_seed():
+    env = DuckWalkEnv(roughness=MAX_ROUGHNESS)
+    env.reset(seed=4)
+    a = env.floor.copy()
+    env.reset(seed=5)
+    assert not np.array_equal(a, env.floor)
+    env.reset(seed=4)
+    assert np.array_equal(a, env.floor)
+
+
+# Deepest overlap of any contact at the start of each seed, in metres (negative means inside)
+def _deepest_start_overlaps(env, seeds):
+    overlaps = []
+    for seed in seeds:
+        env.reset(seed=seed)
+        overlaps.append(min((c.dist for c in env.data.contact[:env.data.ncon]), default=0.0))
+    return np.array(overlaps)
+
+
+# The duck is lifted above the stones, so a rough start sinks in no deeper than the flat start does.
+# The flat start already overlaps a few millimetres at the toes because of the stride stance
+def test_rough_start_never_starts_inside_the_floor():
+    flat = _deepest_start_overlaps(DuckWalkEnv(roughness=0.0), range(40))
+    rough = _deepest_start_overlaps(DuckWalkEnv(roughness=MAX_ROUGHNESS), range(40))
+    assert rough.min() > flat.min() - 0.001
+
+
+# The renderer gets the new floor after every reset
+def test_new_layout_is_sent_to_the_renderer(monkeypatch):
+    calls = []
+    monkeypatch.setattr(duck_env_module.mujoco, "mjr_uploadHField", lambda *args: calls.append(args))
+    env = DuckWalkEnv(render_mode="rgb_array", roughness=MAX_ROUGHNESS)
+    env.reset(seed=0)
+    env.reset(seed=1)
+    assert len(calls) >= 2

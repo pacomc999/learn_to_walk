@@ -37,9 +37,9 @@ def mirror_qvel(qvel, signs=ACTION_SIGNS):
 
 # Two ducks, B starting as the mirror image of A
 def make_mirrored_pair(signs=ACTION_SIGNS):
-    duck_a = DuckWalkEnv(target_speed=0.4)
+    duck_a = DuckWalkEnv(target_speed=0.4, roughness=0.0)
     duck_a.reset(seed=0)
-    duck_b = DuckWalkEnv(target_speed=0.4)
+    duck_b = DuckWalkEnv(target_speed=0.4, roughness=0.0)
     duck_b.reset(seed=0)
     duck_b.data.qpos[:] = mirror_qpos(duck_a.data.qpos, signs)
     duck_b.data.qvel[:] = mirror_qvel(duck_a.data.qvel, signs)
