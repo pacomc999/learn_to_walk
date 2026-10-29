@@ -1,0 +1,61 @@
+{
+  "name": "Duck 2.1",
+  "started": "2026-10-29 23:06",
+  "summary": "Duck 2 plus a stride stance start, trained from zero",
+  "what_changed": "Same recipe as Duck 2, except the start of each attempt: after the usual random nudge, a coin flip picks the leading leg and one hip swing starts 0.04 rad forward and the other 0.04 rad back (each twice the random nudge, so the nudge can never close the gap).",
+  "why": "Duck 2 without its wobble fell in the first second in 34 of 60 starts. A check showed why: from a near mirror image pose the symmetric brain sends mirror image leg commands and dives forward, and a perfectly even pose always fell. On Duck 2's best brain, untrained for it, the stride start cut early falls to 2 of 60 and walked 30 of 30 attempts at 0.4 m/s. Keeping the wobble instead was rejected: it doubles the energy per metre (38 against 18 J). A point version because the change is small.",
+  "starts_from": "zero (same seed and untrained brain as Duck 1 and Duck 2)",
+  "runs": [
+    {
+      "folder": "runs/duck_02_1/from_zero",
+      "dates": "",
+      "steps": "0 to 4.0M",
+      "outcome": "running"
+    }
+  ],
+  "notes": "",
+  "recipe": {
+    "brain": "SymmetricPolicy",
+    "layers": {
+      "pi": [
+        256,
+        256
+      ],
+      "vf": [
+        256,
+        256
+      ]
+    },
+    "start_log_std": -1.0,
+    "ppo": {
+      "n_steps": 1024,
+      "batch_size": 256,
+      "n_epochs": 10,
+      "learning_rate": 0.0003,
+      "gamma": 0.99,
+      "gae_lambda": 0.95,
+      "clip_range": 0.2
+    },
+    "step_size_rule": {
+      "target_change": 0.01,
+      "factor": 1.5,
+      "min_learning_rate": 1e-05,
+      "max_learning_rate": 0.01
+    },
+    "reward": {
+      "forward": 3.0,
+      "alive": 0.2,
+      "energy": 1.5,
+      "sideways": 0.5
+    },
+    "target_speed_range": [
+      0.2,
+      0.7
+    ],
+    "attempt_seconds": 20.0,
+    "physics_steps_per_action": 4,
+    "start_noise": 0.02,
+    "start_stride": 0.04,
+    "code_version": "d483a71"
+  }
+}

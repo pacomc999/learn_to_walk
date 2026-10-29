@@ -237,7 +237,7 @@ def _start_line(recipe: dict) -> str:
     stride = recipe.get("start_stride")
     if stride is None:
         return nudge + ", no stride stance"
-    return nudge + f", then a stride stance: a coin flip picks the leading leg, hips {stride} rad apart each way"
+    return nudge + f", then a stride stance: a coin flip picks the leading leg, one hip moves {stride} rad forward and the other {stride} rad back"
 
 
 # How the learning rate behaves: fixed (older ducks) or adapted after every update

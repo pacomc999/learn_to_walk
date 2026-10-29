@@ -15,6 +15,7 @@ Duck 1 collapsed after its best at 1.61M. A measurement run showed every update 
 - Brain: SymmetricPolicy, actor layers [256, 256], judge layers [256, 256], starting wobble log_std -1.0
 - Reward per step: forward 3.0 per m/s up to the target speed, alive 0.2, energy 1.5 per joule, sideways 0.5 per metre
 - Target speed: random from 0.2 to 0.7 m/s per attempt; attempts last 20 s
+- Start: standing pose, each joint nudged randomly by up to 0.02 rad, no stride stance
 - PPO: n_steps 1024, batch_size 256, n_epochs 10, learning_rate 0.0003, gamma 0.99, gae_lambda 0.95, clip_range 0.2
 - Step size: adaptive, aiming for a change of 0.01 per update (divided or multiplied by 1.5, kept between 1e-05 and 0.01); the PPO learning rate is only the starting value
 - Code version: 22a13ba

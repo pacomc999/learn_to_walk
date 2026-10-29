@@ -15,6 +15,7 @@ The best plain brain (night run 1, 4M steps: exam 905, no falls) hopped with the
 - Brain: SymmetricPolicy, actor layers [256, 256], judge layers [256, 256], starting wobble log_std -1.0
 - Reward per step: forward 3.0 per m/s up to the target speed, alive 0.2, energy 1.5 per joule, sideways 0.5 per metre
 - Target speed: random from 0.2 to 0.7 m/s per attempt; attempts last 20 s
+- Start: standing pose, each joint nudged randomly by up to 0.02 rad, no stride stance
 - PPO: n_steps 1024, batch_size 256, n_epochs 10, learning_rate 0.0003, gamma 0.99, gae_lambda 0.95, clip_range 0.2
 - Step size: fixed at the PPO learning rate for the whole run
 - Code version: 43acb18
