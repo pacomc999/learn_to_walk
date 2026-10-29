@@ -136,7 +136,7 @@
       <div class="note">average of recent attempts</div>
     </div>
     <div class="tile">
-      <div class="label">Best score reached</div>
+      <div class="label">Best training score reached</div>
       <div class="value" id="since-best">?</div>
       <div class="note" id="stall-note"></div>
     </div>
@@ -180,8 +180,8 @@
     </div>
     <div class="charts">
       <div class="card">
-        <h2>Score</h2>
-        <p class="sub">Average points per attempt</p>
+        <h2>Training score</h2>
+        <p class="sub">Average points per attempt while learning, with wobble. The exam score of the best brain is next to its film</p>
         <div class="chart" id="score-chart"></div>
       </div>
       <div class="card">
@@ -362,6 +362,15 @@ let brainData = null;     // { steps, fps, frames: [...] } for the film on scree
 let shownClipSteps = null;
 let lastFrameIndex = -1;
 
+// The film's caption: when the brain is from, and its exam result (no wobble, 12 fixed starts)
+function clipCaption(status) {
+  const exam = status.clip_exam;
+  const examText = exam
+    ? ", exam score " + Math.round(exam.score).toLocaleString("en") + ", " + exam.falls + " falls of 12"
+    : "";
+  return "After " + stepsInWords(status.clip_steps) + " steps" + examText + ", asked to walk at 0.4 m/s, no wobble";
+}
+
 // Swap in a new film and its brain data only when a newer snapshot has been filmed
 async function showClip(status) {
   if (status.clip_steps === null || status.clip_steps === shownClipSteps) return;
@@ -374,8 +383,7 @@ async function showClip(status) {
   for (const id of ["clip", "speeds"]) document.getElementById(id).hidden = false;
   document.getElementById("brain").hidden = brainHidden;
   document.getElementById("clip-empty").hidden = true;
-  document.getElementById("clip-caption").textContent =
-    "After " + stepsInWords(status.clip_steps) + " steps, asked to walk at 0.4 m/s";
+  document.getElementById("clip-caption").textContent = clipCaption(status);
   video.play().catch(() => {});
 }
 

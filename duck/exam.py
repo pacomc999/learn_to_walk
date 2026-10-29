@@ -72,19 +72,30 @@ def append_exam(run_dir: Path, timesteps: int, result: ExamResult, when: datetim
         print(LOCKED_EXAM_LOG_WARNING, flush=True)
 
 
-# The best exam score in the log so far, or None if there is no usable row yet
-def best_exam_score(run_dir: Path) -> float | None:
+# Every usable exam in the log, as dictionaries of steps, score and falls; broken rows are skipped
+def read_exams(run_dir: Path) -> list[dict]:
     log_path = run_dir / EXAM_LOG_NAME
     if not log_path.exists():
-        return None
-    scores = []
+        return []
+    exams = []
     with log_path.open(newline="") as log_file:
         for row in csv.DictReader(log_file):
             try:
-                scores.append(float(row["score"]))
+                exams.append({"steps": int(row["timesteps"]), "score": float(row["score"]), "falls": int(row["falls"])})
             except (KeyError, TypeError, ValueError):
                 continue  # skip a broken row
+    return exams
+
+
+# The best exam score in the log so far, or None if there is no usable row yet
+def best_exam_score(run_dir: Path) -> float | None:
+    scores = [exam["score"] for exam in read_exams(run_dir)]
     return max(scores) if scores else None
+
+
+# The exam taken at this step count, or None if there was none
+def exam_at(run_dir: Path, steps: int) -> dict | None:
+    return next((exam for exam in read_exams(run_dir) if exam["steps"] == steps), None)
 
 
 # The folder that holds the best brain, laid out like a run folder

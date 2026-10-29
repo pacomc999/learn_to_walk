@@ -2,7 +2,7 @@ from datetime import datetime
 
 import pytest
 
-from duck.exam import (EXAM_ATTEMPTS, ExamResult, append_exam, best_exam_score, take_exam)
+from duck.exam import (EXAM_ATTEMPTS, ExamResult, append_exam, best_exam_score, exam_at, take_exam)
 from duck.train import build_vec_env, train
 from tests.test_train import FAST
 
@@ -36,6 +36,16 @@ def test_best_exam_score_from_log(tmp_path):
     with (tmp_path / "exam.csv").open("a") as log_file:
         log_file.write("broken,row\n")
     assert best_exam_score(tmp_path) == 80.0
+
+
+# The exam of one step count is read back, or None if that step count had no exam
+def test_exam_at_a_step_count(tmp_path):
+    assert exam_at(tmp_path, 100) is None
+    append_exam(tmp_path, 100, ExamResult(score=50.0, falls=3, distance=1.0), datetime.now())
+    with (tmp_path / "exam.csv").open("a") as log_file:
+        log_file.write("broken,row\n")
+    assert exam_at(tmp_path, 100) == {"steps": 100, "score": 50.0, "falls": 3}
+    assert exam_at(tmp_path, 200) is None
 
 
 # Training writes exam results and keeps a best brain that opens like a run folder

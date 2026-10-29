@@ -19,7 +19,7 @@ from typing import Callable
 import imageio
 import numpy as np
 
-from duck.exam import best_folder
+from duck.exam import best_folder, exam_at
 from duck.policy import BrainReading, load_brain, load_policy
 from duck.progress import ProgressRow, minutes_since_improvement, read_progress
 from duck.snapshots import Snapshot, latest_snapshot, replace_with_retry
@@ -34,9 +34,10 @@ CLIP_NAME = "dashboard_latest.mp4"
 BRAIN_NAME = "dashboard_latest_brain.json"
 CLIP_STEPS_NAME = "dashboard_latest_steps.txt"
 
-# Film size and length: small enough to make in a few seconds while training runs.
+# Film size and length: a whole 20 s attempt, like the exam. Measured while training: about
+# 12 s to make (8.9 s for an 8 s film; most of it is loading and setup), under 1 MB of files.
 # Both sides are multiples of 16, which video files need
-CLIP_SECONDS = 8.0
+CLIP_SECONDS = 20.0
 CLIP_FPS = 15
 CLIP_WIDTH = 448
 CLIP_HEIGHT = 336
@@ -90,6 +91,7 @@ def _time_left(rows: list[ProgressRow], total_steps: int | None) -> tuple[float 
 def run_status(run_dir: Path, total_steps: int | None) -> dict:
     rows = read_progress(run_dir)
     percent, minutes_left = _time_left(rows, total_steps)
+    clip_steps = _clip_steps(run_dir)
     return {
         "run": run_dir.name,
         "total_steps": total_steps,
@@ -98,7 +100,8 @@ def run_status(run_dir: Path, total_steps: int | None) -> dict:
         "minutes_left": minutes_left,
         "steps_per_second": recent_steps_per_second(rows),
         "minutes_since_improvement": minutes_since_improvement(rows),
-        "clip_steps": _clip_steps(run_dir),
+        "clip_steps": clip_steps,
+        "clip_exam": exam_at(run_dir, clip_steps) if clip_steps is not None else None,
         "points": [
             {"steps": row.timesteps, "score": row.mean_reward, "distance": row.mean_distance}
             for row in rows

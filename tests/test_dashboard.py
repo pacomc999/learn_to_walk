@@ -8,8 +8,9 @@ import imageio.v3 as iio
 import numpy as np
 import pytest
 
-from duck.dashboard import (CLIP_NAME, brain_to_film, frame_reading, lean_degrees, make_server,
+from duck.dashboard import (CLIP_NAME, CLIP_STEPS_NAME, brain_to_film, frame_reading, lean_degrees, make_server,
                             recent_steps_per_second, run_status, save_mp4)
+from duck.exam import ExamResult, append_exam
 from duck.policy import BrainReading
 from duck.progress import ProgressRow, append_progress
 
@@ -33,6 +34,7 @@ def test_status_of_an_empty_run(tmp_path):
     assert status["points"] == []
     assert status["latest_steps"] is None
     assert status["minutes_left"] is None
+    assert status["clip_exam"] is None
 
 
 # Halfway at 100 steps per second, 1,500 steps remain: 15 seconds, so 0.25 minutes
@@ -126,3 +128,10 @@ def test_films_the_best_brain(tmp_path):
     _fake_snapshot(tmp_path, 2_000_000)
     _fake_snapshot(tmp_path / "best", 1_750_000)
     assert brain_to_film(tmp_path).steps == 1_750_000
+
+
+# The status carries the exam result of the brain in the film
+def test_status_has_the_exam_of_the_filmed_brain(tmp_path):
+    append_exam(tmp_path, 1_750_000, ExamResult(score=916.0, falls=0, distance=9.2), START)
+    (tmp_path / CLIP_STEPS_NAME).write_text("1750000")
+    assert run_status(tmp_path, total_steps=None)["clip_exam"] == {"steps": 1_750_000, "score": 916.0, "falls": 0}
