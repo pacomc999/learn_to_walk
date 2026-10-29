@@ -51,10 +51,22 @@ def load_policy(snapshot: Snapshot) -> Callable[[np.ndarray], np.ndarray]:
     return policy
 
 
-# A function from a raw observation to a BrainReading. It runs the same layers as
-# load_policy one at a time, so the cell activity can be kept along the way
-def load_brain(snapshot: Snapshot) -> Callable[[np.ndarray], BrainReading]:
-    model, scale = _load_model_and_scaler(snapshot)
+# The brain reader for a symmetric brain: it asks the brain for its 12 commands and the
+# cells of the pass on the duck's own (real) view, not the mirrored one
+def _symmetric_brain(model: PPO, scale: Callable[[np.ndarray], np.ndarray]) -> Callable[[np.ndarray], BrainReading]:
+    extractor = model.policy.mlp_extractor
+
+    def brain(observation: np.ndarray) -> BrainReading:
+        with torch.no_grad():
+            action, layer1, layer2 = extractor.actor_cells(torch.as_tensor(scale(observation)))
+            action = action.clamp(-1.0, 1.0)  # the same limits predict uses
+        return BrainReading(action[0].numpy(), layer1[0].numpy(), layer2[0].numpy())
+
+    return brain
+
+
+# The brain reader for an old plain brain: its layers run one at a time to keep the cell activity
+def _plain_brain(model: PPO, scale: Callable[[np.ndarray], np.ndarray]) -> Callable[[np.ndarray], BrainReading]:
     first_layer = model.policy.mlp_extractor.policy_net[0:2]   # Linear then Tanh
     second_layer = model.policy.mlp_extractor.policy_net[2:4]  # Linear then Tanh
     action_layer = model.policy.action_net
@@ -67,6 +79,15 @@ def load_brain(snapshot: Snapshot) -> Callable[[np.ndarray], BrainReading]:
         return BrainReading(action[0].numpy(), layer1[0].numpy(), layer2[0].numpy())
 
     return brain
+
+
+# A function from a raw observation to a BrainReading. It matches load_policy exactly,
+# for both the symmetric brain and the old plain brain
+def load_brain(snapshot: Snapshot) -> Callable[[np.ndarray], BrainReading]:
+    model, scale = _load_model_and_scaler(snapshot)
+    if hasattr(model.policy.mlp_extractor, "actor_cells"):
+        return _symmetric_brain(model, scale)
+    return _plain_brain(model, scale)
 
 
 # The snapshot a command line should use: the one with the given step count, or the newest.

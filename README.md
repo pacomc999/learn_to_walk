@@ -6,6 +6,8 @@ The duck has a long body, legs set far back, a bendy neck, a head and beak, fold
 
 A small neural network is the duck's brain. It learns by trial and error (reinforcement learning, using a method called PPO). All the stumbling and falling happens during training. While it trains, the project saves snapshots of the brain. At the end you can make one video where each snapshot walks for a few seconds, one after another, so you can watch the duck go from flopping over to walking.
 
+The brain is left/right symmetric (the "NET" method of Abdolhosseini and others, 2019). Mirroring the world, swapping the left and right legs and flipping the sideways signs, gives a mirrored duck, and the brain is built so it always answers a mirrored situation with the mirrored command. The duck therefore only has to learn to walk once, not once for each leg, and the senses that belong together (a left foot and a right foot, say) share their scaling. The mirror table lives in `duck/mirror.py` and the brain in `duck/symmetric_policy.py`. Runs started before this change keep their plain brain and plain sense scaling when resumed; everything (watching, judging, the video, the dashboard) still works on them.
+
 Everything runs on a CPU only Windows laptop.
 
 ## Setup
