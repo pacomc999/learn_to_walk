@@ -67,6 +67,14 @@ STEP_SIZE_RULE = {
 # Steps between noise-free exams (each takes about 15 seconds)
 DEFAULT_EXAM_EVERY = 250_000
 
+# Training stops by itself after this many exams in a row without a new best score
+# (8 exams of 250,000 steps: about 35 minutes). 0 means never stop early
+DEFAULT_PATIENCE = 8
+
+# Shown when training stops early
+NO_IMPROVEMENT_MESSAGE = ("No new best exam score for {exams} exams in a row. Stopping early; "
+                          "the best brain is in {best_dir}.")
+
 # Threads for the brain update in the main process, leaving cores for the env workers
 MAIN_PROCESS_THREADS = 2
 
@@ -235,25 +243,33 @@ class TrainingStatsCallback(BaseCallback):
 
 
 # Gives the brain the noise-free exam at the start, after every exam_every steps and at the end.
-# Each result goes to the exam log, and a brain that beats the best score so far is kept in <run>/best/
+# Each result goes to the exam log, and a brain that beats the best score so far is kept in <run>/best/.
+# After `patience` exams in a row without a new best, training stops (patience 0: never)
 class ExamCallback(BaseCallback):
-    def __init__(self, run_dir: Path, vec_normalize: VecNormalize, exam_every: int):
+    def __init__(self, run_dir: Path, vec_normalize: VecNormalize, exam_every: int,
+                 patience: int = DEFAULT_PATIENCE):
         super().__init__()
         self.run_dir = run_dir
         self.vec_normalize = vec_normalize
         self.exam_every = exam_every
+        self.patience = patience
         self.next_exam_steps = 0
         self.best_score = None
         self.last_exam_steps = None
+        self.exams_without_best = 0
 
     # Remember the best score of earlier sessions of this run, then examine the starting brain
     def _on_training_start(self) -> None:
         self.best_score = best_exam_score(self.run_dir)
         self._examine()
 
-    # Nothing to do per step; exams happen between rollouts
+    # Returning False tells PPO to stop learning
     def _on_step(self) -> bool:
-        return True
+        return not self._out_of_patience()
+
+    # True once too many exams in a row brought no new best score
+    def _out_of_patience(self) -> bool:
+        return self.patience > 0 and self.exams_without_best >= self.patience
 
     # Right after a brain update, examine it if the next multiple of exam_every was passed
     def _on_rollout_start(self) -> None:
@@ -276,9 +292,15 @@ class ExamCallback(BaseCallback):
         message = f"Exam at {steps:,} steps: score {result.score:.0f}, falls {result.falls} of 12."
         if self.best_score is None or result.score > self.best_score:
             self.best_score = result.score
+            self.exams_without_best = 0
             _save_snapshot_once(self.model, self.vec_normalize, best_folder(self.run_dir), steps)
             message += " New best brain saved."
+        else:
+            self.exams_without_best += 1
         print(message, flush=True)
+        if self._out_of_patience():
+            print(NO_IMPROVEMENT_MESSAGE.format(exams=self.exams_without_best,
+                                                best_dir=best_folder(self.run_dir)), flush=True)
 
 
 # Keep Windows awake inside this block, and always restore normal sleep afterwards
@@ -358,7 +380,8 @@ def _resumed_model(run_dir: Path, n_envs: int, use_subprocess: bool,
 # Train a new run or resume one until total_steps in total, saving snapshots and progress
 def train(run_dir: Path, total_steps: int, snapshot_every: int = 1_000_000, n_envs: int = 8,
           ent_coef: float | None = None, resume: bool = False, use_subprocess: bool = True,
-          ppo_overrides: dict | None = None, exam_every: int = DEFAULT_EXAM_EVERY) -> PPO:
+          ppo_overrides: dict | None = None, exam_every: int = DEFAULT_EXAM_EVERY,
+          patience: int = DEFAULT_PATIENCE) -> PPO:
     run_dir = Path(run_dir)
     if resume:
         model, vec_normalize = _resumed_model(run_dir, n_envs, use_subprocess, ent_coef)
@@ -372,7 +395,7 @@ def train(run_dir: Path, total_steps: int, snapshot_every: int = 1_000_000, n_en
         # The stats are logged before the step size changes, so each row shows the rate its update used
         callbacks = [SnapshotCallback(run_dir, vec_normalize, snapshot_every), ProgressCallback(run_dir),
                      TrainingStatsCallback(run_dir), AdaptiveStepSizeCallback(),
-                     ExamCallback(run_dir, vec_normalize, exam_every)]
+                     ExamCallback(run_dir, vec_normalize, exam_every, patience)]
         with keep_awake():
             model.learn(total_timesteps=steps_left, callback=callbacks, reset_num_timesteps=False)
         return model
@@ -390,12 +413,15 @@ def main() -> None:
     parser.add_argument("--envs", type=int, default=8, help="duck worlds running side by side")
     parser.add_argument("--snapshot-every", type=int, default=1_000_000, help="steps between snapshots")
     parser.add_argument("--exam-every", type=int, default=DEFAULT_EXAM_EVERY, help="steps between noise-free exams")
+    parser.add_argument("--patience", type=int, default=DEFAULT_PATIENCE,
+                        help="stop after this many exams without a new best (0: never)")
     args = parser.parse_args()
 
     torch.set_num_threads(MAIN_PROCESS_THREADS)
     try:
         train(args.run, args.steps, snapshot_every=args.snapshot_every, n_envs=args.envs,
-              ent_coef=args.ent_coef, resume=args.resume, exam_every=args.exam_every)
+              ent_coef=args.ent_coef, resume=args.resume, exam_every=args.exam_every,
+              patience=args.patience)
     except FileExistsError as error:
         print(error)  # a plain message, no traceback
         raise SystemExit(1)

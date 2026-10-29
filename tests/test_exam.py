@@ -1,5 +1,7 @@
 from datetime import datetime
 
+import pytest
+
 from duck.exam import (EXAM_ATTEMPTS, ExamResult, append_exam, best_exam_score, take_exam)
 from duck.train import build_vec_env, train
 from tests.test_train import FAST
@@ -54,3 +56,24 @@ def test_resume_keeps_earlier_best(tmp_path):
     best_before = sorted((tmp_path / "best" / "snapshots").iterdir())
     train(tmp_path, total_steps=1024, snapshot_every=512, exam_every=512, resume=True, **FAST)
     assert sorted((tmp_path / "best" / "snapshots").iterdir()) == best_before
+
+
+# An exam that always gives the same score, so no exam after the first is a new best
+@pytest.fixture
+def flat_exam(monkeypatch):
+    import duck.train
+    monkeypatch.setattr(duck.train, "take_exam", lambda model, vec_normalize: ExamResult(10.0, 12, 0.5))
+
+
+# Training stops by itself after `patience` exams in a row without a new best
+def test_training_stops_without_improvement(tmp_path, flat_exam, capsys):
+    model = train(tmp_path, total_steps=8192, snapshot_every=8192, exam_every=512, patience=2, **FAST)
+    assert model.num_timesteps < 8192
+    assert "Stopping early" in capsys.readouterr().out
+    assert list((tmp_path / "best" / "snapshots").glob("snapshot_000000000000.zip"))  # the best brain is kept
+
+
+# Patience 0 means training never stops early
+def test_patience_zero_never_stops(tmp_path, flat_exam):
+    model = train(tmp_path, total_steps=2048, snapshot_every=2048, exam_every=512, patience=0, **FAST)
+    assert model.num_timesteps >= 2048

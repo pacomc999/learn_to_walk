@@ -50,7 +50,7 @@ Continue with more curiosity (more random experimenting):
 
 `.venv/Scripts/python -m duck.train --run runs/duck_v1 --steps 30000000 --resume --ent-coef 0.01`
 
-Training also gives the duck a noise-free exam every 250,000 steps (and at the start and end): the same 12 attempts each time, with the brain's best moves and no random wobble. Each result is added to `exam.csv` in the run folder, and whenever a brain beats the best exam score so far it is saved in the run's `best` folder. That folder works like a run folder, so you can judge or watch the best brain with `runs/duck_v1/best`. Change how often with `--exam-every`.
+Training also gives the duck a noise-free exam every 250,000 steps (and at the start and end): the same 12 attempts each time, with the brain's best moves and no random wobble. Each result is added to `exam.csv` in the run folder, and whenever a brain beats the best exam score so far it is saved in the run's `best` folder. That folder works like a run folder, so you can judge or watch the best brain with `runs/duck_v1/best`. Change how often with `--exam-every`. If 8 exams in a row (2 million steps, about 35 minutes) bring no new best score, training stops by itself, because the duck has stopped improving. The best brain is then waiting in the `best` folder. Change the limit with `--patience`, or turn it off with `--patience 0`.
 
 The step size adapts by itself: after each brain update, if the brain changed more than twice the target amount the learning rate is divided by 1.5, and if it changed less than half the target it is multiplied by 1.5. That keeps every update about the same size as the duck gets more precise. Without it, Duck 1's updates grew to 50 to 100 times the size PPO is designed for and the duck fell apart.
 
