@@ -21,12 +21,17 @@ Duck 1 collapsed after its best at 1.61M. A measurement run showed every update 
 
 ## Training history
 
-No runs yet.
+- `runs/duck_02/from_zero` (2026-10-29 16:55 to 18:01, 0 to 4.0M): Slower start than Duck 1 (23 against 99 at 1.0M), then a jump to 395 at 1.5M and the best exam at 2.0M (557, 6 falls of 12). No collapse: after one dip to 151 at 2.25M it held between 381 and 448 up to 4.0M, where Duck 1 had fallen to 136. Each update changed the brain by about 0.015 (Duck 1: 0.5 to 1.1), the safety limit was hit by 20 to 24% of moves, and the learning rate fell from 0.0003 to about 0.00001
 
 ## Best brain
 
-No brain kept yet.
+![duck_02.gif](duck_02.gif)
+
+- From `runs/duck_02/from_zero/best` at 2,007,040 steps (measured 2026-10-29 18:02)
+- Exam (12 fixed attempts, no wobble): score 557, falls 6 of 12
+- Walking test: 3 of 10 attempts walked
+- At 0.4 m/s: speed 0.48 m/s, 17.3 J per metre, feet in the air 3%, one foot down 33%, both down 64%
 
 ## Notes
 
-(none)
+Walks with alternating steps and about 96% one foot down once it is moving, using 15 to 18 J per metre, about half of Duck 1. Its weak point is the start: with some starting poses (a difference of about one degree per joint) it dives forward and falls within 0.6 s. The step size kept falling all run, so learning slowed down; a higher target change or a different rule could be the next recipe.
