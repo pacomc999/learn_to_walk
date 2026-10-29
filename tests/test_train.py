@@ -1,7 +1,12 @@
 import pytest
 import torch
+from stable_baselines3 import PPO
+from stable_baselines3.common.policies import ActorCriticPolicy
 
-from duck.train import load_latest_snapshot, train
+from duck.mirror import MirroredRunningMeanStd
+from duck.symmetric_policy import SymmetricPolicy
+from duck.train import (DEFAULT_PPO_SETTINGS, NET_ARCH, START_LOG_STD, _save_snapshot_once,
+                        build_vec_env, load_latest_snapshot, train)
 from duck.snapshots import list_snapshots
 from duck.progress import read_progress
 
@@ -68,3 +73,44 @@ def test_corrupt_newest_snapshot_falls_back(tmp_path, capsys):
     assert loaded.num_timesteps == previous.steps
     assert newest.model_path.name in capsys.readouterr().out
     assert list_snapshots(tmp_path)[-1] == previous  # the broken one no longer counts
+
+
+# New runs get the left/right symmetric brain
+def test_new_run_uses_the_symmetric_brain(tmp_path):
+    model = train(tmp_path, total_steps=0, **FAST)
+    assert isinstance(model.policy, SymmetricPolicy)
+
+
+# A symmetric run comes back as a symmetric brain with the same weights and mirrored scaling, and keeps training
+def test_symmetric_run_resumes_with_the_same_brain(tmp_path):
+    trained = train(tmp_path, total_steps=1024, snapshot_every=1024, **FAST)
+    loaded, vec_normalize = load_latest_snapshot(tmp_path, n_envs=2, use_subprocess=False)
+    vec_normalize.close()
+    assert isinstance(loaded.policy, SymmetricPolicy)
+    assert isinstance(vec_normalize.obs_rms, MirroredRunningMeanStd)
+    trained_weights = trained.policy.state_dict()
+    for name, weights in loaded.policy.state_dict().items():
+        assert torch.equal(weights, trained_weights[name]), name
+    resumed = train(tmp_path, total_steps=2048, snapshot_every=1024, resume=True, **FAST)
+    assert resumed.num_timesteps >= 2048
+    assert isinstance(resumed.policy, SymmetricPolicy)
+
+
+# Build an old style run (plain MlpPolicy, plain-class brain) and save it as the step 0 snapshot.
+# It uses build_vec_env, so its statistics are mirrored ones, which is fine for this test
+def save_plain_run(run_dir):
+    vec_normalize = build_vec_env(2, seed=0, use_subprocess=False)
+    settings = {**DEFAULT_PPO_SETTINGS, "n_steps": 256, "batch_size": 64}
+    model = PPO("MlpPolicy", vec_normalize, device="cpu", seed=0, verbose=0,
+                policy_kwargs={"net_arch": NET_ARCH, "log_std_init": START_LOG_STD}, **settings)
+    _save_snapshot_once(model, vec_normalize, run_dir, steps=0)
+    vec_normalize.close()
+
+
+# An old plain snapshot keeps its plain brain when resumed
+def test_plain_snapshot_still_resumes(tmp_path):
+    save_plain_run(tmp_path)
+    model = train(tmp_path, total_steps=1024, snapshot_every=1024, resume=True, **FAST)
+    assert model.num_timesteps >= 1024
+    assert isinstance(model.policy, ActorCriticPolicy)
+    assert not isinstance(model.policy, SymmetricPolicy)

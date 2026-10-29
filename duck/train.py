@@ -1,5 +1,8 @@
 """Teach the duck to walk with PPO, saving snapshots and progress along the way.
 
+New runs use the left/right symmetric brain. Resumed runs keep whatever brain
+their snapshot holds, so older plain runs still continue as they were.
+
 Run from the project root, for example:
     python -m duck.train --run runs/duck_v1 --steps 30000000
 Resume a stopped run, optionally with more curiosity:
@@ -24,8 +27,10 @@ from duck.mirror import MirroredRunningMeanStd
 from duck.progress import append_progress
 from duck.snapshots import (Snapshot, latest_snapshot, list_snapshots, save_snapshot,
                             set_aside_broken_snapshot, snapshot_paths)
+from duck.symmetric_policy import SymmetricPolicy
 
-# Brain shape: the actor (pi) and the critic (vf) each get 2 hidden layers of 256
+# Brain shape, used by new runs with the symmetric brain:
+# the actor (pi) and the critic (vf) each get 2 hidden layers of 256
 NET_ARCH = {"pi": [256, 256], "vf": [256, 256]}
 
 # A new brain starts with calmer random moves: log_std -1 is a spread of about 0.37
@@ -186,7 +191,7 @@ def _new_model(run_dir: Path, n_envs: int, use_subprocess: bool,
     settings = {**DEFAULT_PPO_SETTINGS, **(ppo_overrides or {})}
     if ent_coef is not None:
         settings["ent_coef"] = ent_coef
-    model = PPO("MlpPolicy", vec_normalize, device="cpu", seed=0, verbose=0,
+    model = PPO(SymmetricPolicy, vec_normalize, device="cpu", seed=0, verbose=0,
                 policy_kwargs={"net_arch": NET_ARCH, "log_std_init": START_LOG_STD}, **settings)
     if _save_snapshot_once(model, vec_normalize, run_dir, steps=0):
         print("Untrained snapshot saved at 0 steps.", flush=True)
