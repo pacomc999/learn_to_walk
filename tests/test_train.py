@@ -114,3 +114,27 @@ def test_plain_snapshot_still_resumes(tmp_path):
     assert model.num_timesteps >= 1024
     assert isinstance(model.policy, ActorCriticPolicy)
     assert not isinstance(model.policy, SymmetricPolicy)
+
+
+# The step size shrinks after a too big change, grows after a tiny one, and stays within its limits
+def test_adjusted_learning_rate_follows_the_rule():
+    from duck.train import STEP_SIZE_RULE, adjusted_learning_rate
+    target, factor = STEP_SIZE_RULE["target_change"], STEP_SIZE_RULE["factor"]
+    assert adjusted_learning_rate(3e-4, change=3 * target) == pytest.approx(3e-4 / factor)
+    assert adjusted_learning_rate(3e-4, change=target / 3) == pytest.approx(3e-4 * factor)
+    assert adjusted_learning_rate(3e-4, change=target) == 3e-4  # close enough: unchanged
+    assert adjusted_learning_rate(1e-5, change=1.0) == STEP_SIZE_RULE["min_learning_rate"]
+    assert adjusted_learning_rate(1e-2, change=0.0) == STEP_SIZE_RULE["max_learning_rate"]
+
+
+# Training changes the learning rate, the optimizer uses it, and a resumed run carries on from it
+def test_adapted_learning_rate_is_used_and_resumed(tmp_path):
+    import csv
+    model = train(tmp_path, total_steps=1536, snapshot_every=1536, exam_every=10_000, **FAST)
+    with (tmp_path / "training_stats.csv").open(newline="") as log_file:
+        rates = [float(row["learning_rate"]) for row in csv.DictReader(log_file)]
+    assert rates[0] == DEFAULT_PPO_SETTINGS["learning_rate"]
+    assert len(set(rates)) > 1  # the rate moved between updates
+    saved_rate = model.learning_rate
+    resumed = train(tmp_path, total_steps=1536, resume=True, **FAST)  # nothing left to learn: just loads
+    assert resumed.learning_rate == pytest.approx(saved_rate)

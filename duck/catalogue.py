@@ -33,7 +33,7 @@ from duck.exam import take_exam
 from duck.policy import choose_snapshot_or_exit, load_policy
 from duck.rewards import RewardWeights
 from duck.snapshots import Snapshot, list_snapshots
-from duck.train import DEFAULT_PPO_SETTINGS, NET_ARCH, NEW_RUN_POLICY, START_LOG_STD
+from duck.train import DEFAULT_PPO_SETTINGS, NET_ARCH, NEW_RUN_POLICY, START_LOG_STD, STEP_SIZE_RULE
 from duck.video import add_caption, record_clip
 
 CATALOGUE_DIR = Path("ducks")
@@ -69,6 +69,7 @@ def current_recipe() -> dict:
         "layers": NET_ARCH,
         "start_log_std": START_LOG_STD,
         "ppo": DEFAULT_PPO_SETTINGS,
+        "step_size_rule": STEP_SIZE_RULE,
         "reward": asdict(RewardWeights()),
         "target_speed_range": list(TARGET_SPEED_RANGE),
         "attempt_seconds": MAX_EPISODE_SECONDS,
@@ -223,8 +224,19 @@ def _recipe_lines(recipe: dict) -> list[str]:
         f"energy {reward['energy']} per joule, sideways {reward['sideways']} per metre",
         f"- Target speed: random from {low} to {high} m/s per attempt; attempts last {recipe['attempt_seconds']:.0f} s",
         f"- PPO: " + ", ".join(f"{key} {value}" for key, value in ppo.items()),
+        _step_size_line(recipe),
         f"- Code version: {recipe['code_version']}",
     ]
+
+
+# How the learning rate behaves: fixed (older ducks) or adapted after every update
+def _step_size_line(recipe: dict) -> str:
+    rule = recipe.get("step_size_rule")
+    if rule is None:
+        return "- Step size: fixed at the PPO learning rate for the whole run"
+    return (f"- Step size: adaptive, aiming for a change of {rule['target_change']} per update "
+            f"(divided or multiplied by {rule['factor']}, kept between {rule['min_learning_rate']} "
+            f"and {rule['max_learning_rate']}); the PPO learning rate is only the starting value")
 
 
 # The card's lines about the kept brain

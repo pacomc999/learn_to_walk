@@ -16,6 +16,7 @@ The best plain brain (night run 1, 4M steps: exam 905, no falls) hopped with the
 - Reward per step: forward 3.0 per m/s up to the target speed, alive 0.2, energy 1.5 per joule, sideways 0.5 per metre
 - Target speed: random from 0.2 to 0.7 m/s per attempt; attempts last 20 s
 - PPO: n_steps 1024, batch_size 256, n_epochs 10, learning_rate 0.0003, gamma 0.99, gae_lambda 0.95, clip_range 0.2
+- Step size: fixed at the PPO learning rate for the whole run
 - Code version: 43acb18
 
 ## Training history

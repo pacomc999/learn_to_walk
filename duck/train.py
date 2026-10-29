@@ -53,6 +53,17 @@ DEFAULT_PPO_SETTINGS = {
     "clip_range": 0.2,
 }
 
+# The adaptive step size (Rudin and others 2021, the legged_gym / rsl_rl defaults).
+# After each brain update: if the brain changed more than twice the target change
+# (approx_kl), the learning rate is divided by the factor; if less than half the target,
+# multiplied by it. The learning rate stays between the two limits
+STEP_SIZE_RULE = {
+    "target_change": 0.01,
+    "factor": 1.5,
+    "min_learning_rate": 1e-5,
+    "max_learning_rate": 1e-2,
+}
+
 # Steps between noise-free exams (each takes about 15 seconds)
 DEFAULT_EXAM_EVERY = 250_000
 
@@ -170,6 +181,31 @@ class ProgressCallback(BaseCallback):
         mean_reward = float(np.mean([episode["r"] for episode in episodes]))
         mean_distance = float(np.mean([episode["forward_distance"] for episode in episodes]))
         append_progress(self.run_dir, self.num_timesteps, mean_reward, mean_distance, datetime.now())
+
+
+# The learning rate for the next update, given how much the brain changed in the last one
+def adjusted_learning_rate(learning_rate: float, change: float, rule: dict = STEP_SIZE_RULE) -> float:
+    if change > 2 * rule["target_change"]:
+        learning_rate /= rule["factor"]  # the brain moved too far: smaller steps
+    elif change < rule["target_change"] / 2:
+        learning_rate *= rule["factor"]  # the brain barely moved: bigger steps
+    return min(max(learning_rate, rule["min_learning_rate"]), rule["max_learning_rate"])
+
+
+# Adapts the learning rate after every brain update so each update changes the brain by about
+# the target amount. The new value is stored on the model, so snapshots keep it when resumed
+class AdaptiveStepSizeCallback(BaseCallback):
+    # Nothing to do per step
+    def _on_step(self) -> bool:
+        return True
+
+    # Right after an update, its change size is in the logger; set the learning rate for the next one
+    def _on_rollout_start(self) -> None:
+        change = self.model.logger.name_to_value.get("train/approx_kl")
+        if change is None:
+            return  # no update yet
+        self.model.learning_rate = adjusted_learning_rate(float(self.model.lr_schedule(1.0)), float(change))
+        self.model._setup_lr_schedule()
 
 
 # Records PPO's own numbers (step size, judge quality, wobble) after each brain update.
@@ -333,8 +369,10 @@ def train(run_dir: Path, total_steps: int, snapshot_every: int = 1_000_000, n_en
         steps_left = total_steps - model.num_timesteps
         if steps_left <= 0:
             return model  # nothing left to learn (for example total_steps=0)
+        # The stats are logged before the step size changes, so each row shows the rate its update used
         callbacks = [SnapshotCallback(run_dir, vec_normalize, snapshot_every), ProgressCallback(run_dir),
-                     TrainingStatsCallback(run_dir), ExamCallback(run_dir, vec_normalize, exam_every)]
+                     TrainingStatsCallback(run_dir), AdaptiveStepSizeCallback(),
+                     ExamCallback(run_dir, vec_normalize, exam_every)]
         with keep_awake():
             model.learn(total_timesteps=steps_left, callback=callbacks, reset_num_timesteps=False)
         return model

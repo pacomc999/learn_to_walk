@@ -52,6 +52,8 @@ Continue with more curiosity (more random experimenting):
 
 Training also gives the duck a noise-free exam every 250,000 steps (and at the start and end): the same 12 attempts each time, with the brain's best moves and no random wobble. Each result is added to `exam.csv` in the run folder, and whenever a brain beats the best exam score so far it is saved in the run's `best` folder. That folder works like a run folder, so you can judge or watch the best brain with `runs/duck_v1/best`. Change how often with `--exam-every`.
 
+The step size adapts by itself: after each brain update, if the brain changed more than twice the target amount the learning rate is divided by 1.5, and if it changed less than half the target it is multiplied by 1.5. That keeps every update about the same size as the duck gets more precise. Without it, Duck 1's updates grew to 50 to 100 times the size PPO is designed for and the duck fell apart.
+
 PPO's own numbers after each brain update (how far the brain moved, how often the safety limit kicked in, how well the judge predicts, the wobble and the step size) go to `training_stats.csv`.
 
 Check progress (draws a chart in the run folder, prints the latest average distance per attempt, and says if training has stalled):
