@@ -38,6 +38,7 @@ Position motors with limited force. Wings are fixed to the body.
 - Sideways: -0.5 per metre of drift from the straight line
 - Fall: torso height below `MIN_TORSO_HEIGHT`, or `up_z` below 0.64 (about 50 degrees of tilt)
 - An attempt also ends after 20 simulated seconds
+- Start: the 'stand' keyframe, each joint nudged by up to `START_NOISE` (0.02 rad), then (from Duck 2.1) a stride stance: a coin flip picks the leading leg and the hip swings move `START_STRIDE` (2 x `START_NOISE`) apart each way. Reason: from a near mirror image pose the symmetric brain sends mirror image commands and dives forward (Duck 2 deterministic: 34 of 60 early falls); twice the nudge means the nudge can never close the gap
 - Walking means: 8 of 10 attempts of 20 s, average speed at least 0.2 m/s, within 0.5 m of the line
 
 ## Snapshots

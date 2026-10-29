@@ -122,3 +122,22 @@ def test_fixed_target_speed():
         observation, _ = env.reset(seed=seed)
         assert env.target_speed == 0.4
         assert observation[-1] == pytest.approx(0.4)
+
+# The hip swing gap between the legs at the start, minus the gap in the standing pose
+def _start_hip_gap(env):
+    left = env.model.joint("left_hip_swing").qposadr[0]
+    right = env.model.joint("right_hip_swing").qposadr[0]
+    stand = env.model.key("stand").qpos
+    return (env.data.qpos[left] - stand[left]) - (env.data.qpos[right] - stand[right])
+
+def test_stride_start_never_leaves_the_hips_level():
+    env = DuckWalkEnv()
+    gaps = []
+    for seed in range(200):
+        env.reset(seed=seed)
+        gaps.append(_start_hip_gap(env))
+    gaps = np.array(gaps)
+    # The stride is bigger than the random nudge can undo, so a gap always remains
+    assert np.abs(gaps).min() >= 2 * duck_env_module.START_NOISE - 1e-9
+    # A coin flip picks the leading leg, so both legs lead sometimes
+    assert (gaps > 0).sum() > 50 and (gaps < 0).sum() > 50

@@ -27,7 +27,7 @@ from stable_baselines3 import PPO
 from stable_baselines3.common.vec_env import DummyVecEnv, VecNormalize
 
 from duck.duck_env import (EVALUATION_TARGET_SPEED, FRAME_SKIP, MAX_EPISODE_SECONDS, START_NOISE,
-                           TARGET_SPEED_RANGE, DuckWalkEnv)
+                           START_STRIDE, TARGET_SPEED_RANGE, DuckWalkEnv)
 from duck.evaluate import evaluate_snapshot
 from duck.exam import take_exam
 from duck.policy import choose_snapshot_or_exit, load_policy
@@ -75,6 +75,7 @@ def current_recipe() -> dict:
         "attempt_seconds": MAX_EPISODE_SECONDS,
         "physics_steps_per_action": FRAME_SKIP,
         "start_noise": START_NOISE,
+        "start_stride": START_STRIDE,
         "code_version": _code_version(),
     }
 
@@ -223,10 +224,20 @@ def _recipe_lines(recipe: dict) -> list[str]:
         f"- Reward per step: forward {reward['forward']} per m/s up to the target speed, alive {reward['alive']}, "
         f"energy {reward['energy']} per joule, sideways {reward['sideways']} per metre",
         f"- Target speed: random from {low} to {high} m/s per attempt; attempts last {recipe['attempt_seconds']:.0f} s",
+        _start_line(recipe),
         f"- PPO: " + ", ".join(f"{key} {value}" for key, value in ppo.items()),
         _step_size_line(recipe),
         f"- Code version: {recipe['code_version']}",
     ]
+
+
+# How each attempt starts: the random nudge, and the stride stance if the recipe has one
+def _start_line(recipe: dict) -> str:
+    nudge = f"- Start: standing pose, each joint nudged randomly by up to {recipe['start_noise']} rad"
+    stride = recipe.get("start_stride")
+    if stride is None:
+        return nudge + ", no stride stance"
+    return nudge + f", then a stride stance: a coin flip picks the leading leg, hips {stride} rad apart each way"
 
 
 # How the learning rate behaves: fixed (older ducks) or adapted after every update

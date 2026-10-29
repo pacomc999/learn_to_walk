@@ -25,6 +25,11 @@ FREE_JOINT_QVEL_SIZE = 6
 # How far each joint angle may start away from the standing pose, in radians
 START_NOISE = 0.02
 
+# Stride stance start (from Duck 2.1): one hip starts swung forward and the other back by
+# this much, so the symmetric brain always has a leading leg. Twice the random nudge,
+# so the nudge can narrow the gap between the hips but never close it
+START_STRIDE = 2 * START_NOISE
+
 # Each training attempt asks for a random speed in this range, in metres per second
 TARGET_SPEED_RANGE = (0.2, 0.7)
 
@@ -81,17 +86,26 @@ class DuckWalkEnv(gymnasium.Env):
         return float(self.np_random.uniform(*TARGET_SPEED_RANGE))
 
     # Put the duck back in its standing pose with a tiny random wobble in the joints,
-    # and choose the speed it should walk at this time
+    # one leg slightly ahead, and choose the speed it should walk at this time
     def reset(self, seed: int | None = None, options: dict | None = None):
         super().reset(seed=seed)
         self.target_speed = self._pick_target_speed()
         mujoco.mj_resetDataKeyframe(self.model, self.data, self.model.key("stand").id)
         joint_noise = self.np_random.uniform(-START_NOISE, START_NOISE, self.motor_count)
         self.data.qpos[FREE_JOINT_QPOS_SIZE:] += joint_noise
+        self._take_stride_stance()
         mujoco.mj_forward(self.model, self.data)
         self.step_count = 0
         self.start_x = float(self.data.qpos[0])  # where this attempt began, for its distance
         return self._observation(), self._info({})
+
+    # A coin flip picks the leading leg; its hip swings one way and the other hip the opposite way
+    def _take_stride_stance(self) -> None:
+        lead = 1.0 if self.np_random.random() < 0.5 else -1.0
+        left = self.model.joint("left_hip_swing").qposadr[0]
+        right = self.model.joint("right_hip_swing").qposadr[0]
+        self.data.qpos[left] += lead * START_STRIDE
+        self.data.qpos[right] -= lead * START_STRIDE
 
     # Turn actions in [-1, 1] into motor targets inside each motor's range
     def _scale_action(self, action: np.ndarray) -> np.ndarray:
