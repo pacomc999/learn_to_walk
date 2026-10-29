@@ -1,0 +1,16 @@
+{
+  "from_run": "runs/pilot_symmetric",
+  "steps": 1605632,
+  "measured": "2026-10-29 16:36",
+  "exam_score": 484.5,
+  "exam_falls": 7,
+  "walking_test": "8 of 10",
+  "gait_at_judging_speed": {
+    "feet_in_air": 0.076,
+    "one_foot_down": 0.881,
+    "both_feet_down": 0.043,
+    "joules_per_metre": 34.6,
+    "speed": 0.45,
+    "falls": 1
+  }
+}

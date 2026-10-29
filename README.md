@@ -80,6 +80,22 @@ The video is saved as `evolution.mp4` inside the run folder.
 
 To judge or watch an older snapshot, add `--snapshot` and its step count, for example `--snapshot 1007616`.
 
+## The duck catalogue
+
+Every training recipe is a duck, with a card in `ducks/` (see `ducks/README.md` for the list). A card says what changed from the previous duck and why, the exact rules and settings, every training run, and how its best brain does, with a GIF that has the duck's name on it. A new duck starts only when the recipe changes, not when training goes on longer.
+
+Start a new duck with the current recipe, then fill in its story in `ducks/duck_02/duck.json`:
+
+`.venv/Scripts/python -m duck.catalogue new ducks/duck_02 --name "Duck 2"`
+
+Measure a snapshot and keep it as the duck's best brain (only if its exam score beats the kept one):
+
+`.venv/Scripts/python -m duck.catalogue keep ducks/duck_02 runs/duck_02/main`
+
+Rewrite the cards after editing a `duck.json`:
+
+`.venv/Scripts/python -m duck.catalogue cards`
+
 ## Try a short pilot run first
 
 Before the long run, do a short test of about 3 million steps (around 30 minutes) in its own folder:
