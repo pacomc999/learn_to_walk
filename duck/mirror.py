@@ -47,11 +47,24 @@ def build_observation_table() -> tuple[list[int], list[int]]:
 OBSERVATION_ORDER, OBSERVATION_SIGNS = build_observation_table()
 
 
+# Torch copies of the tables, made once and kept per (order, signs, device, dtype)
+_TORCH_TABLES = {}
+
+
+# The index and sign tensors for a table on this device and dtype, built only the first time
+def torch_table(order: list[int], signs: list[int], device: torch.device, dtype: torch.dtype):
+    key = (tuple(order), tuple(signs), device, dtype)
+    if key not in _TORCH_TABLES:
+        index = torch.as_tensor(order, device=device)
+        sign_tensor = torch.as_tensor(signs, dtype=dtype, device=device)
+        _TORCH_TABLES[key] = (index, sign_tensor)
+    return _TORCH_TABLES[key]
+
+
 # Reorder the last axis by the order list and multiply by the signs, for numpy or torch
 def apply_table(values, order: list[int], signs: list[int]):
     if isinstance(values, torch.Tensor):
-        index = torch.as_tensor(order, device=values.device)
-        sign_tensor = torch.as_tensor(signs, dtype=values.dtype, device=values.device)
+        index, sign_tensor = torch_table(order, signs, values.device, values.dtype)
         return values[..., index] * sign_tensor
     values = np.asarray(values)
     return values[..., order] * np.asarray(signs, dtype=values.dtype)

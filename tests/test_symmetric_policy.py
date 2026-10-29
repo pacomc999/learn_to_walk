@@ -6,7 +6,7 @@ from torch import nn
 
 from duck.duck_env import DuckWalkEnv
 from duck.mirror import mirror_action, mirror_observation
-from duck.symmetric_policy import SymmetricPolicy
+from duck.symmetric_policy import SymmetricPolicy, both_views, place_on_left
 
 # How closely mirrored answers must agree
 TOLERANCE = 1e-5
@@ -121,3 +121,19 @@ def test_brain_cells_match_the_commands(shaken_policy):
     for layer in (layer1, layer2):
         assert layer.shape == (16, 256)
         assert layer.abs().max() <= 1.0
+
+
+# The one pass extractor matches a plain two pass computation with the same layers
+def test_one_pass_matches_two_pass_reference(shaken_policy):
+    extractor = shaken_policy.mlp_extractor
+    situations = random_situations()
+    real_view, mirrored_view = both_views(situations)
+    with torch.no_grad():
+        left = place_on_left(extractor.actor_head(extractor.actor_trunk(real_view)))
+        right = place_on_left(extractor.actor_head(extractor.actor_trunk(mirrored_view)))
+        expected_actions = left + mirror_action(right)
+        expected_value = (extractor.critic_head(extractor.critic_trunk(real_view))
+                          + extractor.critic_head(extractor.critic_trunk(mirrored_view)))
+        actions, value = extractor(situations)
+    assert torch.allclose(actions, expected_actions, atol=TOLERANCE)
+    assert torch.allclose(value, expected_value, atol=TOLERANCE)

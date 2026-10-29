@@ -120,3 +120,13 @@ def test_new_duck_worlds_use_mirrored_scaling():
         assert isinstance(venv.obs_rms, MirroredRunningMeanStd)
     finally:
         venv.close()
+
+
+# A float64 torch batch keeps its dtype and shape, and mirroring twice gives it back
+def test_mirror_observation_keeps_torch_dtype_and_round_trips():
+    torch.manual_seed(0)
+    batch = torch.randn(2, 3, 39, dtype=torch.float64)
+    mirrored = mirror_observation(batch)
+    assert mirrored.dtype == torch.float64
+    assert mirrored.shape == batch.shape
+    assert torch.equal(mirror_observation(mirrored), batch)

@@ -55,6 +55,12 @@ def both_views(features: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
     return torch.cat([features, mirrored], dim=-1), torch.cat([mirrored, features], dim=-1)
 
 
+# Both views stacked on the batch axis: the real views first, then the mirrored views
+def stack_views(features: torch.Tensor) -> torch.Tensor:
+    real_view, mirrored_view = both_views(features)
+    return torch.cat([real_view, mirrored_view], dim=0)
+
+
 # Place one pass of F (5 side outputs then 2 neck outputs) into 12 left side motor slots
 def place_on_left(outputs: torch.Tensor) -> torch.Tensor:
     commands = outputs.new_zeros((*outputs.shape[:-1], MOTOR_COUNT))
@@ -76,9 +82,10 @@ class MirrorExtractor(nn.Module):
         self.latent_dim_pi = MOTOR_COUNT
         self.latent_dim_vf = 1
 
-    # Both answers at once, as the parent policy expects
+    # Both answers at once, as the parent policy expects; the views are built once and shared
     def forward(self, features: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
-        return self.forward_actor(features), self.forward_critic(features)
+        views = stack_views(features)
+        return self.actions_from_views(views)[0], self.score_from_views(views)
 
     # The 12 mean motor commands
     def forward_actor(self, features: torch.Tensor) -> torch.Tensor:
@@ -86,18 +93,25 @@ class MirrorExtractor(nn.Module):
 
     # The 12 commands plus the two hidden layers of the pass on the real view
     def actor_cells(self, features: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
-        real_view, mirrored_view = both_views(features)
-        layer1 = self.actor_trunk[1](self.actor_trunk[0](real_view))
-        layer2 = self.actor_trunk[3](self.actor_trunk[2](layer1))
-        left_commands = place_on_left(self.actor_head(layer2))
-        right_commands = place_on_left(self.actor_head(self.actor_trunk(mirrored_view)))
-        return left_commands + mirror_action(right_commands), layer1, layer2
+        return self.actions_from_views(stack_views(features))
 
     # The judge's score: the sum of its scores for both views
     def forward_critic(self, features: torch.Tensor) -> torch.Tensor:
-        real_view, mirrored_view = both_views(features)
-        real_score = self.critic_head(self.critic_trunk(real_view))
-        mirrored_score = self.critic_head(self.critic_trunk(mirrored_view))
+        return self.score_from_views(stack_views(features))
+
+    # Run F once on both stacked views, then combine the two halves into 12 commands
+    def actions_from_views(self, views: torch.Tensor):
+        layer1 = self.actor_trunk[1](self.actor_trunk[0](views))
+        layer2 = self.actor_trunk[3](self.actor_trunk[2](layer1))
+        real_outputs, mirrored_outputs = self.actor_head(layer2).chunk(2, dim=0)
+        left_commands = place_on_left(real_outputs)
+        right_commands = place_on_left(mirrored_outputs)
+        real_count = views.shape[0] // 2
+        return left_commands + mirror_action(right_commands), layer1[:real_count], layer2[:real_count]
+
+    # Run G once on both stacked views and add the two scores
+    def score_from_views(self, views: torch.Tensor) -> torch.Tensor:
+        real_score, mirrored_score = self.critic_head(self.critic_trunk(views)).chunk(2, dim=0)
         return real_score + mirrored_score
 
 
