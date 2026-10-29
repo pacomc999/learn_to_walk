@@ -50,6 +50,10 @@ Continue with more curiosity (more random experimenting):
 
 `.venv/Scripts/python -m duck.train --run runs/duck_v1 --steps 30000000 --resume --ent-coef 0.01`
 
+Training also gives the duck a noise-free exam every 250,000 steps (and at the start and end): the same 12 attempts each time, with the brain's best moves and no random wobble. Each result is added to `exam.csv` in the run folder, and whenever a brain beats the best exam score so far it is saved in the run's `best` folder. That folder works like a run folder, so you can judge or watch the best brain with `runs/duck_v1/best`. Change how often with `--exam-every`.
+
+PPO's own numbers after each brain update (how far the brain moved, how often the safety limit kicked in, how well the judge predicts, the wobble and the step size) go to `training_stats.csv`.
+
 Check progress (draws a chart in the run folder, prints the latest average distance per attempt, and says if training has stalled):
 
 `.venv/Scripts/python -m duck.progress runs/duck_v1`

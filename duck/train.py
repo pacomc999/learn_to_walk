@@ -23,11 +23,13 @@ from stable_baselines3.common.monitor import Monitor
 from stable_baselines3.common.vec_env import DummyVecEnv, SubprocVecEnv, VecEnv, VecNormalize
 
 from duck.duck_env import OBSERVATION_SIZE, DuckWalkEnv
+from duck.exam import append_exam, best_exam_score, best_folder, take_exam
 from duck.mirror import MirroredRunningMeanStd
 from duck.progress import append_progress
 from duck.snapshots import (Snapshot, latest_snapshot, list_snapshots, save_snapshot,
                             set_aside_broken_snapshot, snapshot_paths)
 from duck.symmetric_policy import SymmetricPolicy
+from duck.training_stats import append_stats, latest_update_stats
 
 # Brain shape, used by new runs with the symmetric brain:
 # the actor (pi) and the critic (vf) each get 2 hidden layers of 256
@@ -47,6 +49,9 @@ DEFAULT_PPO_SETTINGS = {
     "gae_lambda": 0.95,
     "clip_range": 0.2,
 }
+
+# Steps between noise-free exams (each takes about 15 seconds)
+DEFAULT_EXAM_EVERY = 250_000
 
 # Threads for the brain update in the main process, leaving cores for the env workers
 MAIN_PROCESS_THREADS = 2
@@ -164,6 +169,79 @@ class ProgressCallback(BaseCallback):
         append_progress(self.run_dir, self.num_timesteps, mean_reward, mean_distance, datetime.now())
 
 
+# Records PPO's own numbers (step size, judge quality, wobble) after each brain update.
+# A rollout starts right after an update, so its numbers are still in the logger here
+class TrainingStatsCallback(BaseCallback):
+    def __init__(self, run_dir: Path):
+        super().__init__()
+        self.run_dir = run_dir
+
+    # Nothing to do per step
+    def _on_step(self) -> bool:
+        return True
+
+    # Log the numbers of the update that just finished, if there was one
+    def _on_rollout_start(self) -> None:
+        self._log_latest_update()
+
+    # The last update of a session has no rollout after it, so it is logged here
+    def _on_training_end(self) -> None:
+        self._log_latest_update()
+
+    # Write the logger's numbers of the latest update to the stats log
+    def _log_latest_update(self) -> None:
+        stats = latest_update_stats(self.model.logger.name_to_value)
+        if stats is not None:
+            append_stats(self.run_dir, self.num_timesteps, stats, datetime.now())
+
+
+# Gives the brain the noise-free exam at the start, after every exam_every steps and at the end.
+# Each result goes to the exam log, and a brain that beats the best score so far is kept in <run>/best/
+class ExamCallback(BaseCallback):
+    def __init__(self, run_dir: Path, vec_normalize: VecNormalize, exam_every: int):
+        super().__init__()
+        self.run_dir = run_dir
+        self.vec_normalize = vec_normalize
+        self.exam_every = exam_every
+        self.next_exam_steps = 0
+        self.best_score = None
+        self.last_exam_steps = None
+
+    # Remember the best score of earlier sessions of this run, then examine the starting brain
+    def _on_training_start(self) -> None:
+        self.best_score = best_exam_score(self.run_dir)
+        self._examine()
+
+    # Nothing to do per step; exams happen between rollouts
+    def _on_step(self) -> bool:
+        return True
+
+    # Right after a brain update, examine it if the next multiple of exam_every was passed
+    def _on_rollout_start(self) -> None:
+        if self.num_timesteps >= self.next_exam_steps:
+            self._examine()
+
+    # The final exam when learning stops
+    def _on_training_end(self) -> None:
+        self._examine()
+
+    # Take the exam once per step count, log it, and keep the brain if it is the best so far
+    def _examine(self) -> None:
+        steps = self.num_timesteps
+        self.next_exam_steps = (steps // self.exam_every + 1) * self.exam_every
+        if steps == self.last_exam_steps:
+            return
+        self.last_exam_steps = steps
+        result = take_exam(self.model, self.vec_normalize)
+        append_exam(self.run_dir, steps, result, datetime.now())
+        message = f"Exam at {steps:,} steps: score {result.score:.0f}, falls {result.falls} of 12."
+        if self.best_score is None or result.score > self.best_score:
+            self.best_score = result.score
+            _save_snapshot_once(self.model, self.vec_normalize, best_folder(self.run_dir), steps)
+            message += " New best brain saved."
+        print(message, flush=True)
+
+
 # Keep Windows awake inside this block, and always restore normal sleep afterwards
 @contextmanager
 def keep_awake():
@@ -241,7 +319,7 @@ def _resumed_model(run_dir: Path, n_envs: int, use_subprocess: bool,
 # Train a new run or resume one until total_steps in total, saving snapshots and progress
 def train(run_dir: Path, total_steps: int, snapshot_every: int = 1_000_000, n_envs: int = 8,
           ent_coef: float | None = None, resume: bool = False, use_subprocess: bool = True,
-          ppo_overrides: dict | None = None) -> PPO:
+          ppo_overrides: dict | None = None, exam_every: int = DEFAULT_EXAM_EVERY) -> PPO:
     run_dir = Path(run_dir)
     if resume:
         model, vec_normalize = _resumed_model(run_dir, n_envs, use_subprocess, ent_coef)
@@ -252,7 +330,8 @@ def train(run_dir: Path, total_steps: int, snapshot_every: int = 1_000_000, n_en
         steps_left = total_steps - model.num_timesteps
         if steps_left <= 0:
             return model  # nothing left to learn (for example total_steps=0)
-        callbacks = [SnapshotCallback(run_dir, vec_normalize, snapshot_every), ProgressCallback(run_dir)]
+        callbacks = [SnapshotCallback(run_dir, vec_normalize, snapshot_every), ProgressCallback(run_dir),
+                     TrainingStatsCallback(run_dir), ExamCallback(run_dir, vec_normalize, exam_every)]
         with keep_awake():
             model.learn(total_timesteps=steps_left, callback=callbacks, reset_num_timesteps=False)
         return model
@@ -269,12 +348,13 @@ def main() -> None:
     parser.add_argument("--ent-coef", type=float, default=None, help="curiosity, for example 0.01")
     parser.add_argument("--envs", type=int, default=8, help="duck worlds running side by side")
     parser.add_argument("--snapshot-every", type=int, default=1_000_000, help="steps between snapshots")
+    parser.add_argument("--exam-every", type=int, default=DEFAULT_EXAM_EVERY, help="steps between noise-free exams")
     args = parser.parse_args()
 
     torch.set_num_threads(MAIN_PROCESS_THREADS)
     try:
         train(args.run, args.steps, snapshot_every=args.snapshot_every, n_envs=args.envs,
-              ent_coef=args.ent_coef, resume=args.resume)
+              ent_coef=args.ent_coef, resume=args.resume, exam_every=args.exam_every)
     except FileExistsError as error:
         print(error)  # a plain message, no traceback
         raise SystemExit(1)
