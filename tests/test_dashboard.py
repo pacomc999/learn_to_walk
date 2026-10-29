@@ -8,7 +8,7 @@ import imageio.v3 as iio
 import numpy as np
 import pytest
 
-from duck.dashboard import (CLIP_NAME, frame_reading, lean_degrees, make_server,
+from duck.dashboard import (CLIP_NAME, brain_to_film, frame_reading, lean_degrees, make_server,
                             recent_steps_per_second, run_status, save_mp4)
 from duck.policy import BrainReading
 from duck.progress import ProgressRow, append_progress
@@ -104,3 +104,25 @@ def test_server_routes(tmp_path):
     finally:
         server.shutdown()
         server.server_close()
+
+
+# Empty brain and statistics files, enough for the snapshot list to count a snapshot
+def _fake_snapshot(folder, steps):
+    snapshots = folder / "snapshots"
+    snapshots.mkdir(parents=True, exist_ok=True)
+    (snapshots / f"snapshot_{steps:012d}.zip").touch()
+    (snapshots / f"snapshot_{steps:012d}_norm.pkl").touch()
+
+
+# Without exams yet, the film shows the newest snapshot
+def test_films_newest_snapshot_without_a_best(tmp_path):
+    _fake_snapshot(tmp_path, 0)
+    _fake_snapshot(tmp_path, 1_000_000)
+    assert brain_to_film(tmp_path).steps == 1_000_000
+
+
+# Once the exams have kept a best brain, the film shows it, even if a newer snapshot exists
+def test_films_the_best_brain(tmp_path):
+    _fake_snapshot(tmp_path, 2_000_000)
+    _fake_snapshot(tmp_path / "best", 1_750_000)
+    assert brain_to_film(tmp_path).steps == 1_750_000

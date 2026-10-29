@@ -3,7 +3,8 @@
 Run it from the project root in a second terminal while training runs, for example:
     python -m duck.dashboard runs/duck_v1 --steps 30000000
 It opens a page that refreshes itself: score and distance charts, how far the run is,
-and a film of the newest snapshot walking with its brain activity shown frame by frame.
+and a film of the best brain so far (the newest snapshot before the first exam)
+walking, with its brain activity shown frame by frame.
 Press Ctrl+C to stop it; training is not affected.
 """
 import argparse
@@ -18,6 +19,7 @@ from typing import Callable
 import imageio
 import numpy as np
 
+from duck.exam import best_folder
 from duck.policy import BrainReading, load_brain, load_policy
 from duck.progress import ProgressRow, minutes_since_improvement, read_progress
 from duck.snapshots import Snapshot, latest_snapshot, replace_with_retry
@@ -169,12 +171,18 @@ def make_snapshot_clip(run_dir: Path, snapshot: Snapshot) -> None:
     (run_dir / CLIP_STEPS_NAME).write_text(str(snapshot.steps))
 
 
-# Make a new film if there is a snapshot newer than the one the film shows
+# The brain to film: the best one the exams have kept, or the newest snapshot if there is none yet.
+# Regular snapshots come only once a million steps, so the newest one can be far behind the best
+def brain_to_film(run_dir: Path) -> Snapshot | None:
+    return latest_snapshot(best_folder(run_dir)) or latest_snapshot(run_dir)
+
+
+# Make a new film if the brain to film is not the one the film shows
 def refresh_clip(run_dir: Path) -> None:
-    snapshot = latest_snapshot(run_dir)
+    snapshot = brain_to_film(run_dir)
     if snapshot is None or snapshot.steps == _clip_steps(run_dir):
         return
-    print(f"Filming the snapshot from {snapshot.steps:,} steps for the dashboard", flush=True)
+    print(f"Filming the brain from {snapshot.steps:,} steps for the dashboard", flush=True)
     try:
         make_snapshot_clip(run_dir, snapshot)
     except Exception as error:  # a snapshot being written right now can fail to load
