@@ -6,6 +6,7 @@ axis holds the 39 observation numbers or the 12 motor numbers.
 """
 import numpy as np
 import torch
+from stable_baselines3.common.running_mean_std import RunningMeanStd
 
 # Motor order: neck_base, neck_top, left_hip_swing, left_hip_side, left_knee, left_ankle,
 # left_toes, right_hip_swing, right_hip_side, right_knee, right_ankle, right_toes.
@@ -64,3 +65,11 @@ def mirror_observation(observation):
 # The action the mirror image duck would take
 def mirror_action(action):
     return apply_table(action, ACTION_ORDER, ACTION_SIGNS)
+
+
+# Sense scaling that learns from every observation and its mirror image together,
+# so a sense and its mirror partner always get the same average and spread
+class MirroredRunningMeanStd(RunningMeanStd):
+    def update(self, batch):
+        batch = np.asarray(batch)
+        super().update(np.concatenate([batch, mirror_observation(batch)]))

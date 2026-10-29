@@ -19,7 +19,8 @@ from stable_baselines3.common.callbacks import BaseCallback
 from stable_baselines3.common.monitor import Monitor
 from stable_baselines3.common.vec_env import DummyVecEnv, SubprocVecEnv, VecEnv, VecNormalize
 
-from duck.duck_env import DuckWalkEnv
+from duck.duck_env import OBSERVATION_SIZE, DuckWalkEnv
+from duck.mirror import MirroredRunningMeanStd
 from duck.progress import append_progress
 from duck.snapshots import (Snapshot, latest_snapshot, list_snapshots, save_snapshot,
                             set_aside_broken_snapshot, snapshot_paths)
@@ -75,7 +76,10 @@ def _build_raw_vec_env(n_envs: int, seed: int, use_subprocess: bool) -> VecEnv:
 # The duck worlds wrapped so observations and rewards are scaled to friendly sizes
 def build_vec_env(n_envs: int, seed: int, use_subprocess: bool = True) -> VecNormalize:
     venv = _build_raw_vec_env(n_envs, seed, use_subprocess)
-    return VecNormalize(venv, norm_obs=True, norm_reward=True)
+    vec_normalize = VecNormalize(venv, norm_obs=True, norm_reward=True)
+    # Scale mirrored senses together so left and right keep the same scaling
+    vec_normalize.obs_rms = MirroredRunningMeanStd(shape=(OBSERVATION_SIZE,))
+    return vec_normalize
 
 
 # Save a snapshot unless one with this step count is already on disk.

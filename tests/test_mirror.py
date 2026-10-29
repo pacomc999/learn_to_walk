@@ -4,7 +4,7 @@ import torch
 
 from duck.duck_env import FREE_JOINT_QPOS_SIZE, FREE_JOINT_QVEL_SIZE, DuckWalkEnv
 from duck.mirror import (
-    ACTION_ORDER, ACTION_SIGNS, mirror_action, mirror_observation,
+    ACTION_ORDER, ACTION_SIGNS, MirroredRunningMeanStd, mirror_action, mirror_observation,
 )
 
 # How many control steps the physics comparison runs
@@ -94,3 +94,29 @@ def test_physics_guard_catches_a_wrong_sign():
     wrong_signs[3] = 1.0  # left hip side sign not flipped
     wrong_signs[8] = 1.0  # right hip side sign not flipped
     assert largest_mismatch(wrong_signs) > TOLERANCE
+
+
+# Scaling statistics fed by mirrored batches must treat a sense and its mirror image alike
+def test_mirrored_scaling_keeps_symmetry():
+    rng = np.random.default_rng(0)
+    scaling = MirroredRunningMeanStd(shape=(39,))
+    for _ in range(3):
+        batch = rng.normal(size=(8, 39))
+        batch[:, 1] += 0.5
+        scaling.update(batch)
+    x = rng.normal(size=39)
+    spread = np.sqrt(scaling.var + 1e-8)
+    scaled_then_mirrored = mirror_observation((x - scaling.mean) / spread)
+    mirrored_then_scaled = (mirror_observation(x) - scaling.mean) / spread
+    assert np.allclose(mirrored_then_scaled, scaled_then_mirrored, atol=1e-6)
+    assert abs(scaling.mean[1]) < 1e-6
+
+
+# New training worlds must come with the mirrored scaling
+def test_new_duck_worlds_use_mirrored_scaling():
+    from duck.train import build_vec_env
+    venv = build_vec_env(2, seed=0, use_subprocess=False)
+    try:
+        assert isinstance(venv.obs_rms, MirroredRunningMeanStd)
+    finally:
+        venv.close()
