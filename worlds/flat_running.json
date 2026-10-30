@@ -1,0 +1,19 @@
+{
+  "name": "flat_running",
+  "description": "Flat floor, speeds 0.2 to 1.5 m/s, for learning to run",
+  "floor": {
+    "tallest_stones": 0.0
+  },
+  "target_speed_range": [
+    0.2,
+    1.5
+  ],
+  "reward": {
+    "forward": 3.0,
+    "alive": 0.2,
+    "energy": 1.5,
+    "sideways": 0.5
+  },
+  "extras": {},
+  "notes": "Duck 3.2."
+}

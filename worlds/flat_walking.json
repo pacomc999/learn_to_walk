@@ -1,0 +1,19 @@
+{
+  "name": "flat_walking",
+  "description": "Flat floor, walking speeds 0.2 to 0.7 m/s",
+  "floor": {
+    "tallest_stones": 0.0
+  },
+  "target_speed_range": [
+    0.2,
+    0.7
+  ],
+  "reward": {
+    "forward": 3.0,
+    "alive": 0.2,
+    "energy": 1.5,
+    "sideways": 0.5
+  },
+  "extras": {},
+  "notes": "Duck 1, Duck 2 and Duck 2.1. They trained under an older forward reward, without the overshoot rule (going faster than asked did not lose points); this world has today's rule."
+}

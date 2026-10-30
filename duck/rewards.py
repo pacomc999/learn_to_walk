@@ -3,8 +3,8 @@ import math
 from dataclasses import dataclass
 
 
-# How much each part of the reward counts for
-@dataclass
+# How much each part of the reward counts for (frozen, so a world can hold it)
+@dataclass(frozen=True)
 class RewardWeights:
     forward: float = 3.0   # points per metre per second of forward speed
     alive: float = 0.2     # points for staying upright every step (small, so standing still does not pay)
