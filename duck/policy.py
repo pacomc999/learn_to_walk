@@ -10,14 +10,21 @@ import numpy as np
 from stable_baselines3 import PPO
 from stable_baselines3.common.vec_env import DummyVecEnv, VecNormalize
 
+from duck.bodies import STANDARD_BODY
 from duck.duck_env import DuckWalkEnv
 from duck.snapshots import Snapshot, list_snapshots
+from duck.worlds import load_world
+
+
+# A duck world that only carries the shapes of the senses and motors (the same for every world and body)
+def _shape_carrier() -> DuckWalkEnv:
+    return DuckWalkEnv(world=load_world("flat_walking"), body=STANDARD_BODY, roughness=0.0)
 
 
 # Load the brain and its statistics. The one duck world only carries the shapes;
 # callers step their own DuckWalkEnv.
 def _load_model_and_scaler(snapshot: Snapshot) -> tuple[PPO, Callable[[np.ndarray], np.ndarray]]:
-    venv = DummyVecEnv([DuckWalkEnv])
+    venv = DummyVecEnv([_shape_carrier])
     vec_normalize = VecNormalize.load(str(snapshot.norm_path), venv)
     vec_normalize.training = False  # keep the statistics frozen
     vec_normalize.norm_reward = False
