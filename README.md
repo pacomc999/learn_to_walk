@@ -25,7 +25,7 @@ Commands run in PowerShell or Git Bash from the project folder.
 | Train it, starting from another duck's brain | `.venv/Scripts/python -m duck.train --run runs/duck_04/from_duck_03_1 --steps 4000000 --start-from duck_catalogue/duck_03_1/brain` |
 | Follow training in the browser | `.venv/Scripts/python -m duck.dashboard runs/duck_04/from_duck_03_1 --steps 4000000` |
 | Keep its best brain in the catalogue | `.venv/Scripts/python -m duck.catalogue keep duck_catalogue/duck_04 runs/duck_04/from_duck_03_1/best` |
-| Drive the newest brain live with a speed slider (or double-click `docs/Drive the duck.bat`) | `.venv/Scripts/python -m duck.drive` |
+| Drive a brain live with a speed slider (or double-click `duck_catalogue/duck_03_2/Drive Duck 3.2.bat` for the runner) | `.venv/Scripts/python -m duck.drive duck_catalogue/duck_03_2/brain` |
 | Watch a brain walk in a window | `.venv/Scripts/python -m duck.view_snapshot duck_catalogue/duck_03_1/brain --roughness 0.03` |
 
 `docs/guide.md` explains all of it: how the duck learns and is scored, the exam, making and training a duck, the viewing tools, the rock test and keeping the project tidy.
@@ -35,5 +35,5 @@ Commands run in PowerShell or Git Bash from the project folder.
 - `duck/`: the code, and `tests/` its tests
 - `duck_catalogue/`: one folder per duck with its story, recipe, best brain and card
 - `runs/`: training output, not kept in git; `runs/early_experiments/README.md` explains the runs from before the catalogue
-- `docs/guide.md`: the full guide; `docs/duck_joints.html`: the duck's joints in 3D; `docs/Drive the duck.bat`: drive the newest brain live; `docs/designs/` and `docs/plans/`: the design notes and build plans
+- `docs/guide.md`: the full guide; `docs/duck_joints.html`: the duck's joints in 3D; `docs/designs/` and `docs/plans/`: the design notes and build plans
 - `CLAUDE.md`: notes for working on the code

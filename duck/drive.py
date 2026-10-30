@@ -1,6 +1,6 @@
 """Drive a duck: watch a brain walk live and change the speed it is asked for with a slider.
 
-Double-click "docs/Drive the duck.bat", or run from the project root, for example:
+Double-click "duck_catalogue/duck_03_2/Drive Duck 3.2.bat" for the runner, or run from the project root, for example:
     python -m duck.drive
     python -m duck.drive runs/duck_03_2/from_duck_03_1/best
     python -m duck.drive duck_catalogue/duck_03_1/brain --speed 0.4
