@@ -20,6 +20,7 @@ MUJOCO_LOG.TXT
 
 # Duck catalogue films: made again from the kept brain with the film command
 ducks/*/*.mp4
+ducks/*/rocks/films/
 
 # Brainstorming mockups
 .superpowers/

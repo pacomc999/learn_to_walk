@@ -90,6 +90,14 @@ The video is saved as `evolution.mp4` inside the run folder.
 
 To judge or watch an older snapshot, add `--snapshot` and its step count, for example `--snapshot 1007616`.
 
+## Throwing rocks at a duck
+
+A test of balance that is not part of training: stone balls are thrown at a duck's kept brain while it walks on the flat floor, one every 2 s from a random side at 4 m/s, 10 attempts of 20 s per rock size from 25 g to 400 g:
+
+`.venv/Scripts/python -m duck.rocks ducks/duck_03_1`
+
+The results go to `ducks/duck_03_1/rocks/results.csv`. Add `--film 150` to also film every attempt with 150 g rocks and make a page that plays them side by side (`ducks/duck_03_1/rocks/films/index.html`, not kept in git). `ducks/duck_03_1/rocks/README.md` explains the first round and compares three ducks.
+
 ## The duck catalogue
 
 Every training recipe is a duck, with a card in `ducks/` (see `ducks/README.md` for the list). A card says what changed from the previous duck and why, the exact rules and settings, every training run, and how its best brain does. Next to the card is a 16 s film of the best brain with the duck's name on it (`ducks/duck_03/duck_03.mp4`, 1280 x 960). Films are not kept in git; make one again with `.venv/Scripts/python -m duck.catalogue film ducks/duck_03`. A new duck starts only when the recipe changes, not when training goes on longer.

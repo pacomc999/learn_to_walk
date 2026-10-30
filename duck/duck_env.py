@@ -5,6 +5,7 @@ import numpy as np
 
 from duck.model import (
     MIN_TORSO_HEIGHT,
+    MOTOR_NAMES,
     foot_contacts,
     load_duck_model,
     torso_height,
@@ -28,6 +29,11 @@ MAX_EPISODE_SECONDS = 20.0
 # The free joint of the torso uses the first 7 numbers of qpos and 6 of qvel
 FREE_JOINT_QPOS_SIZE = 7
 FREE_JOINT_QVEL_SIZE = 6
+
+# The duck's own 12 joints come right after. Worlds with extra free bodies (the rock test) add
+# their numbers after these, so the duck senses and nudges only its own joints
+DUCK_JOINTS_QPOS = slice(FREE_JOINT_QPOS_SIZE, FREE_JOINT_QPOS_SIZE + len(MOTOR_NAMES))
+DUCK_JOINTS_QVEL = slice(FREE_JOINT_QVEL_SIZE, FREE_JOINT_QVEL_SIZE + len(MOTOR_NAMES))
 
 # How far each joint angle may start away from the standing pose, in radians
 START_NOISE = 0.02
@@ -82,7 +88,7 @@ class DuckWalkEnv(gymnasium.Env):
         self.fixed_roughness = roughness
         self.roughness = roughness if roughness is not None else 0.0
         self.floor = None  # height map of this attempt in metres, None on the flat plane
-        self.model = load_duck_model() if roughness == 0.0 else load_floor_model()
+        self.model = self._load_model(roughness)
         self.data = mujoco.MjData(self.model)
         self.max_steps = round(MAX_EPISODE_SECONDS / self._control_step_seconds())
         self.step_count = 0
@@ -100,6 +106,11 @@ class DuckWalkEnv(gymnasium.Env):
         if render_mode == "rgb_array":
             self.renderer = mujoco.Renderer(self.model, height=height, width=width)
 
+    # The duck's world: the old flat plane for a roughness of exactly 0, otherwise the height field floor.
+    # Other worlds (for example the rock test in duck/rocks.py) replace this to add things
+    def _load_model(self, roughness: float | None) -> mujoco.MjModel:
+        return load_duck_model() if roughness == 0.0 else load_floor_model()
+
     # The speed this attempt asks for: the fixed one, or a random one from the range
     def _pick_target_speed(self) -> float:
         if self.fixed_target_speed is not None:
@@ -113,7 +124,7 @@ class DuckWalkEnv(gymnasium.Env):
         self.target_speed = self._pick_target_speed()
         mujoco.mj_resetDataKeyframe(self.model, self.data, self.model.key("stand").id)
         joint_noise = self.np_random.uniform(-START_NOISE, START_NOISE, self.motor_count)
-        self.data.qpos[FREE_JOINT_QPOS_SIZE:] += joint_noise
+        self.data.qpos[DUCK_JOINTS_QPOS] += joint_noise
         self._take_stride_stance()
         self._lay_new_floor()
         mujoco.mj_forward(self.model, self.data)
@@ -175,8 +186,8 @@ class DuckWalkEnv(gymnasium.Env):
             [qpos[1]],                      # sideways drift from the straight line
             qpos[3:7],                      # torso orientation quaternion
             qvel[0:6],                      # torso linear then angular velocity
-            qpos[FREE_JOINT_QPOS_SIZE:],    # 12 joint angles
-            qvel[FREE_JOINT_QVEL_SIZE:],    # 12 joint velocities
+            qpos[DUCK_JOINTS_QPOS],         # 12 joint angles
+            qvel[DUCK_JOINTS_QVEL],         # 12 joint velocities
             [float(left_contact), float(right_contact)],
             [self.target_speed],            # how fast this attempt asks it to go
         ])
