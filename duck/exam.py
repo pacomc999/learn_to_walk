@@ -4,6 +4,7 @@ The training score includes the brain's random experimenting and a random target
 speed per attempt, so it jumps around a lot. The exam removes that noise: the same
 12 starts and target speeds every time, and the brain's best action without wobble.
 It has two parts, a flat floor and a rough floor, and the average of the two is the score.
+The rough part climbs: its 12 attempts are spread evenly from 1/12 of MAX_ROUGHNESS up to all of it.
 Results go to <run>/exam.csv; the best brain so far is kept in <run>/best/.
 """
 import csv
@@ -63,20 +64,36 @@ def _exam_attempt(model, vec_normalize, env: DuckWalkEnv, seed: int) -> tuple[fl
             return total, fell, info["forward_distance"]
 
 
-# Give the brain one part of the exam (on a floor of the given roughness),
-# using the sense scaling it trains with (without changing it)
-def take_exam(model, vec_normalize, attempts: int = EXAM_ATTEMPTS, roughness: float = 0.0) -> ExamResult:
+# The floor height of each rough exam attempt: evenly spread up to MAX_ROUGHNESS, like training,
+# which picks any height from 0 to the most (at 3 cm: 0.25 cm, 0.5 cm, ... 3 cm)
+def rough_exam_heights(attempts: int = EXAM_ATTEMPTS) -> list[float]:
+    return [MAX_ROUGHNESS * (i + 1) / attempts for i in range(attempts)]
+
+
+# One attempt on its own floor height. Each attempt keeps its seed, so its target speed
+# and stone layout are the same at every height; only the stones' height changes
+def _exam_attempt_on(model, vec_normalize, seed: int, roughness: float) -> tuple[float, bool, float]:
     env = DuckWalkEnv(roughness=roughness)
-    results = [_exam_attempt(model, vec_normalize, env, EXAM_FIRST_SEED + i) for i in range(attempts)]
+    result = _exam_attempt(model, vec_normalize, env, seed)
     env.close()
+    return result
+
+
+# Give the brain one part of the exam, using the sense scaling it trains with (without changing it).
+# roughness is one floor height for every attempt, or a list with one height per attempt
+def take_exam(model, vec_normalize, attempts: int = EXAM_ATTEMPTS,
+              roughness: float | list[float] = 0.0) -> ExamResult:
+    heights = roughness if isinstance(roughness, list) else [roughness] * attempts
+    results = [_exam_attempt_on(model, vec_normalize, EXAM_FIRST_SEED + i, height)
+               for i, height in enumerate(heights[:attempts])]
     scores, falls, distances = zip(*results)
     return ExamResult(float(np.mean(scores)), int(sum(falls)), float(np.mean(distances)))
 
 
-# Give the brain both parts of the exam, flat floor and rough floor, and combine them
+# Give the brain both parts of the exam, flat floor and climbing rough floor, and combine them
 def take_full_exam(model, vec_normalize) -> FullExamResult:
     flat = take_exam(model, vec_normalize, roughness=0.0)
-    rough = take_exam(model, vec_normalize, roughness=MAX_ROUGHNESS)
+    rough = take_exam(model, vec_normalize, roughness=rough_exam_heights())
     return FullExamResult(
         score=(flat.score + rough.score) / 2,
         falls=flat.falls + rough.falls,

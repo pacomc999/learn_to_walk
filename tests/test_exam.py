@@ -3,7 +3,7 @@ from datetime import datetime
 import pytest
 
 from duck.exam import (EXAM_LOG_HEADER, ExamResult, FullExamResult, append_exam, best_exam_score, exam_at,
-                       read_exams, take_exam, take_full_exam)
+                       read_exams, rough_exam_heights, take_exam, take_full_exam)
 from duck.floor import MAX_ROUGHNESS
 from duck.train import build_vec_env, train
 from tests.test_train import FAST
@@ -137,3 +137,21 @@ def test_new_log_has_both_parts(tmp_path):
     append_exam(tmp_path, 100, full_result(40.0, 60.0), datetime.now())
     rows = read_exams(tmp_path)
     assert rows[0]["flat_score"] == 40.0 and rows[0]["rough_score"] == 60.0 and rows[0]["attempts"] == 24
+
+
+# The rough part climbs evenly: 12 heights from a twelfth of the most up to the most, each one higher
+def test_rough_exam_heights_climb_to_the_most():
+    heights = rough_exam_heights()
+    assert len(heights) == 12
+    assert heights[0] == pytest.approx(MAX_ROUGHNESS / 12) and heights[-1] == pytest.approx(MAX_ROUGHNESS)
+    assert all(low < high for low, high in zip(heights, heights[1:]))
+
+
+# With one height per attempt, each attempt gets its own floor height
+def test_take_exam_uses_one_height_per_attempt(tmp_path, monkeypatch):
+    import duck.exam
+    seen = []
+    monkeypatch.setattr(duck.exam, "_exam_attempt_on",
+                        lambda model, vec_normalize, seed, roughness: seen.append((seed, roughness)) or (1.0, False, 0.5))
+    take_exam(None, None, roughness=[0.01, 0.02, 0.03], attempts=3)
+    assert seen == [(1000, 0.01), (1001, 0.02), (1002, 0.03)]

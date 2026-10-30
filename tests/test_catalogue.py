@@ -83,7 +83,7 @@ def test_index_lists_every_duck(tmp_path):
 # The recipe records the floor (every shape number) and the forward reward rule
 def test_recipe_records_floor_and_forward_rule():
     recipe = catalogue.current_recipe()
-    assert recipe["floor"]["max_roughness"] == 0.01
+    assert recipe["floor"]["max_roughness"] == 0.03 and recipe["floor"]["rough_exam"] == "climbing"
     assert recipe["floor"]["stone_size"] == 0.06 and recipe["floor"]["waves"] == 8
     assert recipe["forward_reward"] == "3.0 x (target - |speed - target|)"
 
@@ -100,7 +100,8 @@ def test_old_recipe_card_lines_say_flat():
 # A new recipe lists the floor numbers and the overshoot rule
 def test_new_recipe_card_lines_list_the_floor():
     text = "\n".join(catalogue._recipe_lines(catalogue.current_recipe()))
-    assert "- Floor: random cobblestones up to 0.01 m" in text
+    assert "- Floor: random cobblestones up to 0.03 m" in text
+    assert "rough part climbs" in text
     assert "stones 0.06 m" in text and "gaps 0.07" in text
     assert "3.0 x (target - |speed - target|)" in text
 
@@ -128,7 +129,7 @@ def test_new_results_show_both_floors():
     text = "\n".join(catalogue._results_lines(results, "duck_x"))
     assert "score 700, falls 3 of 24" in text
     assert "flat 900" in text and "rough 500" in text
-    assert "7 of 10" in text and "rough floor" in text.lower()
+    assert "7 of 10" in text and "rough floor (1 cm stones)" in text.lower()
 
 
 # A duck started from another brain gets the extra recipe line, a duck from zero does not

@@ -6,8 +6,9 @@ import numpy as np
 
 from duck.model import DUCK_XML_PATH
 
-# Highest point the floor can ever reach, in metres (also the height field elevation)
-MAX_ROUGHNESS = 0.01
+# Highest point the floor can ever reach, in metres (also the height field elevation).
+# Duck 3 trained up to 0.01; Duck 3.1 raises it to 0.03, since Duck 3 walked on 2 cm but fell on every 3 cm attempt
+MAX_ROUGHNESS = 0.03
 
 # The shape of the floor: rolling bumps with square cobblestones on top
 FLOOR_SHAPE = {

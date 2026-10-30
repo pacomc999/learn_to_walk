@@ -75,7 +75,7 @@ def current_recipe() -> dict:
         "step_size_rule": STEP_SIZE_RULE,
         "reward": asdict(RewardWeights()),
         "forward_reward": f"{RewardWeights().forward} x (target - |speed - target|)",
-        "floor": {"max_roughness": MAX_ROUGHNESS, **FLOOR_SHAPE},
+        "floor": {"max_roughness": MAX_ROUGHNESS, **FLOOR_SHAPE, "rough_exam": "climbing"},
         "target_speed_range": list(TARGET_SPEED_RANGE),
         "attempt_seconds": MAX_EPISODE_SECONDS,
         "physics_steps_per_action": FRAME_SKIP,
@@ -181,6 +181,7 @@ def measure_brain(snapshot: Snapshot, run_dir: Path) -> dict:
         "walking_test_rough": f"{walking_rough.successes} of {walking_rough.attempts}",
         "gait_at_judging_speed": _gait_summary(snapshot, 0.0),
         "gait_on_rough_floor": _gait_summary(snapshot, MAX_ROUGHNESS),
+        "rough_floor_height": MAX_ROUGHNESS,
     }
 
 
@@ -294,7 +295,14 @@ def _floor_line(recipe: dict) -> str:
     return (f"- Floor: random cobblestones up to {floor['max_roughness']} m high, drawn at every reset with a random "
             f"roughness in training: {floor['waves']} waves of {low} to {high} m wavelength, stones {floor['stone_size']} m wide "
             f"with tops {stone_low} to {stone_high} of the tallest stone, gaps {floor['gap_share']} of the stone size on each side, "
-            f"bump weight {floor['bump_share']} (the stones get the rest)")
+            f"bump weight {floor['bump_share']} (the stones get the rest)" + _rough_exam_words(floor))
+
+
+# How the exam's rough part chose its floor heights. Recipes from before Duck 3.1 used the full height
+def _rough_exam_words(floor: dict) -> str:
+    if floor.get("rough_exam") == "climbing":
+        return ". The exam's rough part climbs: its 12 attempts are spread evenly up to the full height"
+    return ". The exam's rough part uses the full height for all 12 attempts"
 
 
 # How each attempt starts: the random nudge, and the stride stance if the recipe has one
@@ -344,12 +352,19 @@ def _results_lines(results: dict, folder_name: str) -> list[str]:
         _exam_line(results),
         f"- Walking test: {results['walking_test']} attempts walked",
     ]
+    rough = _rough_floor_words(results)
     if "walking_test_rough" in results:
-        lines.append(f"- Walking test on the rough floor: {results['walking_test_rough']} attempts walked")
+        lines.append(f"- Walking test on {rough}: {results['walking_test_rough']} attempts walked")
     lines.append(_gait_line(f"At {EVALUATION_TARGET_SPEED} m/s", results["gait_at_judging_speed"]))
     if "gait_on_rough_floor" in results:
-        lines.append(_gait_line(f"At {EVALUATION_TARGET_SPEED} m/s on the rough floor", results["gait_on_rough_floor"]))
+        lines.append(_gait_line(f"At {EVALUATION_TARGET_SPEED} m/s on {rough}", results["gait_on_rough_floor"]))
     return lines
+
+
+# The rough floor the walking test and gait used. Results from before Duck 3.1 do not say, and used 1 cm
+def _rough_floor_words(results: dict) -> str:
+    height = results.get("rough_floor_height", 0.01)
+    return f"the rough floor ({height * 100:g} cm stones)"
 
 
 # The card's training history, one line per run
