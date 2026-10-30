@@ -3,26 +3,15 @@
 This is for watching and judging only. The loaded statistics stay frozen.
 """
 import sys
-from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable
 
 import numpy as np
-import torch
 from stable_baselines3 import PPO
 from stable_baselines3.common.vec_env import DummyVecEnv, VecNormalize
 
 from duck.duck_env import DuckWalkEnv
 from duck.snapshots import Snapshot, list_snapshots
-
-
-# What the brain did with one observation: the action it chose,
-# and how strongly each cell of its two hidden layers fired (-1 to 1)
-@dataclass
-class BrainReading:
-    action: np.ndarray
-    layer1: np.ndarray
-    layer2: np.ndarray
 
 
 # Load the brain and its statistics. The one duck world only carries the shapes;
@@ -49,45 +38,6 @@ def load_policy(snapshot: Snapshot) -> Callable[[np.ndarray], np.ndarray]:
         return model.predict(scale(observation), deterministic=True)[0][0]
 
     return policy
-
-
-# The brain reader for a symmetric brain: it asks the brain for its 12 commands and the
-# cells of the pass on the duck's own (real) view, not the mirrored one
-def _symmetric_brain(model: PPO, scale: Callable[[np.ndarray], np.ndarray]) -> Callable[[np.ndarray], BrainReading]:
-    extractor = model.policy.mlp_extractor
-
-    def brain(observation: np.ndarray) -> BrainReading:
-        with torch.no_grad():
-            action, layer1, layer2 = extractor.actor_cells(torch.as_tensor(scale(observation)))
-            action = action.clamp(-1.0, 1.0)  # the same limits predict uses
-        return BrainReading(action[0].numpy(), layer1[0].numpy(), layer2[0].numpy())
-
-    return brain
-
-
-# The brain reader for an old plain brain: its layers run one at a time to keep the cell activity
-def _plain_brain(model: PPO, scale: Callable[[np.ndarray], np.ndarray]) -> Callable[[np.ndarray], BrainReading]:
-    first_layer = model.policy.mlp_extractor.policy_net[0:2]   # Linear then Tanh
-    second_layer = model.policy.mlp_extractor.policy_net[2:4]  # Linear then Tanh
-    action_layer = model.policy.action_net
-
-    def brain(observation: np.ndarray) -> BrainReading:
-        with torch.no_grad():
-            layer1 = first_layer(torch.as_tensor(scale(observation)))
-            layer2 = second_layer(layer1)
-            action = action_layer(layer2).clamp(-1.0, 1.0)  # the same limits predict uses
-        return BrainReading(action[0].numpy(), layer1[0].numpy(), layer2[0].numpy())
-
-    return brain
-
-
-# A function from a raw observation to a BrainReading. It matches load_policy exactly,
-# for both the symmetric brain and the old plain brain
-def load_brain(snapshot: Snapshot) -> Callable[[np.ndarray], BrainReading]:
-    model, scale = _load_model_and_scaler(snapshot)
-    if hasattr(model.policy.mlp_extractor, "actor_cells"):
-        return _symmetric_brain(model, scale)
-    return _plain_brain(model, scale)
 
 
 # The snapshot a command line should use: the one with the given step count, or the newest.

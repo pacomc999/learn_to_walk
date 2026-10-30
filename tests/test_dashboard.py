@@ -8,10 +8,9 @@ import imageio.v3 as iio
 import numpy as np
 import pytest
 
-from duck.dashboard import (CLIP_NAME, CLIP_STEPS_NAME, brain_to_film, frame_reading, lean_degrees, make_server,
-                            recent_steps_per_second, run_status, save_mp4)
+from duck.dashboard import (CLIP_NAME, CLIP_STEPS_NAME, brain_to_film, make_server, recent_steps_per_second,
+                            run_status, save_mp4)
 from duck.exam import ExamResult, FullExamResult, append_exam
-from duck.policy import BrainReading
 from duck.progress import ProgressRow, append_progress
 
 START = datetime(2026, 10, 28, 20, 0)
@@ -62,27 +61,6 @@ def test_save_mp4(tmp_path):
     path = tmp_path / CLIP_NAME
     save_mp4(frames, path, fps=10)
     assert len(iio.imread(path)) == 3
-
-
-# Upright means no lean; a turn of 10 degrees about the sideways axis tips the nose down 10 degrees
-def test_lean_degrees():
-    assert lean_degrees(np.array([1.0, 0, 0, 0])) == pytest.approx(0)
-    half = np.radians(10) / 2
-    assert lean_degrees(np.array([np.cos(half), 0, np.sin(half), 0])) == pytest.approx(10)
-
-
-# One frame of brain data: senses in plain units, brain cells as whole numbers from -100 to 100
-def test_frame_reading():
-    observation = np.zeros(39, dtype=np.float32)
-    observation[2] = 1.0                      # upright quaternion
-    observation[6] = 0.3                      # forward speed
-    observation[36:39] = [1.0, 0.0, 0.4]      # left foot down, right foot up, target 0.4
-    reading = BrainReading(action=np.full(12, 0.5), layer1=np.full(256, -0.5), layer2=np.ones(256))
-    frame = frame_reading(lambda obs: reading, observation)
-    assert frame["senses"] == {"left_foot": True, "right_foot": False, "speed": 0.3,
-                               "target": 0.4, "lean": 0.0}
-    assert frame["layer1"][0] == -50 and frame["layer2"][0] == 100
-    assert frame["motors"] == [0.5] * 12
 
 
 # The server answers the page, the status, a missing video and pieces of a video
@@ -166,7 +144,6 @@ def test_dashboard_film_uses_the_rough_floor(tmp_path, monkeypatch):
         raise RuntimeError("stop here")
 
     monkeypatch.setattr(duck.dashboard, "record_clip", fake_record_clip)
-    monkeypatch.setattr(duck.dashboard, "load_brain", lambda snapshot: None)
     monkeypatch.setattr(duck.dashboard, "load_policy", lambda snapshot: None)
     with pytest.raises(RuntimeError):
         duck.dashboard.make_snapshot_clip(tmp_path, None)

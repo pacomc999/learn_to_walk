@@ -4,7 +4,7 @@ Run it from the project root in a second terminal while training runs, for examp
     python -m duck.dashboard runs/duck_v1 --steps 30000000
 It opens a page that refreshes itself: score and distance charts, how far the run is,
 and a film of the best brain so far (the newest snapshot before the first exam)
-walking, with its brain activity shown frame by frame.
+walking.
 Press Ctrl+C to stop it; training is not affected.
 """
 import argparse
@@ -14,7 +14,6 @@ import time
 import webbrowser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from typing import Callable
 
 import imageio
 import numpy as np
@@ -22,7 +21,7 @@ import numpy as np
 from duck.duck_env import FILM_HEIGHT, FILM_WIDTH
 from duck.exam import EXAM_FIRST_SEED, best_folder, exam_at
 from duck.floor import MAX_ROUGHNESS
-from duck.policy import BrainReading, load_brain, load_policy
+from duck.policy import load_policy
 from duck.progress import ProgressRow, minutes_since_improvement, read_progress
 from duck.snapshots import Snapshot, latest_snapshot, replace_with_retry
 from duck.video import record_clip
@@ -30,10 +29,8 @@ from duck.video import record_clip
 # The page itself, kept next to this file
 PAGE_PATH = Path(__file__).with_name("dashboard.html")
 
-# The film of the newest snapshot, its brain activity per frame,
-# and a note of which snapshot they show (written last, once both are ready)
+# The film of the newest snapshot and a note of which snapshot it shows (written last, once the film is ready)
 CLIP_NAME = "dashboard_latest.mp4"
-BRAIN_NAME = "dashboard_latest_brain.json"
 CLIP_STEPS_NAME = "dashboard_latest_steps.txt"
 
 # Film size and length: a whole 20 s attempt, like the exam, at the full film size.
@@ -43,11 +40,6 @@ CLIP_SECONDS = 20.0
 CLIP_FPS = 15
 CLIP_WIDTH = FILM_WIDTH
 CLIP_HEIGHT = FILM_HEIGHT
-
-# Where things sit in the duck's 39 number observation
-QUATERNION = slice(2, 6)
-FORWARD_SPEED = 6
-LEFT_FOOT, RIGHT_FOOT, TARGET_SPEED = 36, 37, 38
 
 # How often to look for a new snapshot, in seconds
 CHECK_SECONDS = 20
@@ -111,36 +103,6 @@ def run_status(run_dir: Path, total_steps: int | None) -> dict:
     }
 
 
-# How far the body is tipped nose down (positive) or nose up, in degrees,
-# from its orientation quaternion (w, x, y, z)
-def lean_degrees(quaternion: np.ndarray) -> float:
-    w, x, y, z = quaternion
-    return float(np.degrees(np.arcsin(np.clip(2 * (w * y - z * x), -1.0, 1.0))))
-
-
-# Brain cells as whole numbers from -100 to 100, which keeps the file small
-def _cells_as_percent(cells: np.ndarray) -> list[int]:
-    return [int(value) for value in np.round(cells * 100)]
-
-
-# Everything the page shows for one frame: what the duck senses, how its two layers
-# of brain cells fire, and the command it sends to each of the 12 motors
-def frame_reading(brain: Callable[[np.ndarray], BrainReading], observation: np.ndarray) -> dict:
-    reading = brain(observation)
-    return {
-        "senses": {
-            "left_foot": bool(observation[LEFT_FOOT] > 0.5),
-            "right_foot": bool(observation[RIGHT_FOOT] > 0.5),
-            "speed": round(float(observation[FORWARD_SPEED]), 2),
-            "target": round(float(observation[TARGET_SPEED]), 2),
-            "lean": round(lean_degrees(observation[QUATERNION]), 1),
-        },
-        "layer1": _cells_as_percent(reading.layer1),
-        "layer2": _cells_as_percent(reading.layer2),
-        "motors": [round(float(value), 2) for value in reading.action],
-    }
-
-
 # Save pictures as a video, under a temp name first so the page never sees half a file
 def save_mp4(frames: list[np.ndarray], path: Path, fps: int = CLIP_FPS) -> None:
     temp_path = path.with_suffix(".tmp.mp4")
@@ -153,29 +115,13 @@ def save_mp4(frames: list[np.ndarray], path: Path, fps: int = CLIP_FPS) -> None:
     replace_with_retry(temp_path, path)
 
 
-# Save data as JSON, under a temp name first like the video
-def _save_json(data: dict, path: Path) -> None:
-    temp_path = path.with_suffix(".tmp.json")
-    temp_path.write_text(json.dumps(data, separators=(",", ":")))
-    replace_with_retry(temp_path, path)
-
-
 # Film a snapshot walking at the judging speed on the roughest floor, on a fixed rough layout
 # built from seed 1000. It is not the exam's first rough layout, because the film fixes the
-# speed at 0.4 and so draws no target speed before the floor. Keep its brain activity for every frame.
-# After a fall the brain is no longer in control, so those frames have no reading
+# speed at 0.4 and so draws no target speed before the floor
 def make_snapshot_clip(run_dir: Path, snapshot: Snapshot) -> None:
-    brain = load_brain(snapshot)
-    readings = []
-
-    def keep_reading(observation: np.ndarray, fallen: bool) -> None:
-        readings.append(None if fallen else frame_reading(brain, observation))
-
     frames = record_clip(load_policy(snapshot), seconds=CLIP_SECONDS, fps=CLIP_FPS,
-                         width=CLIP_WIDTH, height=CLIP_HEIGHT, on_frame=keep_reading,
-                         seed=EXAM_FIRST_SEED, roughness=MAX_ROUGHNESS)
+                         width=CLIP_WIDTH, height=CLIP_HEIGHT, seed=EXAM_FIRST_SEED, roughness=MAX_ROUGHNESS)
     save_mp4(frames, run_dir / CLIP_NAME)
-    _save_json({"steps": snapshot.steps, "fps": CLIP_FPS, "frames": readings}, run_dir / BRAIN_NAME)
     (run_dir / CLIP_STEPS_NAME).write_text(str(snapshot.steps))
 
 
@@ -239,7 +185,7 @@ def make_server(run_dir: Path, total_steps: int | None, port: int = DEFAULT_PORT
             self.end_headers()
             self.wfile.write(body[first:last + 1])
 
-        # The four things the page asks for
+        # The three things the page asks for
         def do_GET(self) -> None:
             route = self.path.split("?")[0]
             if route == "/":
@@ -249,8 +195,6 @@ def make_server(run_dir: Path, total_steps: int | None, port: int = DEFAULT_PORT
                 self._send(body, "application/json")
             elif route == "/latest.mp4" and (run_dir / CLIP_NAME).exists():
                 self._send_video(run_dir / CLIP_NAME)
-            elif route == "/latest_brain.json" and (run_dir / BRAIN_NAME).exists():
-                self._send((run_dir / BRAIN_NAME).read_bytes(), "application/json")
             else:
                 self.send_error(404)
 

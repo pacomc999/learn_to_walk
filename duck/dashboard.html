@@ -16,10 +16,6 @@
     --line-fill: rgba(42, 120, 214, 0.10);
     --good: #0ca30c;
     --warning: #b07a00;
-    /* Brain cells: blue for negative, gray for quiet, red for positive */
-    --cell-negative: #2a78d6;
-    --cell-quiet: #e6e5df;
-    --cell-positive: #e34948;
   }
   @media (prefers-color-scheme: dark) {
     :root {
@@ -32,9 +28,6 @@
       --line-fill: rgba(57, 135, 229, 0.14);
       --good: #3fc53f;
       --warning: #fab219;
-      --cell-negative: #3987e5;
-      --cell-quiet: #383835;
-      --cell-positive: #e66767;
     }
   }
 
@@ -61,7 +54,7 @@
   .bar { height: 6px; border-radius: 3px; background: var(--grid); margin-top: 8px; overflow: hidden; }
   .bar div { height: 100%; width: 0; background: var(--line); border-radius: 3px; transition: width 0.6s; }
 
-  /* The duck film and its brain beside the two charts */
+  /* The duck film beside the two charts */
   .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; }
   .duck { display: flex; flex-direction: column; }
   .charts { display: flex; flex-direction: column; gap: 16px; }  /* stacked, never stretched */
@@ -75,22 +68,6 @@
   }
   .speeds button.on { background: var(--line); border-color: var(--line); color: #fff; }
 
-  /* The live brain panel under the film */
-  h3 { font-size: 14px; margin: 16px 0 4px; }
-  .doing { font-size: 15px; font-weight: 600; margin: 12px 0 0; min-height: 2.9em; }
-  .senses { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 2px 16px; font-size: 13px; }
-  .senses b { font-variant-numeric: tabular-nums; }
-  .layers { display: flex; gap: 16px; flex-wrap: wrap; }
-  .layers figure { margin: 0; }
-  .layers canvas { width: 160px; height: 160px; border-radius: 4px; display: block; }
-  .layers figcaption { color: var(--ink-soft); font-size: 12px; margin-top: 4px; }
-  .motors { display: grid; grid-template-columns: auto 1fr 3.2em; gap: 3px 10px; align-items: center; font-size: 12px; }
-  .motors .name { color: var(--ink-soft); white-space: nowrap; }
-  .motors .group { grid-column: 1 / -1; font-weight: 600; margin-top: 6px; }
-  .motors .track { position: relative; height: 10px; background: var(--surface); border-radius: 5px; }
-  .motors .track::after { content: ""; position: absolute; left: 50%; top: -2px; bottom: -2px; width: 1px; background: var(--ink-soft); }
-  .motors .fill { position: absolute; top: 0; bottom: 0; background: var(--line); border-radius: 5px; }
-  .motors .number { text-align: right; font-variant-numeric: tabular-nums; }
   .duck .empty { aspect-ratio: 4 / 3; display: grid; place-items: center; color: var(--ink-soft); background: var(--grid); border-radius: 8px; }
   @media (max-width: 760px) { .grid { grid-template-columns: 1fr; } }
   h2 { font-size: 15px; margin: 0 0 2px; }
@@ -150,32 +127,12 @@
       <div class="empty" id="clip-empty">No film yet</div>
       <video id="clip" muted autoplay loop playsinline hidden></video>
 
-      <!-- Playback speed, so the brain can be followed frame by frame -->
+      <!-- Playback speed, so a stumble or a fall can be followed closely -->
       <div class="speeds" id="speeds" hidden>
         <button data-rate="1" class="on">Normal</button>
         <button data-rate="0.5">Half speed</button>
         <button data-rate="0.25">Quarter speed</button>
         <button id="pause">Pause</button>
-        <button id="toggle-brain">Hide brain</button>
-      </div>
-
-      <!-- The brain, synchronised with the film -->
-      <div class="brain" id="brain" hidden>
-        <p class="doing" id="doing"></p>
-
-        <h3>What it senses</h3>
-        <ul class="senses" id="senses"></ul>
-
-        <h3>Brain cells</h3>
-        <p class="sub">Each square is one cell. Gray is quiet, red fires positive, blue fires negative.</p>
-        <div class="layers">
-          <figure><canvas id="layer1" width="160" height="160"></canvas><figcaption>Layer 1, 256 cells</figcaption></figure>
-          <figure><canvas id="layer2" width="160" height="160"></canvas><figcaption>Layer 2, 256 cells</figcaption></figure>
-        </div>
-
-        <h3>Motor commands</h3>
-        <p class="sub">The middle line is the standing pose; bars show how far each motor is told to move away from it.</p>
-        <div class="motors" id="motors"></div>
       </div>
     </div>
     <div class="charts">
@@ -339,28 +296,9 @@ function showTiles(status) {
   note.className = "note " + (stalled ? "status-warning" : "status-good");
 }
 
-// ---------- The film and its brain activity ----------
+// ---------- The film ----------
 
-// The 12 motors in the brain's output order, with what a positive or negative
-// command does. Directions were measured on the duck model, not guessed
-const MOTORS = [
-  { group: "Neck", name: "Neck base", negative: "head pulls back", positive: "head pushes forward" },
-  { group: "Neck", name: "Neck top", negative: "head tips up", positive: "head tips down" },
-  { group: "Left leg", name: "Hip swing", negative: "left leg swings forward", positive: "left leg swings back" },
-  { group: "Left leg", name: "Hip side", negative: "left leg pulls in", positive: "left leg spreads out" },
-  { group: "Left leg", name: "Knee", negative: "left knee brings the foot forward", positive: "left knee pulls the foot back" },
-  { group: "Left leg", name: "Ankle", negative: "left foot lifts", positive: "left foot points down" },
-  { group: "Left leg", name: "Toes", negative: "left toes lift", positive: "left toes curl down" },
-  { group: "Right leg", name: "Hip swing", negative: "right leg swings forward", positive: "right leg swings back" },
-  { group: "Right leg", name: "Hip side", negative: "right leg spreads out", positive: "right leg pulls in" },
-  { group: "Right leg", name: "Knee", negative: "right knee brings the foot forward", positive: "right knee pulls the foot back" },
-  { group: "Right leg", name: "Ankle", negative: "right foot lifts", positive: "right foot points down" },
-  { group: "Right leg", name: "Toes", negative: "right toes lift", positive: "right toes curl down" },
-];
-
-let brainData = null;     // { steps, fps, frames: [...] } for the film on screen
 let shownClipSteps = null;
-let lastFrameIndex = -1;
 
 // The film's caption: when the brain is from, and its exam result (no wobble, fixed starts).
 // New exam rows have a flat and a rough part and the film is on cobblestones; old rows keep the old wording
@@ -384,157 +322,16 @@ function clipCaption(status) {
          ", asked to walk at 0.4 m/s, no wobble" + floorText;
 }
 
-// Swap in a new film and its brain data only when a newer snapshot has been filmed
+// Swap in a new film only when a newer snapshot has been filmed
 async function showClip(status) {
   if (status.clip_steps === null || status.clip_steps === shownClipSteps) return;
-  const response = await fetch("/latest_brain.json?steps=" + status.clip_steps, { cache: "no-store" });
-  brainData = await response.json();
   shownClipSteps = status.clip_steps;
-  lastFrameIndex = -1;
   const video = document.getElementById("clip");
   video.src = "/latest.mp4?steps=" + status.clip_steps;
   for (const id of ["clip", "speeds"]) document.getElementById(id).hidden = false;
-  document.getElementById("brain").hidden = brainHidden;
   document.getElementById("clip-empty").hidden = true;
   document.getElementById("clip-caption").textContent = clipCaption(status);
   video.play().catch(() => {});
-}
-
-// Build the 12 motor rows once; later frames only move the bars
-function buildMotorRows() {
-  const container = document.getElementById("motors");
-  let group = null;
-  MOTORS.forEach((motor, index) => {
-    if (motor.group !== group) {
-      group = motor.group;
-      const heading = document.createElement("div");
-      heading.className = "group";
-      heading.textContent = group;
-      container.append(heading);
-    }
-    container.insertAdjacentHTML("beforeend",
-      `<span class="name">${motor.name}</span>` +
-      `<span class="track"><span class="fill" id="motor-fill-${index}"></span></span>` +
-      `<span class="number" id="motor-number-${index}"></span>`);
-  });
-}
-
-// Mix two colours given as "#rrggbb"; share 0 gives the first, 1 the second
-function mixColours(first, second, share) {
-  const a = first.match(/\w\w/g).map(h => parseInt(h, 16));
-  const b = second.match(/\w\w/g).map(h => parseInt(h, 16));
-  return "rgb(" + a.map((value, i) => Math.round(value + (b[i] - value) * share)).join(",") + ")";
-}
-
-// Draw 256 cells as a 16 by 16 grid of squares, coloured by how strongly each fires
-function drawCells(canvas, cells) {
-  const style = getComputedStyle(document.documentElement);
-  const quiet = style.getPropertyValue("--cell-quiet").trim();
-  const negative = style.getPropertyValue("--cell-negative").trim();
-  const positive = style.getPropertyValue("--cell-positive").trim();
-  const context = canvas.getContext("2d");
-  const size = canvas.width / 16;
-  cells.forEach((value, index) => {
-    const strength = Math.abs(value) / 100;
-    context.fillStyle = mixColours(quiet, value < 0 ? negative : positive, strength);
-    context.fillRect((index % 16) * size, Math.floor(index / 16) * size, size - 1, size - 1);
-  });
-}
-
-// One plain sentence about the strongest motor commands right now
-function describeCommands(motors) {
-  const strongest = motors
-    .map((value, index) => ({ value, index }))
-    .filter(item => Math.abs(item.value) > 0.15)
-    .sort((a, b) => Math.abs(b.value) - Math.abs(a.value))
-    .slice(0, 3)
-    .map(item => {
-      const motor = MOTORS[item.index];
-      const action = item.value < 0 ? motor.negative : motor.positive;
-      return action + (Math.abs(item.value) > 0.7 ? " strongly" : "");
-    });
-  if (strongest.length === 0) return "Holding close to the standing pose.";
-  const sentence = strongest.join(", ");
-  return sentence.charAt(0).toUpperCase() + sentence.slice(1) + ".";
-}
-
-// Fill the senses list in plain words
-function showSenses(senses) {
-  const foot = down => down ? "on the ground" : "in the air";
-  const lean = senses.lean >= 0 ? senses.lean.toFixed(0) + "° nose down" : (-senses.lean).toFixed(0) + "° nose up";
-  document.getElementById("senses").innerHTML =
-    `<li>Left foot: <b>${foot(senses.left_foot)}</b></li>` +
-    `<li>Right foot: <b>${foot(senses.right_foot)}</b></li>` +
-    `<li>Speed: <b>${senses.speed.toFixed(2)} m/s</b></li>` +
-    `<li>Asked for: <b>${senses.target.toFixed(2)} m/s</b></li>` +
-    `<li>Body tilt: <b>${lean}</b></li>`;
-}
-
-// Move each motor bar out from the middle line, left for negative and right for positive
-function showMotors(motors) {
-  motors.forEach((value, index) => {
-    const fill = document.getElementById("motor-fill-" + index);
-    const share = Math.min(1, Math.abs(value)) * 50;
-    fill.style.left = (value < 0 ? 50 - share : 50) + "%";
-    fill.style.width = share + "%";
-    document.getElementById("motor-number-" + index).textContent = (value > 0 ? "+" : "") + value.toFixed(2);
-  });
-}
-
-// Show the brain for one frame of the film, or a note once the duck has fallen
-function showBrainFrame(index) {
-  if (!brainData || index === lastFrameIndex) return;
-  lastFrameIndex = index;
-  const frame = brainData.frames[Math.min(index, brainData.frames.length - 1)];
-  if (frame === null) {
-    document.getElementById("doing").textContent = "The duck has fallen. The brain is no longer in control.";
-    return;
-  }
-  document.getElementById("doing").textContent = describeCommands(frame.motors);
-  showSenses(frame.senses);
-  drawCells(document.getElementById("layer1"), frame.layer1);
-  drawCells(document.getElementById("layer2"), frame.layer2);
-  showMotors(frame.motors);
-}
-
-// Follow the film frame by frame. requestVideoFrameCallback reports the exact time of the
-// picture on screen; browsers without it fall back to checking on every screen refresh
-function followVideo() {
-  const video = document.getElementById("clip");
-  const frameAt = seconds => brainData ? Math.floor(seconds * brainData.fps + 0.001) : 0;
-  if ("requestVideoFrameCallback" in video) {
-    const onFrame = (now, metadata) => {
-      showBrainFrame(frameAt(metadata.mediaTime));
-      video.requestVideoFrameCallback(onFrame);
-    };
-    video.requestVideoFrameCallback(onFrame);
-  } else {
-    const onRefresh = () => { showBrainFrame(frameAt(video.currentTime)); requestAnimationFrame(onRefresh); };
-    requestAnimationFrame(onRefresh);
-  }
-  // Paused frames still need their brain shown, for example after a click on the film
-  video.addEventListener("seeked", () => showBrainFrame(frameAt(video.currentTime)));
-}
-
-// Whether the brain panel is hidden. The choice is remembered in this browser;
-// if the browser blocks storage, the panel simply starts visible
-const BRAIN_HIDDEN_KEY = "duck-dashboard-brain-hidden";
-let brainHidden = false;
-try { brainHidden = localStorage.getItem(BRAIN_HIDDEN_KEY) === "yes"; } catch (error) {}
-
-// The Hide brain / Show brain button
-function setUpBrainToggle() {
-  const button = document.getElementById("toggle-brain");
-  const apply = () => {
-    button.textContent = brainHidden ? "Show brain" : "Hide brain";
-    if (brainData) document.getElementById("brain").hidden = brainHidden;
-  };
-  button.addEventListener("click", () => {
-    brainHidden = !brainHidden;
-    try { localStorage.setItem(BRAIN_HIDDEN_KEY, brainHidden ? "yes" : "no"); } catch (error) {}
-    apply();
-  });
-  apply();
 }
 
 // Speed buttons, the pause button, and pausing by clicking the film
@@ -578,10 +375,7 @@ function drawCharts() {
 }
 
 window.addEventListener("resize", drawCharts);
-buildMotorRows();
 setUpPlaybackControls();
-setUpBrainToggle();
-followVideo();
 refresh();
 setInterval(refresh, REFRESH_MS);
 </script>

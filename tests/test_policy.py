@@ -1,15 +1,15 @@
-"""Tests for loading a snapshot as a policy and reading its brain."""
+"""Tests for loading a snapshot as a policy."""
 import numpy as np
 import pytest
 
 from duck.duck_env import DuckWalkEnv
-from duck.policy import load_brain, load_policy
+from duck.policy import load_policy
 from duck.snapshots import latest_snapshot
 from duck.train import train
 from tests.test_train import save_plain_run
 
 
-# An untrained symmetric snapshot is enough: the readout must agree with the policy whatever the weights
+# An untrained symmetric snapshot is enough: the checks hold whatever the weights
 @pytest.fixture(scope="module")
 def symmetric_snapshot(tmp_path_factory):
     run_dir = tmp_path_factory.mktemp("run")
@@ -26,20 +26,20 @@ def plain_snapshot(tmp_path_factory):
     return latest_snapshot(run_dir)
 
 
-# The readout picks exactly the action the policy picks, and shows both layers of 256 cells
-def check_brain_matches_policy(snapshot):
+# The policy gives 12 motor commands within the motor limits, and the same ones every time
+def check_policy(snapshot):
     observation, _ = DuckWalkEnv().reset(seed=0)
-    reading = load_brain(snapshot)(observation)
-    assert reading.action == pytest.approx(load_policy(snapshot)(observation), abs=1e-5)
-    assert reading.layer1.shape == (256,) and reading.layer2.shape == (256,)
-    assert np.all(np.abs(reading.layer1) <= 1) and np.all(np.abs(reading.layer2) <= 1)
+    policy = load_policy(snapshot)
+    action = policy(observation)
+    assert action.shape == (12,) and np.all(np.abs(action) <= 1)
+    assert np.array_equal(action, policy(observation))
 
 
-# The symmetric brain's readout matches its policy
-def test_symmetric_brain_matches_policy(symmetric_snapshot):
-    check_brain_matches_policy(symmetric_snapshot)
+# A symmetric brain loads as a policy
+def test_symmetric_brain_loads_as_policy(symmetric_snapshot):
+    check_policy(symmetric_snapshot)
 
 
-# An old plain brain's readout still matches its policy
-def test_plain_brain_matches_policy(plain_snapshot):
-    check_brain_matches_policy(plain_snapshot)
+# An old plain brain still loads as a policy
+def test_plain_brain_loads_as_policy(plain_snapshot):
+    check_policy(plain_snapshot)
