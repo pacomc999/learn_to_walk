@@ -75,12 +75,15 @@ def add_caption(frame: np.ndarray, text: str) -> np.ndarray:
 
 # Walk one attempt and keep a picture each time simulated time reaches the next 1/fps mark.
 # After a fall the duck keeps being simulated with zero actions, so it stays on screen lying down.
-# on_frame, if given, is told the observation and whether the duck has fallen at every picture
+# on_frame, if given, is told the observation and whether the duck has fallen at every picture.
+# roughness is the height of the cobblestones in metres (0.0 is the flat floor)
 def record_clip(policy, seconds: float = 6.0, fps: int = 30, width: int = 640,
                 height: int = 480, seed: int = 0,
-                on_frame: Callable[[np.ndarray, bool], None] | None = None) -> list[np.ndarray]:
+                on_frame: Callable[[np.ndarray, bool], None] | None = None,
+                roughness: float = 0.0) -> list[np.ndarray]:
     frame_count = round(seconds * fps)
-    env = DuckWalkEnv(render_mode="rgb_array", target_speed=EVALUATION_TARGET_SPEED, width=width, height=height)
+    env = DuckWalkEnv(render_mode="rgb_array", target_speed=EVALUATION_TARGET_SPEED, width=width, height=height,
+                     roughness=roughness)
     try:
         observation, _ = env.reset(seed=seed)
         frames = [env.render()]  # the first picture comes right after the reset
@@ -103,7 +106,7 @@ def record_clip(policy, seconds: float = 6.0, fps: int = 30, width: int = 640,
 
 # Record every chosen snapshot with its caption, one clip after another, and save one MP4
 def make_video(run_dir: Path, out_path: Path | None = None, max_snapshots: int = 25,
-               seconds_per_clip: float = 6.0, fps: int = 30) -> Path:
+               seconds_per_clip: float = 6.0, fps: int = 30, roughness: float = 0.0) -> Path:
     snapshots = list_snapshots(run_dir)
     if not snapshots:
         raise ValueError(f"No snapshots found in {run_dir}")
@@ -115,7 +118,7 @@ def make_video(run_dir: Path, out_path: Path | None = None, max_snapshots: int =
     try:
         for position, snapshot in enumerate(chosen, start=1):
             print(f"Recording snapshot {position} of {len(chosen)}")
-            clip = record_clip(load_policy(snapshot), seconds_per_clip, fps)
+            clip = record_clip(load_policy(snapshot), seconds_per_clip, fps, roughness=roughness)
             caption = caption_text(position, len(chosen), snapshot.steps)
             for frame in clip:
                 writer.append_data(add_caption(frame, caption))
@@ -129,9 +132,10 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Make a video of the duck learning to walk.")
     parser.add_argument("run_dir", type=Path, help="run folder, for example runs/duck_v1")
     parser.add_argument("--seconds", type=float, default=6.0, help="seconds per snapshot clip (default 6)")
+    parser.add_argument("--roughness", type=float, default=0.0, help="height of the cobblestones in metres (default 0, a flat floor)")
     arguments = parser.parse_args()
     try:
-        make_video(arguments.run_dir, seconds_per_clip=arguments.seconds)
+        make_video(arguments.run_dir, seconds_per_clip=arguments.seconds, roughness=arguments.roughness)
     except ValueError as error:
         print(error)
         raise SystemExit(1)

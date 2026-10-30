@@ -135,3 +135,39 @@ def test_status_has_the_exam_of_the_filmed_brain(tmp_path):
     append_exam(tmp_path, 1_750_000, FullExamResult(916.0, 0, 9.2, 24, ExamResult(916.0, 0, 9.2), ExamResult(916.0, 0, 9.2)), START)
     (tmp_path / CLIP_STEPS_NAME).write_text("1750000")
     assert run_status(tmp_path, total_steps=None)["clip_exam"]["score"] == 916.0
+
+
+# A new style exam row gives the status both parts and the attempt count
+def test_status_has_the_parts_of_a_new_exam(tmp_path):
+    full = FullExamResult(900.0, 1, 9.0, 24, ExamResult(950.0, 0, 9.0), ExamResult(850.0, 1, 9.0))
+    append_exam(tmp_path, 2_500_000, full, START)
+    (tmp_path / CLIP_STEPS_NAME).write_text("2500000")
+    exam = run_status(tmp_path, total_steps=None)["clip_exam"]
+    assert (exam["attempts"], exam["flat_score"], exam["rough_score"]) == (24, 950.0, 850.0)
+
+
+# An old row (no parts in the log) gives None parts and 12 attempts
+def test_status_has_no_parts_for_an_old_exam(tmp_path):
+    (tmp_path / "exam.csv").write_text("time,timesteps,score,falls,distance\n2026-10-28 20:00:00,1000000,500.0,3,8.0\n")
+    (tmp_path / CLIP_STEPS_NAME).write_text("1000000")
+    exam = run_status(tmp_path, total_steps=None)["clip_exam"]
+    assert (exam["attempts"], exam["flat_score"], exam["rough_score"]) == (12, None, None)
+
+
+# The dashboard films on the rough floor, on the first exam layout
+def test_dashboard_film_uses_the_rough_floor(tmp_path, monkeypatch):
+    import duck.dashboard
+    from duck.exam import EXAM_FIRST_SEED
+    from duck.floor import MAX_ROUGHNESS
+    seen = {}
+
+    def fake_record_clip(policy, **kwargs):
+        seen.update(kwargs)
+        raise RuntimeError("stop here")
+
+    monkeypatch.setattr(duck.dashboard, "record_clip", fake_record_clip)
+    monkeypatch.setattr(duck.dashboard, "load_brain", lambda snapshot: None)
+    monkeypatch.setattr(duck.dashboard, "load_policy", lambda snapshot: None)
+    with pytest.raises(RuntimeError):
+        duck.dashboard.make_snapshot_clip(tmp_path, None)
+    assert seen["roughness"] == MAX_ROUGHNESS and seen["seed"] == EXAM_FIRST_SEED

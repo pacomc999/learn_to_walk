@@ -38,3 +38,23 @@ def test_cli_with_unknown_snapshot_lists_available_steps(tmp_path):
     assert "No snapshot with 123 steps" in run.stdout
     assert "512" in run.stdout
     assert "Traceback" not in run.stderr
+
+
+# evaluate_snapshot is flat by default and passes a chosen roughness to the environment
+def test_evaluate_passes_the_roughness(monkeypatch):
+    import duck.evaluate
+    import pytest
+    seen = {}
+
+    def fake_env(**kwargs):
+        seen.update(kwargs)
+        raise RuntimeError("stop here")
+
+    monkeypatch.setattr(duck.evaluate, "DuckWalkEnv", fake_env)
+    monkeypatch.setattr(duck.evaluate, "load_policy", lambda snapshot: None)
+    with pytest.raises(RuntimeError):
+        evaluate_snapshot(None)
+    assert seen["roughness"] == 0.0
+    with pytest.raises(RuntimeError):
+        evaluate_snapshot(None, roughness=0.01)
+    assert seen["roughness"] == 0.01

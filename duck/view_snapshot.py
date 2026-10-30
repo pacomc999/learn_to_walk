@@ -37,10 +37,11 @@ def main() -> None:
     parser.add_argument("run_dir", type=Path, help="run folder, for example runs/duck_v1")
     parser.add_argument("--snapshot", type=int, default=None, help="step count of the snapshot (default: latest)")
     parser.add_argument("--speed", type=float, default=EVALUATION_TARGET_SPEED, help="speed to ask for, in metres per second")
+    parser.add_argument("--roughness", type=float, default=0.0, help="height of the cobblestones in metres (default 0, a flat floor)")
     arguments = parser.parse_args()
     snapshot = choose_snapshot_or_exit(arguments.run_dir, arguments.snapshot)
     policy = load_policy(snapshot)
-    env = DuckWalkEnv(target_speed=arguments.speed)
+    env = DuckWalkEnv(target_speed=arguments.speed, roughness=arguments.roughness)
     print(f"Showing the snapshot from {snapshot.steps:,} steps at {arguments.speed} m/s. Close the window to stop.")
     with mujoco.viewer.launch_passive(env.model, env.data) as viewer:
         attempt = 0

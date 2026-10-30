@@ -19,7 +19,8 @@ from typing import Callable
 import imageio
 import numpy as np
 
-from duck.exam import best_folder, exam_at
+from duck.exam import EXAM_FIRST_SEED, best_folder, exam_at
+from duck.floor import MAX_ROUGHNESS
 from duck.policy import BrainReading, load_brain, load_policy
 from duck.progress import ProgressRow, minutes_since_improvement, read_progress
 from duck.snapshots import Snapshot, latest_snapshot, replace_with_retry
@@ -158,7 +159,8 @@ def _save_json(data: dict, path: Path) -> None:
     replace_with_retry(temp_path, path)
 
 
-# Film a snapshot walking at the judging speed and keep its brain activity for every frame.
+# Film a snapshot walking at the judging speed on the roughest floor, from the first rough exam
+# layout, and keep its brain activity for every frame.
 # After a fall the brain is no longer in control, so those frames have no reading
 def make_snapshot_clip(run_dir: Path, snapshot: Snapshot) -> None:
     brain = load_brain(snapshot)
@@ -168,7 +170,8 @@ def make_snapshot_clip(run_dir: Path, snapshot: Snapshot) -> None:
         readings.append(None if fallen else frame_reading(brain, observation))
 
     frames = record_clip(load_policy(snapshot), seconds=CLIP_SECONDS, fps=CLIP_FPS,
-                         width=CLIP_WIDTH, height=CLIP_HEIGHT, on_frame=keep_reading)
+                         width=CLIP_WIDTH, height=CLIP_HEIGHT, on_frame=keep_reading,
+                         seed=EXAM_FIRST_SEED, roughness=MAX_ROUGHNESS)
     save_mp4(frames, run_dir / CLIP_NAME)
     _save_json({"steps": snapshot.steps, "fps": CLIP_FPS, "frames": readings}, run_dir / BRAIN_NAME)
     (run_dir / CLIP_STEPS_NAME).write_text(str(snapshot.steps))

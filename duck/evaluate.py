@@ -47,10 +47,12 @@ def _run_attempt(env: DuckWalkEnv, policy, seed: int) -> bool:
     return judge_attempt(fell, seconds, info["x_position"] - start_x, info["y_position"])
 
 
-# Run several attempts with different starting wobbles and count the successes
-def evaluate_snapshot(snapshot: Snapshot, attempts: int = 10, seed: int = 0) -> EvaluationResult:
+# Run several attempts with different starting wobbles and count the successes.
+# roughness is the height of the cobblestones in metres (0.0 is the flat floor)
+def evaluate_snapshot(snapshot: Snapshot, attempts: int = 10, seed: int = 0,
+                      roughness: float = 0.0) -> EvaluationResult:
     policy = load_policy(snapshot)
-    env = DuckWalkEnv(target_speed=EVALUATION_TARGET_SPEED)
+    env = DuckWalkEnv(target_speed=EVALUATION_TARGET_SPEED, roughness=roughness)
     successes = sum(_run_attempt(env, policy, seed + i) for i in range(attempts))
     env.close()
     needed = REQUIRED_SUCCESSES * attempts / 10
@@ -67,9 +69,10 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Judge a snapshot of the duck.")
     parser.add_argument("run_dir", type=Path, help="run folder, for example runs/duck_v1")
     parser.add_argument("--snapshot", type=int, default=None, help="step count of the snapshot (default: latest)")
+    parser.add_argument("--roughness", type=float, default=0.0, help="height of the cobblestones in metres (default 0, a flat floor)")
     arguments = parser.parse_args()
     snapshot = choose_snapshot_or_exit(arguments.run_dir, arguments.snapshot)
-    print(result_message(evaluate_snapshot(snapshot)))
+    print(result_message(evaluate_snapshot(snapshot, roughness=arguments.roughness)))
 
 
 if __name__ == "__main__":

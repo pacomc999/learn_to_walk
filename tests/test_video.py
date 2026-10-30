@@ -43,3 +43,32 @@ def test_record_clip_reports_each_frame():
                          on_frame=lambda observation, fallen: reports.append((observation.shape, fallen)))
     assert len(reports) == len(frames) == 5
     assert reports[0] == ((39,), False)
+
+
+# A stand-in environment that notes how it was built, then stops the recording
+class _StopHere(Exception):
+    pass
+
+
+def _capture_env_arguments(monkeypatch, module):
+    seen = {}
+
+    def fake_env(**kwargs):
+        seen.update(kwargs)
+        raise _StopHere
+
+    monkeypatch.setattr(module, "DuckWalkEnv", fake_env)
+    return seen
+
+
+# record_clip is flat by default and builds a rough floor when asked
+def test_record_clip_passes_the_roughness(monkeypatch):
+    import duck.video
+    from duck.floor import MAX_ROUGHNESS
+    seen = _capture_env_arguments(monkeypatch, duck.video)
+    with pytest.raises(_StopHere):
+        record_clip(lambda observation: np.zeros(12), seconds=0.1, fps=10)
+    assert seen["roughness"] == 0.0
+    with pytest.raises(_StopHere):
+        record_clip(lambda observation: np.zeros(12), seconds=0.1, fps=10, roughness=MAX_ROUGHNESS)
+    assert seen["roughness"] == MAX_ROUGHNESS

@@ -362,13 +362,26 @@ let brainData = null;     // { steps, fps, frames: [...] } for the film on scree
 let shownClipSteps = null;
 let lastFrameIndex = -1;
 
-// The film's caption: when the brain is from, and its exam result (no wobble, 12 fixed starts)
+// The film's caption: when the brain is from, and its exam result (no wobble, fixed starts).
+// New exam rows have a flat and a rough part and the film is on cobblestones; old rows keep the old wording
 function clipCaption(status) {
   const exam = status.clip_exam;
-  const examText = exam
-    ? ", exam score " + Math.round(exam.score).toLocaleString("en") + ", " + exam.falls + " falls of 12"
-    : "";
-  return "After " + stepsInWords(status.clip_steps) + " steps" + examText + ", asked to walk at 0.4 m/s, no wobble";
+  let examText = "";
+  let floorText = "";
+  if (exam) {
+    const score = Math.round(exam.score).toLocaleString("en");
+    const hasParts = exam.flat_score !== null && exam.flat_score !== undefined &&
+                     exam.rough_score !== null && exam.rough_score !== undefined;
+    const parts = hasParts
+      ? " (flat " + Math.round(exam.flat_score).toLocaleString("en") +
+        ", rough " + Math.round(exam.rough_score).toLocaleString("en") + ")"
+      : "";
+    const falls = exam.falls === 1 ? " fall of " : " falls of ";
+    examText = ", exam score " + score + parts + ", " + exam.falls + falls + exam.attempts;
+    if (hasParts) floorText = ", on cobblestones";
+  }
+  return "After " + stepsInWords(status.clip_steps) + " steps" + examText +
+         ", asked to walk at 0.4 m/s, no wobble" + floorText;
 }
 
 // Swap in a new film and its brain data only when a newer snapshot has been filmed
