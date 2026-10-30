@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-A 3D MuJoCo duck (design B, 12 motors) that learns to walk with PPO on a CPU-only Windows laptop. See `README.md` for usage and `docs/designs/2026-10-28-duck-walker-design.md` for the design.
+A 3D MuJoCo duck (design B, 12 motors) that learns to walk with PPO on a CPU-only Windows laptop. See `README.md` for the overview, `docs/guide.md` for usage (the full user guide) and `docs/designs/2026-10-28-duck-walker-design.md` for the design. When a tool or workflow changes, update `docs/guide.md` (and the README table if a common command changes).
 
 ## Layout
 - `duck/model.py`: loads `duck/assets/duck.xml`, body constants (standing height, `MIN_TORSO_HEIGHT` = 0.6 of standing height)
