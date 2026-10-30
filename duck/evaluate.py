@@ -8,10 +8,12 @@ import argparse
 from dataclasses import dataclass
 from pathlib import Path
 
+from duck.bodies import Body
 from duck.duck_env import EVALUATION_TARGET_SPEED, DuckWalkEnv
 from duck.floor import roughness_argument
 from duck.policy import choose_snapshot_or_exit, load_policy
 from duck.snapshots import Snapshot
+from duck.worlds import World
 
 # What counts as a good walk
 MIN_AVERAGE_SPEED = 0.2  # metres per second
@@ -48,12 +50,12 @@ def _run_attempt(env: DuckWalkEnv, policy, seed: int) -> bool:
     return judge_attempt(fell, seconds, info["x_position"] - start_x, info["y_position"])
 
 
-# Run several attempts with different starting wobbles and count the successes.
+# Run several attempts with different starting wobbles and count the successes, in a world with a body.
 # roughness is the height of the cobblestones in metres (0.0 is the flat floor)
-def evaluate_snapshot(snapshot: Snapshot, attempts: int = 10, seed: int = 0,
+def evaluate_snapshot(snapshot: Snapshot, world: World, body: Body, attempts: int = 10, seed: int = 0,
                       roughness: float = 0.0) -> EvaluationResult:
     policy = load_policy(snapshot)
-    env = DuckWalkEnv(target_speed=EVALUATION_TARGET_SPEED, roughness=roughness)
+    env = DuckWalkEnv(world=world, body=body, target_speed=EVALUATION_TARGET_SPEED, roughness=roughness)
     successes = sum(_run_attempt(env, policy, seed + i) for i in range(attempts))
     env.close()
     needed = REQUIRED_SUCCESSES * attempts / 10

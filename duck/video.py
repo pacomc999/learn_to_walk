@@ -15,10 +15,12 @@ import imageio
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont
 
+from duck.bodies import Body
 from duck.duck_env import EVALUATION_TARGET_SPEED, FILM_HEIGHT, FILM_WIDTH, DuckWalkEnv
 from duck.floor import roughness_argument
 from duck.policy import load_policy
 from duck.snapshots import choose_for_video, list_snapshots
+from duck.worlds import World
 
 # The caption band covers this share of the picture height, and is this dark (0 clear, 1 black)
 BAND_HEIGHT_SHARE = 0.1
@@ -80,15 +82,15 @@ def add_caption(frame: np.ndarray, text: str) -> np.ndarray:
 # After a fall the duck keeps being simulated with zero actions, so it stays on screen lying down.
 # on_frame, if given, is told the observation and whether the duck has fallen at every picture.
 # roughness is the height of the cobblestones in metres (0.0 is the flat floor).
-# world, if given, is a ready made world to film instead (built with render_mode="rgb_array"), for example
-# a challenge; it is closed at the end like the usual one
-def record_clip(policy, seconds: float = 6.0, fps: int = 30, width: int = FILM_WIDTH,
+# The duck is the body in the world. scene, if given, is a ready made environment to film instead (built with
+# render_mode="rgb_array"), for example a challenge; it is closed at the end like the usual one
+def record_clip(policy, world: World, body: Body, seconds: float = 6.0, fps: int = 30, width: int = FILM_WIDTH,
                 height: int = FILM_HEIGHT, seed: int = 0,
                 on_frame: Callable[[np.ndarray, bool], None] | None = None,
-                roughness: float = 0.0, world: DuckWalkEnv | None = None) -> list[np.ndarray]:
+                roughness: float = 0.0, scene: DuckWalkEnv | None = None) -> list[np.ndarray]:
     frame_count = round(seconds * fps)
-    env = world or DuckWalkEnv(render_mode="rgb_array", target_speed=EVALUATION_TARGET_SPEED, width=width,
-                               height=height, roughness=roughness)
+    env = scene or DuckWalkEnv(world=world, body=body, render_mode="rgb_array", target_speed=EVALUATION_TARGET_SPEED,
+                               width=width, height=height, roughness=roughness)
     try:
         observation, _ = env.reset(seed=seed)
         frames = [env.render()]  # the first picture comes right after the reset

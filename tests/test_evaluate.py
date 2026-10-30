@@ -2,6 +2,7 @@ import subprocess
 import sys
 
 from tests.test_train import FLAT_SETTINGS
+from tests.worlds_for_tests import BODY, FLAT
 from duck.evaluate import judge_attempt, evaluate_snapshot
 from duck.snapshots import latest_snapshot
 from duck.train import train
@@ -17,7 +18,7 @@ def test_judge_attempt():
 def test_evaluate_a_real_snapshot(tmp_path):
     train(tmp_path, total_steps=512, snapshot_every=512, n_envs=2, settings=FLAT_SETTINGS,
           use_subprocess=False, ppo_overrides={"n_steps": 256, "batch_size": 64})
-    result = evaluate_snapshot(latest_snapshot(tmp_path), attempts=2)
+    result = evaluate_snapshot(latest_snapshot(tmp_path), FLAT, BODY, attempts=2)
     assert result.attempts == 2 and 0 <= result.successes <= 2
 
 
@@ -54,8 +55,8 @@ def test_evaluate_passes_the_roughness(monkeypatch):
     monkeypatch.setattr(duck.evaluate, "DuckWalkEnv", fake_env)
     monkeypatch.setattr(duck.evaluate, "load_policy", lambda snapshot: None)
     with pytest.raises(RuntimeError):
-        evaluate_snapshot(None)
-    assert seen["roughness"] == 0.0
+        evaluate_snapshot(None, FLAT, BODY)
+    assert seen["roughness"] == 0.0 and seen["world"] == FLAT and seen["body"] == BODY
     with pytest.raises(RuntimeError):
-        evaluate_snapshot(None, roughness=0.01)
+        evaluate_snapshot(None, FLAT, BODY, roughness=0.01)
     assert seen["roughness"] == 0.01

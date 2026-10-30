@@ -2,8 +2,8 @@
 
 A duck is a recipe (brain type, rules and settings), not a single brain. A new duck
 starts only when the recipe changes. Each folder in duck_catalogue/ holds:
-- duck.json: the story (what changed and why, where it starts, its runs) and the
-  recipe, frozen from the code when the duck was created
+- duck.json: the story (what changed and why, where it starts, its runs), the recipe frozen
+  from the code when the duck was created, and its world and body (names and frozen copies)
 - brain/snapshots/: the recipe's best brain so far (one snapshot)
 - results.json: the best brain's measurements
 - <folder>.mp4: a captioned film of the best brain, not kept in git (the brain and the
@@ -11,7 +11,7 @@ starts only when the recipe changes. Each folder in duck_catalogue/ holds:
 - card.md: the readable card, written from the files above
 
 Run from the project root, for example:
-    python -m duck.catalogue new duck_catalogue/duck_02 --name "Duck 2"
+    python -m duck.catalogue new duck_catalogue/duck_04 --name "Duck 4" --world stones_up_to_4cm --body strong_legs
     python -m duck.catalogue keep duck_catalogue/duck_02 runs/duck_02/main --snapshot 2007040
     python -m duck.catalogue film duck_catalogue/duck_02
     python -m duck.catalogue cards
@@ -20,7 +20,6 @@ import argparse
 import json
 import shutil
 import subprocess
-from dataclasses import asdict
 from datetime import datetime
 from pathlib import Path
 
@@ -29,16 +28,18 @@ import numpy as np
 from stable_baselines3 import PPO
 from stable_baselines3.common.vec_env import DummyVecEnv, VecNormalize
 
+from duck.bodies import Body, body_to_dict, load_body
 from duck.duck_env import (EVALUATION_TARGET_SPEED, FRAME_SKIP, MAX_EPISODE_SECONDS, START_NOISE,
-                           START_STRIDE, TARGET_SPEED_RANGE, DuckWalkEnv)
+                           START_STRIDE, DuckWalkEnv)
 from duck.evaluate import evaluate_snapshot
 from duck.exam import take_full_exam
-from duck.floor import FLOOR_SHAPE, TRAINING_ROUGHNESS
+from duck.floor import FLOOR_SHAPE
 from duck.policy import choose_snapshot_or_exit, load_policy
-from duck.rewards import RewardWeights
+from duck.run_settings import RunSettings, duck_settings, settings_for_folder
 from duck.snapshots import Snapshot, list_snapshots, slim_brain_file
 from duck.train import DEFAULT_PPO_SETTINGS, NET_ARCH, NEW_RUN_POLICY, START_LOG_STD, STEP_SIZE_RULE
 from duck.video import add_caption, record_clip
+from duck.worlds import World, load_world, world_to_dict
 
 CATALOGUE_DIR = Path("duck_catalogue")
 STORY_NAME = "duck.json"
@@ -65,7 +66,8 @@ def _code_version() -> str:
         return "unknown"
 
 
-# Everything that defines how a new run learns, read from the code right now
+# Everything that defines how a new run learns, read from the code right now. The floor, speeds
+# and reward are not here: they belong to the duck's world (world_settings in duck.json)
 def current_recipe() -> dict:
     return {
         "brain": NEW_RUN_POLICY.__name__,
@@ -73,11 +75,7 @@ def current_recipe() -> dict:
         "start_log_std": START_LOG_STD,
         "ppo": DEFAULT_PPO_SETTINGS,
         "step_size_rule": STEP_SIZE_RULE,
-        "reward": asdict(RewardWeights()),
-        "forward_reward": f"{RewardWeights().forward} x (target - |speed - target|)",
-        "floor": {"max_roughness": TRAINING_ROUGHNESS, **FLOOR_SHAPE,
-                  "rough_exam": "spread" if TRAINING_ROUGHNESS else "none"},
-        "target_speed_range": list(TARGET_SPEED_RANGE),
+        "floor_shape": FLOOR_SHAPE,
         "attempt_seconds": MAX_EPISODE_SECONDS,
         "physics_steps_per_action": FRAME_SKIP,
         "start_noise": START_NOISE,
@@ -98,13 +96,15 @@ def _write_json(path: Path, data: dict) -> None:
     path.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
 
 
-# Start a new duck folder with the current recipe and an empty story to fill in
-def new_duck(duck_dir: Path, name: str) -> Path:
+# Start a new duck folder with the current recipe, its world and body (frozen copies) and an empty story
+def new_duck(duck_dir: Path, name: str, world: World, body: Body) -> Path:
     if (duck_dir / STORY_NAME).exists():
         raise FileExistsError(f"{duck_dir} already holds a duck")
     duck_dir.mkdir(parents=True)
     story = {
         "name": name,
+        "world": world.name,
+        "body": body.name,
         "started": datetime.now().strftime("%Y-%m-%d %H:%M"),
         "summary": "",
         "what_changed": "",
@@ -113,6 +113,8 @@ def new_duck(duck_dir: Path, name: str) -> Path:
         "runs": [],
         "notes": "",
         "recipe": current_recipe(),
+        "world_settings": world_to_dict(world),
+        "body_settings": body_to_dict(body),
     }
     _write_json(duck_dir / STORY_NAME, story)
     write_card(duck_dir)
@@ -121,20 +123,20 @@ def new_duck(duck_dir: Path, name: str) -> Path:
 
 # ---------- Measuring a brain ----------
 
-# The two part noise-free exam on a snapshot, with the sense scaling saved alongside it
-def _exam_snapshot(snapshot: Snapshot):
-    venv = DummyVecEnv([lambda: DuckWalkEnv(roughness=0.0)])
+# The noise-free exam of a world on a snapshot, with the sense scaling saved alongside it
+def _exam_snapshot(snapshot: Snapshot, world: World, body: Body):
+    venv = DummyVecEnv([lambda: DuckWalkEnv(world=world, body=body, roughness=0.0)])
     vec_normalize = VecNormalize.load(str(snapshot.norm_path), venv)
     vec_normalize.training = False
     model = PPO.load(str(snapshot.model_path), device="cpu")
-    result = take_full_exam(model, vec_normalize)
+    result = take_full_exam(model, vec_normalize, world, body)
     venv.close()
     return result
 
 
 # One attempt at the judging speed: time spent with 0, 1 or 2 feet down, energy and distance
-def _gait_attempt(policy, seed: int, roughness: float) -> dict:
-    env = DuckWalkEnv(target_speed=EVALUATION_TARGET_SPEED, roughness=roughness)
+def _gait_attempt(policy, seed: int, roughness: float, world: World, body: Body) -> dict:
+    env = DuckWalkEnv(world=world, body=body, target_speed=EVALUATION_TARGET_SPEED, roughness=roughness)
     observation, _ = env.reset(seed=seed)
     feet_counts, energy, steps = [0, 0, 0], 0.0, 0
     while True:
@@ -150,9 +152,9 @@ def _gait_attempt(policy, seed: int, roughness: float) -> dict:
 
 
 # Average foot use, energy per metre and speed over the gait attempts on a floor of this roughness
-def _gait_summary(snapshot: Snapshot, roughness: float = 0.0) -> dict:
+def _gait_summary(snapshot: Snapshot, world: World, body: Body, roughness: float = 0.0) -> dict:
     policy = load_policy(snapshot)
-    attempts = [_gait_attempt(policy, seed, roughness) for seed in GAIT_SEEDS]
+    attempts = [_gait_attempt(policy, seed, roughness, world, body) for seed in GAIT_SEEDS]
     feet = np.mean([a["feet"] for a in attempts], axis=0)
     distance = sum(a["distance"] for a in attempts)
     return {
@@ -165,28 +167,30 @@ def _gait_summary(snapshot: Snapshot, roughness: float = 0.0) -> dict:
     }
 
 
-# All measurements of one brain, plus where it came from
-def measure_brain(snapshot: Snapshot, run_dir: Path) -> dict:
-    exam = _exam_snapshot(snapshot)
-    walking = evaluate_snapshot(snapshot, roughness=0.0)
+# All measurements of one brain in a world with a body, plus where it came from
+def measure_brain(snapshot: Snapshot, run_dir: Path, world: World, body: Body) -> dict:
+    exam = _exam_snapshot(snapshot, world, body)
+    walking = evaluate_snapshot(snapshot, world, body, roughness=0.0)
+    tallest = world.tallest_stones
     results = {
         "from_run": run_dir.as_posix(),
         "steps": snapshot.steps,
         "measured": datetime.now().strftime("%Y-%m-%d %H:%M"),
+        "exam_world": world.name,
         "exam_score": round(exam.score, 1),
         "exam_falls": exam.falls,
         "walking_test": f"{walking.successes} of {walking.attempts}",
-        "gait_at_judging_speed": _gait_summary(snapshot, 0.0),
+        "gait_at_judging_speed": _gait_summary(snapshot, world, body, 0.0),
     }
-    if TRAINING_ROUGHNESS > 0:  # training on stones: the exam's halves, walking test and gait on stones too
-        walking_rough = evaluate_snapshot(snapshot, roughness=TRAINING_ROUGHNESS)
+    if tallest > 0:  # a world with stones: the exam's halves, walking test and gait on the tallest stones too
+        walking_rough = evaluate_snapshot(snapshot, world, body, roughness=tallest)
         results.update({
             "exam_attempts": exam.attempts,
             "exam_lower_score": round(exam.parts["lower"].score, 1),
             "exam_taller_score": round(exam.parts["taller"].score, 1),
             "walking_test_rough": f"{walking_rough.successes} of {walking_rough.attempts}",
-            "gait_on_rough_floor": _gait_summary(snapshot, TRAINING_ROUGHNESS),
-            "rough_floor_height": TRAINING_ROUGHNESS,
+            "gait_on_rough_floor": _gait_summary(snapshot, world, body, tallest),
+            "rough_floor_height": tallest,
         })
     return results
 
@@ -205,8 +209,8 @@ def _copy_brain(duck_dir: Path, snapshot: Snapshot) -> None:
 
 
 # A film of the kept brain with the duck's name and exam score written on every frame
-def _make_film(duck_dir: Path, snapshot: Snapshot, caption: str) -> Path:
-    frames = record_clip(load_policy(snapshot), seconds=FILM_SECONDS, fps=FILM_FPS, seed=0)
+def _make_film(duck_dir: Path, snapshot: Snapshot, caption: str, world: World, body: Body) -> Path:
+    frames = record_clip(load_policy(snapshot), world, body, seconds=FILM_SECONDS, fps=FILM_FPS, seed=0)
     film_path = duck_dir / f"{duck_dir.name}.mp4"
     imageio.mimsave(film_path, [add_caption(frame, caption) for frame in frames], fps=FILM_FPS, macro_block_size=1)
     return film_path
@@ -224,22 +228,42 @@ def film_duck(duck_dir: Path) -> Path | None:
         print(f"{duck_dir} has no kept brain to film.")
         return None
     story = _read_json(duck_dir / STORY_NAME)
-    film_path = _make_film(duck_dir, kept[-1], _film_caption(story, _read_json(duck_dir / RESULTS_NAME)))
+    settings = duck_settings(duck_dir)
+    film_path = _make_film(duck_dir, kept[-1], _film_caption(story, _read_json(duck_dir / RESULTS_NAME)),
+                           settings.world, settings.body)
     print(f"Film saved as {film_path}")
     return film_path
+
+
+# The world and body to keep a brain in: the run's own settings, else the duck's
+def _keep_settings(duck_dir: Path, run_dir: Path) -> RunSettings:
+    return settings_for_folder(run_dir) or duck_settings(duck_dir)
+
+
+# The kept brain's exam score in this world: as stored if it was examined in this world,
+# otherwise the kept brain takes this world's exam first, so the comparison is fair
+def _kept_score(duck_dir: Path, kept: dict, world: World, body: Body) -> float:
+    if kept.get("exam_world") == world.name:
+        return kept["exam_score"]
+    score = _exam_snapshot(list_snapshots(duck_dir / "brain")[-1], world, body).score
+    print(f"The kept brain was examined in another world, so it took this world's exam first: {score:.0f}.")
+    return score
 
 
 # Measure a snapshot and keep it as the duck's brain if its exam beats the kept one (or if forced)
 def keep_brain(duck_dir: Path, run_dir: Path, snapshot: Snapshot, force: bool = False) -> bool:
     story = _read_json(duck_dir / STORY_NAME)
     kept = _read_json(duck_dir / RESULTS_NAME)
-    results = measure_brain(snapshot, run_dir)
-    if kept and results["exam_score"] <= kept["exam_score"] and not force:
-        print(f"Not kept: exam {results['exam_score']:.0f} does not beat the kept brain's {kept['exam_score']:.0f}.")
-        return False
+    settings = _keep_settings(duck_dir, run_dir)
+    results = measure_brain(snapshot, run_dir, settings.world, settings.body)
+    if kept and not force:
+        kept_score = _kept_score(duck_dir, kept, settings.world, settings.body)
+        if results["exam_score"] <= kept_score:
+            print(f"Not kept: exam {results['exam_score']:.0f} does not beat the kept brain's {kept_score:.0f}.")
+            return False
     _copy_brain(duck_dir, snapshot)
     _write_json(duck_dir / RESULTS_NAME, results)
-    _make_film(duck_dir, snapshot, _film_caption(story, results))
+    _make_film(duck_dir, snapshot, _film_caption(story, results), settings.world, settings.body)
     write_card(duck_dir)
     print(f"Kept as {story['name']}'s best brain: exam {results['exam_score']:.0f}, "
           f"{results['exam_falls']} falls of {_exam_attempts(results)}.")
@@ -263,6 +287,33 @@ STARTED_FROM_BRAIN_LINE = ("- Started from another brain: it keeps that brain's 
 # True when the story says the duck started from a brain (old ducks say "zero" or start with "zero")
 def _started_from_brain(story: dict) -> bool:
     return not story["starts_from"].lower().startswith("zero")
+
+
+# The recipe as the card shows it. A recipe from before worlds has its own floor, speeds and reward;
+# a newer one takes them from the duck's frozen world (and the floor shape from the recipe)
+def card_recipe(story: dict) -> dict:
+    recipe = story["recipe"]
+    world = story.get("world_settings")
+    if world is None:
+        return recipe
+    tallest = world["floor"]["tallest_stones"]
+    reward = world["reward"]
+    from_world = {
+        "reward": reward,
+        "forward_reward": f"{reward['forward']} x (target - |speed - target|)",
+        "target_speed_range": world["target_speed_range"],
+        "floor": {"max_roughness": tallest, **recipe.get("floor_shape", FLOOR_SHAPE),
+                  "rough_exam": "spread" if tallest else "none"},
+    }
+    return {**from_world, **recipe}
+
+
+# The card's world and body lines (ducks from before worlds have none)
+def _world_and_body_lines(story: dict) -> list[str]:
+    if "world_settings" not in story:
+        return []
+    world, body = story["world_settings"], story["body_settings"]
+    return [f"- World: {world['name']}, {world['description']}", f"- Body: {body['name']}, {body['description']}", ""]
 
 
 # The card's recipe lines
@@ -392,7 +443,13 @@ def _rough_floor_words(results: dict) -> str:
 def _run_lines(runs: list[dict]) -> list[str]:
     if not runs:
         return ["No runs yet."]
-    return [f"- `{run['folder']}` ({run['dates']}, {run['steps']}): {run['outcome']}" for run in runs]
+    return [f"- `{run['folder']}` ({run['dates']}, {run['steps']}): {run['outcome']}" + _brain_body_words(run)
+            for run in runs]
+
+
+# For a run whose starting brain came from another body, which body that was
+def _brain_body_words(run: dict) -> str:
+    return f" (its brain came from the {run['brain_from_body']} body)" if run.get("brain_from_body") else ""
 
 
 # Write card.md from the story, the recipe and the kept brain's results
@@ -402,8 +459,9 @@ def write_card(duck_dir: Path) -> Path:
     lines = [
         f"# {story['name']}", "", f"**{story['summary']}**" if story["summary"] else "", "",
         f"Started {story['started']}. Starts from: {story['starts_from']}.", "",
+        *_world_and_body_lines(story),
         "## What changed and why", "", story["what_changed"] or "(to write)", "", story["why"] or "", "",
-        "## Recipe", "", *_recipe_lines(story["recipe"], _started_from_brain(story)), "",
+        "## Recipe", "", *_recipe_lines(card_recipe(story), _started_from_brain(story)), "",
         "## Training history", "", *_run_lines(story["runs"]), "",
         "## Best brain", "", *_results_lines(results, duck_dir.name), "",
         "## Notes", "", story["notes"] or "(none)", "",
@@ -445,9 +503,11 @@ def rewrite_all_cards(catalogue_dir: Path = CATALOGUE_DIR) -> None:
 def main() -> None:
     parser = argparse.ArgumentParser(description="Keep track of the ducks.")
     commands = parser.add_subparsers(dest="command", required=True)
-    new = commands.add_parser("new", help="start a duck with the current recipe")
+    new = commands.add_parser("new", help="start a duck with the current recipe, a world and a body")
     new.add_argument("duck_dir", type=Path)
     new.add_argument("--name", required=True)
+    new.add_argument("--world", required=True, help="a world file name in worlds/, for example stones_up_to_4cm")
+    new.add_argument("--body", default="standard", help="a body file name in bodies/ (default: standard)")
     keep = commands.add_parser("keep", help="measure a snapshot and keep it if it is the duck's best")
     keep.add_argument("duck_dir", type=Path)
     keep.add_argument("run_dir", type=Path)
@@ -459,7 +519,11 @@ def main() -> None:
     args = parser.parse_args()
 
     if args.command == "new":
-        new_duck(args.duck_dir, args.name)
+        try:
+            new_duck(args.duck_dir, args.name, load_world(args.world), load_body(args.body))
+        except (ValueError, FileExistsError) as error:
+            print(error)  # a plain message, no traceback
+            raise SystemExit(1)
     elif args.command == "keep":
         snapshot = choose_snapshot_or_exit(args.run_dir, args.snapshot)
         keep_brain(args.duck_dir, args.run_dir, snapshot, force=args.force)
