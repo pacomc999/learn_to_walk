@@ -2,7 +2,7 @@
 
 **Duck 2.1's brain on a rough cobblestone floor, with an overshoot penalty**
 
-Started 2026-10-30 03:12. Starts from: Duck 2.1's best brain (ducks/duck_02_1/brain, 4.0M steps, exam 986).
+Started 2026-10-30 03:12. Starts from: Duck 2.1's best brain (duck_catalogue/duck_02_1/brain, 4.0M steps, exam 986).
 
 ## What changed and why
 
@@ -28,7 +28,7 @@ Duck 2.1 walks on flat ground about as well as the exam can tell (986, ceiling a
 
 ## Best brain
 
-Film: [duck_03.mp4](duck_03.mp4), 16 s of the best brain at 0.4 m/s. It is not kept in git; make it with `python -m duck.catalogue film ducks/duck_03`.
+Film: [duck_03.mp4](duck_03.mp4), 16 s of the best brain at 0.4 m/s. It is not kept in git; make it with `python -m duck.catalogue film duck_catalogue/duck_03`.
 
 - From `runs/duck_03/from_duck_02_1/best` at 3,506,176 steps (measured 2026-10-30 04:44)
 - Exam (24 fixed attempts, 12 flat and 12 rough, no wobble): score 966, falls 1 of 24 (flat 939, rough 992)
@@ -39,4 +39,4 @@ Film: [duck_03.mp4](duck_03.mp4), 16 s of the best brain at 0.4 m/s. It is not k
 
 ## Notes
 
-Duck 2.1's best brain scored 986 under the old forward rule. Under Duck 3's exam and reward the same brain scores 732 (flat 798, rough 667, 3 falls of 24): the flat drop is entirely the overshoot penalty, because Duck 2.1 walks faster than asked. Scores before and after the reward change cannot be compared. A started run inherits the source brain's wobble (std about 0.099), its adapted step size (about 0.0000117) and its PPO settings, so the starting wobble and learning rate in the recipe above do not apply to this run. Rock test (2026-10-30): thrown stone balls on the flat floor; walks 5 of 10 with 100 g rocks, none from 125 g. See rocks/results.csv and ducks/duck_03_1/rocks/README.md.
+Duck 2.1's best brain scored 986 under the old forward rule. Under Duck 3's exam and reward the same brain scores 732 (flat 798, rough 667, 3 falls of 24): the flat drop is entirely the overshoot penalty, because Duck 2.1 walks faster than asked. Scores before and after the reward change cannot be compared. A started run inherits the source brain's wobble (std about 0.099), its adapted step size (about 0.0000117) and its PPO settings, so the starting wobble and learning rate in the recipe above do not apply to this run. Rock test (2026-10-30): thrown stone balls on the flat floor; walks 5 of 10 with 100 g rocks, none from 125 g. See rocks/results.csv and duck_catalogue/duck_03_1/rocks/README.md.

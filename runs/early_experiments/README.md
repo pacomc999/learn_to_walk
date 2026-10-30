@@ -1,6 +1,6 @@
 # Early experiments
 
-The training runs from the first day, 28 to 29 October 2026, before the duck catalogue (`ducks/`) and before the exam existed. Each one tried a change to the rewards or the duck, and what it taught led to the next one. Duck 1 (`ducks/duck_01/`) is the first catalogue duck; everything here came before it.
+The training runs from the first day, 28 to 29 October 2026, before the duck catalogue (`duck_catalogue/`) and before the exam existed. Each one tried a change to the rewards or the duck, and what it taught led to the next one. Duck 1 (`duck_catalogue/duck_01/`) is the first catalogue duck; everything here came before it.
 
 These brains are the old plain kind (not the symmetric brain), trained without an exam, so the scores below are training scores (with the random wobble), not exam scores. The brains were slimmed on 2026-10-30 (no optimizer memory): they load and act as before but cannot continue training exactly where they stopped.
 

@@ -4,7 +4,7 @@
   "summary": "Duck 3's brain on taller stones, up to 3 cm",
   "what_changed": "Two changes from Duck 3. The floor: the most roughness goes from 1 cm to 3 cm, still picked at random from flat up to the most for every training attempt, so about a third of attempts stay under 1 cm. The exam: the rough part climbs instead of using the full height for all 12 attempts; its attempts are spread evenly from 0.25 cm to 3 cm (each attempt keeps its seed, so only the stone height changes). The flat part is unchanged.",
   "why": "Duck 3 walks on 1 cm stones (10 of 10) and mostly on 2 cm (8 of 10), but fell on every 3 cm attempt, after about 7 s, pitching forward when a foot caught a stone. Its brain never felt a stone above 1 cm. Francisco chose 3 cm as the next step. The exam climbs so that it matches what training asks for (any height up to the most), still tests the hardest floor, and gives useful scores early on, when most 3 cm attempts still end in a fall. A minor change, so Duck 3.1 rather than Duck 4.",
-  "starts_from": "Duck 3's best brain (ducks/duck_03/brain, 3.5M steps, exam 966 under Duck 3's exam)",
+  "starts_from": "Duck 3's best brain (duck_catalogue/duck_03/brain, 3.5M steps, exam 966 under Duck 3's exam)",
   "runs": [
     {
       "folder": "runs/duck_03_1/from_duck_03",

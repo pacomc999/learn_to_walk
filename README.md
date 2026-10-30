@@ -50,7 +50,7 @@ To keep training past 30 million steps, resume with a bigger `--steps` value. Th
 
 Start a new run from another run's or duck's brain instead of from zero (a new run folder is needed):
 
-`.venv/Scripts/python -m duck.train --run runs/duck_03/from_duck_02_1 --steps 4000000 --start-from ducks/duck_02_1/brain`
+`.venv/Scripts/python -m duck.train --run runs/duck_03/from_duck_02_1 --steps 4000000 --start-from duck_catalogue/duck_02_1/brain`
 
 Continue with more curiosity (more random experimenting):
 
@@ -93,7 +93,7 @@ To judge or watch an older snapshot, add `--snapshot` and its step count, for ex
 ## Where things are
 
 - `duck/`: the code, and `tests/` its tests
-- `ducks/`: the catalogue, one folder per duck with its story, recipe, best brain and card (kept in git)
+- `duck_catalogue/`: the catalogue, one folder per duck with its story, recipe, best brain and card (kept in git)
 - `runs/`: training output (not in git): `runs/duck_NN/<run>/` for each duck's runs, with the training output in `train.log`, and `runs/early_experiments/` for the runs before the catalogue (its `README.md` explains each one)
 - `docs/designs/` and `docs/plans/`: the design notes and build plans; `docs/duck_joints.html`: the joint explorer
 
@@ -107,21 +107,21 @@ Open `docs/duck_joints.html` in a browser to see the duck in 3D and drag its leg
 
 A test of balance that is not part of training: stone balls are thrown at a duck's kept brain while it walks on the flat floor, one every 2 s from a random side at 4 m/s, 10 attempts of 20 s per rock size from 25 g to 400 g:
 
-`.venv/Scripts/python -m duck.rocks ducks/duck_03_1`
+`.venv/Scripts/python -m duck.rocks duck_catalogue/duck_03_1`
 
-The results go to `ducks/duck_03_1/rocks/results.csv`. Add `--film 150` to also film every attempt with 150 g rocks and make a page that plays them side by side (`ducks/duck_03_1/rocks/films/index.html`, not kept in git). `ducks/duck_03_1/rocks/README.md` explains the first round and compares three ducks.
+The results go to `duck_catalogue/duck_03_1/rocks/results.csv`. Add `--film 150` to also film every attempt with 150 g rocks and make a page that plays them side by side (`duck_catalogue/duck_03_1/rocks/films/index.html`, not kept in git). `duck_catalogue/duck_03_1/rocks/README.md` explains the first round and compares three ducks.
 
 ## The duck catalogue
 
-Every training recipe is a duck, with a card in `ducks/` (see `ducks/README.md` for the list). A card says what changed from the previous duck and why, the exact rules and settings, every training run, and how its best brain does. Next to the card is a 16 s film of the best brain with the duck's name on it (`ducks/duck_03/duck_03.mp4`, 1280 x 960). Films are not kept in git; make one again with `.venv/Scripts/python -m duck.catalogue film ducks/duck_03`. A new duck starts only when the recipe changes, not when training goes on longer.
+Every training recipe is a duck, with a card in `duck_catalogue/` (see `duck_catalogue/README.md` for the list). A card says what changed from the previous duck and why, the exact rules and settings, every training run, and how its best brain does. Next to the card is a 16 s film of the best brain with the duck's name on it (`duck_catalogue/duck_03/duck_03.mp4`, 1280 x 960). Films are not kept in git; make one again with `.venv/Scripts/python -m duck.catalogue film duck_catalogue/duck_03`. A new duck starts only when the recipe changes, not when training goes on longer.
 
-Start a new duck with the current recipe, then fill in its story in `ducks/duck_02/duck.json`:
+Start a new duck with the current recipe, then fill in its story in `duck_catalogue/duck_02/duck.json`:
 
-`.venv/Scripts/python -m duck.catalogue new ducks/duck_02 --name "Duck 2"`
+`.venv/Scripts/python -m duck.catalogue new duck_catalogue/duck_02 --name "Duck 2"`
 
 Measure a snapshot and keep it as the duck's best brain (only if its exam score beats the kept one):
 
-`.venv/Scripts/python -m duck.catalogue keep ducks/duck_02 runs/duck_02/main`
+`.venv/Scripts/python -m duck.catalogue keep duck_catalogue/duck_02 runs/duck_02/main`
 
 Rewrite the cards after editing a `duck.json`:
 

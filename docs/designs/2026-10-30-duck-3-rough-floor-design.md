@@ -1,6 +1,6 @@
 # Duck 3: rough floor and overshoot penalty
 
-Date: 2026-10-30. Owner: Francisco. Builds on Duck 2.1 (`ducks/duck_02_1/`).
+Date: 2026-10-30. Owner: Francisco. Builds on Duck 2.1 (`duck_catalogue/duck_02_1/`).
 
 ## Intent and why
 
@@ -61,7 +61,7 @@ Francisco chose to make both changes in one duck and to start from Duck 2.1's be
 - A new way to start a run from another run's brain, for example `python -m duck.train --run runs/duck_03/from_duck_02_1 --steps 4000000 --start-from <folder with a snapshots/ folder>`.
 - It loads the brain and its sense scaling and keeps learning from there in the new world. It keeps what the brain learned: its wobble size, its adapted step size and its sense scaling (which keeps updating as usual).
 - The new run's step count starts at 0, so its logs, exams and snapshots read like any run. The card records which brain it started from.
-- The source brain: Duck 2.1's kept best brain in `ducks/duck_02_1/brain/`.
+- The source brain: Duck 2.1's kept best brain in `duck_catalogue/duck_02_1/brain/`.
 
 ## Exams
 
@@ -74,7 +74,7 @@ Francisco chose to make both changes in one duck and to start from Duck 2.1's be
 ## Catalogue, dashboard, docs
 
 - The recipe in `duck.json` records the floor (shape numbers, `MAX_ROUGHNESS`), the forward reward form and the starting brain. Each card gets a "Floor" line; older ducks say "flat".
-- New duck folder `ducks/duck_03/`, name "Duck 3". Runs in `runs/duck_03/...`.
+- New duck folder `duck_catalogue/duck_03/`, name "Duck 3". Runs in `runs/duck_03/...`.
 - The dashboard caption shows the combined exam score and both parts.
 - README.md and the project CLAUDE.md describe the floor, the overshoot rule, `--start-from` and the two part exam.
 

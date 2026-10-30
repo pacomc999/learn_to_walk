@@ -1,6 +1,6 @@
 # Duck 3.1 against thrown rocks
 
-A test of balance, not part of training: stone balls are thrown at the walking duck to see when it falls. Made on 2026-10-30 with `python -m duck.rocks ducks/duck_03_1 --film 150` (code in `duck/rocks.py`).
+A test of balance, not part of training: stone balls are thrown at the walking duck to see when it falls. Made on 2026-10-30 with `python -m duck.rocks duck_catalogue/duck_03_1 --film 150` (code in `duck/rocks.py`).
 
 ## How the rocks are thrown
 
@@ -22,7 +22,7 @@ A test of balance, not part of training: stone balls are thrown at the walking d
 | 200 g | 2.7 cm | 0 | 0 | 0 |
 | 400 g | 3.4 cm | 0 | 0 | 0 |
 
-Every number, with time up, throws and hits, is in `results.csv` here and in `ducks/duck_02_1/rocks/results.csv` and `ducks/duck_03/rocks/results.csv`. Nearly every throw hits (Duck 2.1 is missed a few times, perhaps because it walks faster than asked).
+Every number, with time up, throws and hits, is in `results.csv` here and in `duck_catalogue/duck_02_1/rocks/results.csv` and `duck_catalogue/duck_03/rocks/results.csv`. Nearly every throw hits (Duck 2.1 is missed a few times, perhaps because it walks faster than asked).
 
 ## What it shows
 

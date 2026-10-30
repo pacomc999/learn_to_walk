@@ -1,7 +1,7 @@
 """The duck catalogue: one folder per training recipe, kept in git.
 
 A duck is a recipe (brain type, rules and settings), not a single brain. A new duck
-starts only when the recipe changes. Each folder in ducks/ holds:
+starts only when the recipe changes. Each folder in duck_catalogue/ holds:
 - duck.json: the story (what changed and why, where it starts, its runs) and the
   recipe, frozen from the code when the duck was created
 - brain/snapshots/: the recipe's best brain so far (one snapshot)
@@ -11,9 +11,9 @@ starts only when the recipe changes. Each folder in ducks/ holds:
 - card.md: the readable card, written from the files above
 
 Run from the project root, for example:
-    python -m duck.catalogue new ducks/duck_02 --name "Duck 2"
-    python -m duck.catalogue keep ducks/duck_02 runs/duck_02/main --snapshot 2007040
-    python -m duck.catalogue film ducks/duck_02
+    python -m duck.catalogue new duck_catalogue/duck_02 --name "Duck 2"
+    python -m duck.catalogue keep duck_catalogue/duck_02 runs/duck_02/main --snapshot 2007040
+    python -m duck.catalogue film duck_catalogue/duck_02
     python -m duck.catalogue cards
 """
 import argparse
@@ -40,7 +40,7 @@ from duck.snapshots import Snapshot, list_snapshots, slim_brain_file
 from duck.train import DEFAULT_PPO_SETTINGS, NET_ARCH, NEW_RUN_POLICY, START_LOG_STD, STEP_SIZE_RULE
 from duck.video import add_caption, record_clip
 
-CATALOGUE_DIR = Path("ducks")
+CATALOGUE_DIR = Path("duck_catalogue")
 STORY_NAME = "duck.json"
 RESULTS_NAME = "results.json"
 CARD_NAME = "card.md"
@@ -347,7 +347,7 @@ def _results_lines(results: dict, folder_name: str) -> list[str]:
     film_name = f"{folder_name}.mp4"
     lines = [
         f"Film: [{film_name}]({film_name}), {FILM_SECONDS:.0f} s of the best brain at {EVALUATION_TARGET_SPEED} m/s. "
-        f"It is not kept in git; make it with `python -m duck.catalogue film ducks/{folder_name}`.",
+        f"It is not kept in git; make it with `python -m duck.catalogue film duck_catalogue/{folder_name}`.",
         "",
         f"- From `{results['from_run']}` at {results['steps']:,} steps (measured {results['measured']})",
         _exam_line(results),
@@ -401,7 +401,7 @@ def _index_line(duck_dir: Path) -> str:
     return f"| [{story['name']}]({duck_dir.name}/{CARD_NAME}) | {story['started'][:10]} | {story['summary']} | {score} |"
 
 
-# Write ducks/README.md with one line per duck, oldest first
+# Write duck_catalogue/README.md with one line per duck, oldest first
 def write_index(catalogue_dir: Path = CATALOGUE_DIR) -> Path:
     duck_dirs = sorted(path.parent for path in catalogue_dir.glob(f"*/{STORY_NAME}"))
     lines = ["# The ducks", "",

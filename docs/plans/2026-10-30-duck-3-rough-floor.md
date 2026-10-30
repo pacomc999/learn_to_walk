@@ -269,7 +269,7 @@ Write them fully with the existing `FAST` settings from `tests/test_train.py`.
 - [ ] **Step 1: Write the failing tests**: `record_clip` with `roughness=MAX_ROUGHNESS` builds a rough env (monkeypatch `DuckWalkEnv` in `duck.video` to capture its arguments); `evaluate_snapshot(..., roughness=0.01)` passes it through the same way; `run_status` includes the parts for a new style row and `None` parts for an old row.
 - [ ] **Step 2: Run** them; expect FAIL.
 - [ ] **Step 3: Implement**; the page caption function `clipCaption` in `dashboard.html` handles both row shapes.
-- [ ] **Step 4: Run** the whole suite; expect PASS. Then render one real dashboard clip of `ducks/duck_02_1/brain` on the rough floor into a temporary folder with `make_snapshot_clip` and open one frame image to check that stones are visible (report what you saw).
+- [ ] **Step 4: Run** the whole suite; expect PASS. Then render one real dashboard clip of `duck_catalogue/duck_02_1/brain` on the rough floor into a temporary folder with `make_snapshot_clip` and open one frame image to check that stones are visible (report what you saw).
 - [ ] **Step 5: Commit** `git commit -m "Show the rough floor in films and the dashboard"`.
 
 ### Task 7: Catalogue and docs
@@ -291,4 +291,4 @@ Write them fully with the existing `FAST` settings from `tests/test_train.py`.
 
 ---
 
-After Task 7 the controller (not a subagent) creates `ducks/duck_03` ("Duck 3", summary "Duck 2.1's brain on a rough cobblestone floor, with an overshoot penalty"), starts `python -m duck.train --run runs/duck_03/from_duck_02_1 --steps 4000000 --start-from ducks/duck_02_1/brain`, and points the dashboard and phone page at it.
+After Task 7 the controller (not a subagent) creates `duck_catalogue/duck_03` ("Duck 3", summary "Duck 2.1's brain on a rough cobblestone floor, with an overshoot penalty"), starts `python -m duck.train --run runs/duck_03/from_duck_02_1 --steps 4000000 --start-from duck_catalogue/duck_02_1/brain`, and points the dashboard and phone page at it.

@@ -2,7 +2,7 @@
 
 **Duck 3's brain on taller stones, up to 3 cm**
 
-Started 2026-10-30 10:14. Starts from: Duck 3's best brain (ducks/duck_03/brain, 3.5M steps, exam 966 under Duck 3's exam).
+Started 2026-10-30 10:14. Starts from: Duck 3's best brain (duck_catalogue/duck_03/brain, 3.5M steps, exam 966 under Duck 3's exam).
 
 ## What changed and why
 
@@ -28,7 +28,7 @@ Duck 3 walks on 1 cm stones (10 of 10) and mostly on 2 cm (8 of 10), but fell on
 
 ## Best brain
 
-Film: [duck_03_1.mp4](duck_03_1.mp4), 16 s of the best brain at 0.4 m/s. It is not kept in git; make it with `python -m duck.catalogue film ducks/duck_03_1`.
+Film: [duck_03_1.mp4](duck_03_1.mp4), 16 s of the best brain at 0.4 m/s. It is not kept in git; make it with `python -m duck.catalogue film duck_catalogue/duck_03_1`.
 
 - From `runs/duck_03_1/from_duck_03/best` at 2,252,800 steps (measured 2026-10-30 12:02)
 - Exam (24 fixed attempts, 12 flat and 12 rough, no wobble): score 981, falls 1 of 24 (flat 1002, rough 961)

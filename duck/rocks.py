@@ -10,8 +10,8 @@ are filmed to <duck folder>/rocks/films/ with a page that shows them all (films 
 in git; the same command makes them again).
 
 Run from the project root, for example:
-    python -m duck.rocks ducks/duck_03_1
-    python -m duck.rocks ducks/duck_03_1 --film 150
+    python -m duck.rocks duck_catalogue/duck_03_1
+    python -m duck.rocks duck_catalogue/duck_03_1 --film 150
 """
 import argparse
 import csv
@@ -311,7 +311,7 @@ def _duck_name(duck_dir: Path) -> str:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Throw rocks at a duck's kept brain and count the falls.")
-    parser.add_argument("duck_dir", type=Path, help="duck folder, for example ducks/duck_03_1")
+    parser.add_argument("duck_dir", type=Path, help="duck folder, for example duck_catalogue/duck_03_1")
     parser.add_argument("--grams", type=int, nargs="+", default=list(ROCK_GRAMS), help="rock sizes to test")
     parser.add_argument("--film", type=int, default=None, help="also film every attempt with rocks of this size")
     arguments = parser.parse_args()

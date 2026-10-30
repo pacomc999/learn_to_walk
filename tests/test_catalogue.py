@@ -26,7 +26,7 @@ def small_run(tmp_path):
 
 # A new duck freezes the current recipe and gets a card
 def test_new_duck_freezes_the_recipe(tmp_path):
-    duck_dir = new_duck(tmp_path / "ducks" / "duck_01", "Duck 1")
+    duck_dir = new_duck(tmp_path / "duck_catalogue" / "duck_01", "Duck 1")
     story = json.loads((duck_dir / "duck.json").read_text())
     assert story["name"] == "Duck 1"
     assert story["recipe"]["brain"] == "SymmetricPolicy"
@@ -44,7 +44,7 @@ def test_new_duck_refuses_a_used_folder(tmp_path):
 
 # Keeping a brain copies it, measures it, makes a film and fills the card
 def test_keep_brain_fills_the_duck_folder(tmp_path, small_run):
-    duck_dir = new_duck(tmp_path / "ducks" / "duck_01", "Duck 1")
+    duck_dir = new_duck(tmp_path / "duck_catalogue" / "duck_01", "Duck 1")
     snapshot = list_snapshots(small_run)[-1]
     assert keep_brain(duck_dir, small_run, snapshot)
     kept = list_snapshots(duck_dir / "brain")
@@ -52,13 +52,13 @@ def test_keep_brain_fills_the_duck_folder(tmp_path, small_run):
     results = json.loads((duck_dir / "results.json").read_text())
     assert results["steps"] == snapshot.steps and 0 <= results["exam_falls"] <= 24 and "exam_rough_score" in results
     assert (duck_dir / "duck_01.mp4").stat().st_size > 0
-    assert "catalogue film ducks/duck_01" in (duck_dir / "card.md").read_text()
+    assert "catalogue film duck_catalogue/duck_01" in (duck_dir / "card.md").read_text()
     assert "fixed attempts" in (duck_dir / "card.md").read_text()
 
 
 # A brain that does not beat the kept one is not kept, unless forced
 def test_keep_brain_only_keeps_a_better_one(tmp_path, small_run):
-    duck_dir = new_duck(tmp_path / "ducks" / "duck_01", "Duck 1")
+    duck_dir = new_duck(tmp_path / "duck_catalogue" / "duck_01", "Duck 1")
     first, second = list_snapshots(small_run)[0], list_snapshots(small_run)[-1]
     keep_brain(duck_dir, small_run, first)
     results = json.loads((duck_dir / "results.json").read_text())
@@ -72,7 +72,7 @@ def test_keep_brain_only_keeps_a_better_one(tmp_path, small_run):
 
 # The list page has one row per duck, oldest folder first
 def test_index_lists_every_duck(tmp_path):
-    ducks = tmp_path / "ducks"
+    ducks = tmp_path / "duck_catalogue"
     new_duck(ducks / "duck_02", "Duck 2")
     new_duck(ducks / "duck_01", "Duck 1")
     index = write_index(ducks).read_text()
@@ -136,7 +136,7 @@ def test_new_results_show_both_floors():
 def test_started_run_card_has_the_extra_line():
     recipe = catalogue.current_recipe()
     old_story = {"starts_from": "zero (same seed and untrained brain as Duck 1)"}
-    new_story = {"starts_from": "Duck 2.1's best brain (ducks/duck_02_1/brain, 4.0M steps, exam 986)"}
+    new_story = {"starts_from": "Duck 2.1's best brain (duck_catalogue/duck_02_1/brain, 4.0M steps, exam 986)"}
     old_text = "\n".join(catalogue._recipe_lines(recipe, catalogue._started_from_brain(old_story)))
     new_text = "\n".join(catalogue._recipe_lines(recipe, catalogue._started_from_brain(new_story)))
     assert catalogue.STARTED_FROM_BRAIN_LINE not in old_text
@@ -147,7 +147,7 @@ def test_started_run_card_has_the_extra_line():
 
 # The film command makes a lost film again from the kept brain, and says so when there is no brain
 def test_film_duck_makes_the_film_again(tmp_path, small_run):
-    duck_dir = new_duck(tmp_path / "ducks" / "duck_01", "Duck 1")
+    duck_dir = new_duck(tmp_path / "duck_catalogue" / "duck_01", "Duck 1")
     assert film_duck(duck_dir) is None
     keep_brain(duck_dir, small_run, list_snapshots(small_run)[-1])
     (duck_dir / "duck_01.mp4").unlink()

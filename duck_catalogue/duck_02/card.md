@@ -27,7 +27,7 @@ Duck 1 collapsed after its best at 1.61M. A measurement run showed every update 
 
 ## Best brain
 
-Film: [duck_02.mp4](duck_02.mp4), 16 s of the best brain at 0.4 m/s. It is not kept in git; make it with `python -m duck.catalogue film ducks/duck_02`.
+Film: [duck_02.mp4](duck_02.mp4), 16 s of the best brain at 0.4 m/s. It is not kept in git; make it with `python -m duck.catalogue film duck_catalogue/duck_02`.
 
 - From `runs/duck_02/from_zero/best` at 2,007,040 steps (measured 2026-10-29 18:02)
 - Exam (12 fixed attempts, no wobble): score 557, falls 6 of 12

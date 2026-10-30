@@ -4,7 +4,7 @@
   "summary": "Duck 2.1's brain on a rough cobblestone floor, with an overshoot penalty",
   "what_changed": "Three changes from Duck 2.1. The floor: square cobblestones (6 cm) laid on rolling bumps, with a new layout every attempt and a random roughness from flat to 1 cm. The reward: going faster than the asked speed now loses forward points the same way as going slower. The exam: a flat part and a rough part of 12 attempts each, averaged; the average picks the best brain.",
   "why": "Duck 2.1 walks on flat ground about as well as the exam can tell (986, ceiling about 980 to 1,000), so the next goal is walking on uneven ground. The overshoot penalty comes from the literature review: Duck 2.1 still walked about 7.5 m per exam attempt where the asked speeds give 6.3 m. Francisco chose to make both changes in one duck and to start from Duck 2.1's best brain, accepting that the two effects cannot be told apart.",
-  "starts_from": "Duck 2.1's best brain (ducks/duck_02_1/brain, 4.0M steps, exam 986)",
+  "starts_from": "Duck 2.1's best brain (duck_catalogue/duck_02_1/brain, 4.0M steps, exam 986)",
   "runs": [
     {
       "folder": "runs/duck_03/from_duck_02_1",
@@ -13,7 +13,7 @@
       "outcome": "Started at 732 (flat 798, rough 667, 3 falls of 24) with Duck 2.1's brain. Climbed to 877 by 0.5M, then jumped to 948 with 0 falls at 1.5M when the flat score rose from about 825 to 957 (it learned to slow to the asked speed). Held between 891 and 936 with 1 or 2 falls, then reached its best, 966 with 1 fall (flat 939, rough 992), at 3.5M; 965 at 3.75M and 929 at 4.0M. The rough part rose steadily all run (667 to 994). About 765 steps per second, slower than Duck 2.1 because of the height field floor"
     }
   ],
-  "notes": "Duck 2.1's best brain scored 986 under the old forward rule. Under Duck 3's exam and reward the same brain scores 732 (flat 798, rough 667, 3 falls of 24): the flat drop is entirely the overshoot penalty, because Duck 2.1 walks faster than asked. Scores before and after the reward change cannot be compared. A started run inherits the source brain's wobble (std about 0.099), its adapted step size (about 0.0000117) and its PPO settings, so the starting wobble and learning rate in the recipe above do not apply to this run. Rock test (2026-10-30): thrown stone balls on the flat floor; walks 5 of 10 with 100 g rocks, none from 125 g. See rocks/results.csv and ducks/duck_03_1/rocks/README.md.",
+  "notes": "Duck 2.1's best brain scored 986 under the old forward rule. Under Duck 3's exam and reward the same brain scores 732 (flat 798, rough 667, 3 falls of 24): the flat drop is entirely the overshoot penalty, because Duck 2.1 walks faster than asked. Scores before and after the reward change cannot be compared. A started run inherits the source brain's wobble (std about 0.099), its adapted step size (about 0.0000117) and its PPO settings, so the starting wobble and learning rate in the recipe above do not apply to this run. Rock test (2026-10-30): thrown stone balls on the flat floor; walks 5 of 10 with 100 g rocks, none from 125 g. See rocks/results.csv and duck_catalogue/duck_03_1/rocks/README.md.",
   "recipe": {
     "brain": "SymmetricPolicy",
     "layers": {

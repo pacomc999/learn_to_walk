@@ -8,7 +8,7 @@ Run from the project root, for example:
 Resume a stopped run, optionally with more curiosity:
     python -m duck.train --run runs/duck_v1 --steps 30000000 --resume --ent-coef 0.01
 Start a new run from another run's brain (a run folder, its best/ folder or a duck's brain/ folder):
-    python -m duck.train --run runs/duck_03/a --steps 30000000 --start-from ducks/duck_02_1/brain
+    python -m duck.train --run runs/duck_03/a --steps 30000000 --start-from duck_catalogue/duck_02_1/brain
 """
 import argparse
 import ctypes
