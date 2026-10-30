@@ -1,0 +1,28 @@
+{
+  "from_run": "runs/duck_03_1/from_duck_03/best",
+  "steps": 2252800,
+  "measured": "2026-10-30 12:02",
+  "exam_score": 981.4,
+  "exam_falls": 1,
+  "exam_flat_score": 1002.0,
+  "exam_rough_score": 960.8,
+  "walking_test": "10 of 10",
+  "walking_test_rough": "7 of 10",
+  "gait_at_judging_speed": {
+    "feet_in_air": 0.0,
+    "one_foot_down": 0.943,
+    "both_feet_down": 0.057,
+    "joules_per_metre": 10.8,
+    "speed": 0.39,
+    "falls": 0
+  },
+  "gait_on_rough_floor": {
+    "feet_in_air": 0.013,
+    "one_foot_down": 0.905,
+    "both_feet_down": 0.082,
+    "joules_per_metre": 12.9,
+    "speed": 0.36,
+    "falls": 1
+  },
+  "rough_floor_height": 0.03
+}

@@ -24,12 +24,19 @@ Duck 3 walks on 1 cm stones (10 of 10) and mostly on 2 cm (8 of 10), but fell on
 
 ## Training history
 
-No runs yet.
+- `runs/duck_03_1/from_duck_03` (2026-10-30 10:16 to 11:58, 0 to 4.0M): Started at 869 (flat 939, rough 799, 5 falls of 24) with Duck 3's brain. Jumped to 966 with 1 fall at 0.25M, reached 979 with 0 falls at 1.0M and its best, 981 with 1 fall (flat 1002, rough 961), at 2.25M. After 1M the exams swung between about 870 and 981: good exams had 0 or 1 falls, weak ones (0.75M, 1.25M, 3.25M, 3.75M, 4.0M) had 3 or 4, split between flat and rough. The step size sat at its floor (0.00001) for most of the run while each update still changed the brain about twice the target, which fits the swings. About 660 steps per second; 4M steps took 1 h 42 min
 
 ## Best brain
 
-No brain kept yet.
+Film: [duck_03_1.mp4](duck_03_1.mp4), 16 s of the best brain at 0.4 m/s. It is not kept in git; make it with `python -m duck.catalogue film ducks/duck_03_1`.
+
+- From `runs/duck_03_1/from_duck_03/best` at 2,252,800 steps (measured 2026-10-30 12:02)
+- Exam (24 fixed attempts, 12 flat and 12 rough, no wobble): score 981, falls 1 of 24 (flat 1002, rough 961)
+- Walking test: 10 of 10 attempts walked
+- Walking test on the rough floor (3 cm stones): 7 of 10 attempts walked
+- At 0.4 m/s: speed 0.39 m/s, 10.8 J per metre, feet in the air 0%, one foot down 94%, both down 6%
+- At 0.4 m/s on the rough floor (3 cm stones): speed 0.36 m/s, 12.9 J per metre, feet in the air 1%, one foot down 90%, both down 8%
 
 ## Notes
 
-Exam scores of Duck 3 and Duck 3.1 cannot be compared, because the rough part changed. Duck 3.1's first exam, at step 0, is Duck 3's brain on Duck 3.1's exam, which gives the fair starting point. A started run inherits the source brain's wobble, adapted step size and PPO settings, so the starting wobble and learning rate in the recipe above do not apply to this run.
+Exam scores of Duck 3 and Duck 3.1 cannot be compared, because the rough part changed. Duck 3.1's first exam, at step 0, is Duck 3's brain on Duck 3.1's exam, which gives the fair starting point. A started run inherits the source brain's wobble, adapted step size and PPO settings, so the starting wobble and learning rate in the recipe above do not apply to this run. Attempt by attempt, the best brain loses about 105 points per attempt to energy (about 11 J per metre on flat ground), 38 to 70 to forward points (starting from standstill, small speed errors, the one fall at 2.5 cm) and 3 to 5 to drift; the exam ceiling is about 1,150 with no energy, about 1,045 at its energy use.
