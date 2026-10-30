@@ -1,6 +1,7 @@
 import subprocess
 import sys
 
+from tests.test_train import FLAT_SETTINGS
 from duck.evaluate import judge_attempt, evaluate_snapshot
 from duck.snapshots import latest_snapshot
 from duck.train import train
@@ -14,7 +15,7 @@ def test_judge_attempt():
 
 
 def test_evaluate_a_real_snapshot(tmp_path):
-    train(tmp_path, total_steps=512, snapshot_every=512, n_envs=2,
+    train(tmp_path, total_steps=512, snapshot_every=512, n_envs=2, settings=FLAT_SETTINGS,
           use_subprocess=False, ppo_overrides={"n_steps": 256, "batch_size": 64})
     result = evaluate_snapshot(latest_snapshot(tmp_path), attempts=2)
     assert result.attempts == 2 and 0 <= result.successes <= 2
@@ -30,7 +31,7 @@ def test_cli_without_snapshots_exits_with_message(tmp_path):
 
 
 def test_cli_with_unknown_snapshot_lists_available_steps(tmp_path):
-    train(tmp_path, total_steps=512, snapshot_every=512, n_envs=2,
+    train(tmp_path, total_steps=512, snapshot_every=512, n_envs=2, settings=FLAT_SETTINGS,
           use_subprocess=False, ppo_overrides={"n_steps": 256, "batch_size": 64})
     run = subprocess.run([sys.executable, "-m", "duck.evaluate", str(tmp_path), "--snapshot", "123"],
                          capture_output=True, text=True)

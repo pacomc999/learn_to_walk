@@ -12,10 +12,7 @@ from duck.model import DUCK_XML_PATH
 # (number rounding). That still flips single attempts on tall stones: Duck 3.1's 3 cm walking test went from 7 to 6 of 10
 MAX_ROUGHNESS = 0.04
 
-# The tallest stones training draws, in metres: each attempt picks a height from 0 up to this, and the exam
-# spreads its attempts from flat up to it. 0 trains on the old flat plane and gives a flat only exam.
-# Duck 3 used 0.01, Duck 3.1 0.03 then 0.04 (second run), Duck 3.2 (learning to run) 0.0
-TRAINING_ROUGHNESS = 0.04
+# How tall the stones get in training is part of each world (floor.tallest_stones in worlds/)
 
 # The shape of the floor: rolling bumps with square cobblestones on top
 FLOOR_SHAPE = {
@@ -107,9 +104,8 @@ def floor_heights(rng: np.random.Generator, roughness: float, most: float = MAX_
     return _scale_to_unit(combined) * roughness
 
 
-# The duck XML with the plane floor swapped for a height field geom named "floor"
-def _floor_xml(most: float = MAX_ROUGHNESS) -> str:
-    xml = DUCK_XML_PATH.read_text()
+# A duck XML (any body) with the plane floor swapped for a height field geom named "floor"
+def floor_xml(xml: str, most: float = MAX_ROUGHNESS) -> str:
     half_x = (FLOOR_X_MAX - FLOOR_X_MIN) / 2
     half_y = (FLOOR_Y_MAX - FLOOR_Y_MIN) / 2
     centre_x = (FLOOR_X_MAX + FLOOR_X_MIN) / 2
@@ -123,9 +119,9 @@ def _floor_xml(most: float = MAX_ROUGHNESS) -> str:
     return xml[:start] + floor_geom + xml[end:]
 
 
-# The duck model with a flat height field floor, ready for set_floor. A test floor can allow taller stones
+# The standard duck with a flat height field floor, ready for set_floor. A test floor can allow taller stones
 def load_floor_model(most: float = MAX_ROUGHNESS) -> mujoco.MjModel:
-    return mujoco.MjModel.from_xml_string(_floor_xml(most))
+    return mujoco.MjModel.from_xml_string(floor_xml(DUCK_XML_PATH.read_text(), most))
 
 
 # Write floor heights (metres) into the model's height field

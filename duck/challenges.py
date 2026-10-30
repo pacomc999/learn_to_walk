@@ -13,21 +13,22 @@ Run from the project root, for example:
 import argparse
 import csv
 import json
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Callable
 
 import imageio
-import mujoco
 import numpy as np
 
+from duck.bodies import Body
 from duck.duck_env import EVALUATION_TARGET_SPEED, DuckWalkEnv
-from duck.floor import MAX_ROUGHNESS, load_floor_model
-from duck.model import DUCK_XML_PATH
+from duck.floor import MAX_ROUGHNESS
 from duck.policy import choose_snapshot_or_exit, load_policy
 from duck.rewards import RewardWeights
 from duck.rocks import RockWorld, film_round, rock_radius
+from duck.scene import add_backpack  # noqa: F401 (kept importable from here)
 from duck.video import FilmCard, add_caption, film_page, record_clip
+from duck.worlds import Backpack, World
 
 CHALLENGES_FOLDER = "challenges"
 RESULTS_NAME = "results.csv"
@@ -43,38 +44,20 @@ FILM_FPS = 30
 FILM_SECONDS = 20.0
 SECONDS_AFTER_FALL = 1.5
 
-# The backpack: an 8 x 7 x 4 cm box fixed on the back, slightly behind the middle (a body part, no joint)
-BACKPACK_SIZE = "0.04 0.035 0.02"
-BACKPACK_POSITION = "-0.04 0 0.1"
-
-
 # ---------- Worlds the challenges need ----------
 
-# The duck XML with a backpack of this mass (kg) fixed to its body
-def add_backpack(xml: str, mass: float) -> str:
-    joint = '<freejoint name="root"/>'
-    backpack = (f'{joint}\n      <geom name="backpack" type="box" size="{BACKPACK_SIZE}" pos="{BACKPACK_POSITION}" '
-                f'mass="{mass}" rgba="0.2 0.4 0.75 1"/>')
-    return xml.replace(joint, backpack, 1)
-
-
-# The duck on the flat floor carrying a backpack
+# The duck on the flat floor carrying a backpack of this mass (kg): the duck's world with a backpack extra
 class BackpackWorld(DuckWalkEnv):
-    def __init__(self, mass: float, **kwargs):
-        self.backpack_mass = mass  # needed by _load_model, which the parent calls
-        super().__init__(target_speed=EVALUATION_TARGET_SPEED, roughness=0.0, **kwargs)
-
-    def _load_model(self, roughness: float | None) -> mujoco.MjModel:
-        return mujoco.MjModel.from_xml_string(add_backpack(DUCK_XML_PATH.read_text(), self.backpack_mass))
+    def __init__(self, mass: float, world: World, body: Body, **kwargs):
+        super().__init__(world=replace(world, backpack=Backpack(mass)), body=body,
+                         target_speed=EVALUATION_TARGET_SPEED, roughness=0.0, **kwargs)
 
 
-# The duck on cobblestones of one height, which may be taller than training ever used
+# The duck on cobblestones of one height, which may be taller than its floor model usually holds
 class TallStoneWorld(DuckWalkEnv):
-    def __init__(self, height: float, **kwargs):
-        super().__init__(target_speed=EVALUATION_TARGET_SPEED, roughness=height, **kwargs)
-
-    def _load_model(self, roughness: float | None) -> mujoco.MjModel:
-        return load_floor_model(most=max(MAX_ROUGHNESS, roughness))
+    def __init__(self, height: float, world: World, body: Body, **kwargs):
+        super().__init__(world=world, body=body, target_speed=EVALUATION_TARGET_SPEED, roughness=height,
+                         floor_most=max(MAX_ROUGHNESS, height), **kwargs)
 
 
 # ---------- The challenges ----------

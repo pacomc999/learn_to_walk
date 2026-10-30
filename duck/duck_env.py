@@ -3,23 +3,25 @@ import gymnasium
 import mujoco
 import numpy as np
 
+from duck.bodies import Body
 from duck.model import (
     MIN_TORSO_HEIGHT,
     MOTOR_NAMES,
     foot_contacts,
-    load_duck_model,
     torso_height,
     torso_up_z,
 )
 from duck.floor import (
-    TRAINING_ROUGHNESS,
+    MAX_ROUGHNESS,
     floor_heights,
     floor_most,
     highest_floor_near,
-    load_floor_model,
     set_floor,
 )
-from duck.rewards import RewardWeights, compute_reward, has_fallen
+from duck.rewards import compute_reward, has_fallen
+from duck.rock_thrower import RockThrower
+from duck.scene import load_scene
+from duck.worlds import World
 
 # Physics steps per control step (0.005 s each, so the duck is controlled at 50 Hz)
 FRAME_SKIP = 4
@@ -44,10 +46,6 @@ START_NOISE = 0.02
 # so the nudge can narrow the gap between the hips but never close it
 START_STRIDE = 2 * START_NOISE
 
-# Each training attempt asks for a random speed in this range, in metres per second.
-# 0.2 to 0.7 for the walking ducks (Duck 3.1 too); Duck 3.2 goes up to 1.5 to learn to run
-TARGET_SPEED_RANGE = (0.2, 0.7)
-
 # The speed asked for when judging the duck and making videos
 EVALUATION_TARGET_SPEED = 0.4
 
@@ -68,20 +66,28 @@ FILM_HEIGHT = 960
 OBSERVATION_LIMIT = 1e6
 
 
+# The duck (a body) in a world. The world decides the floor, the speeds asked for, the reward
+# and any extras (rocks, a backpack); the body decides the duck's own numbers
 class DuckWalkEnv(gymnasium.Env):
     metadata = {"render_modes": ["rgb_array"], "render_fps": 50}
 
     def __init__(
         self,
+        *,
+        world: World,
+        body: Body,
         render_mode: str | None = None,
-        reward_weights: RewardWeights = RewardWeights(),
         target_speed: float | None = None,
         width: int = FILM_WIDTH,
         height: int = FILM_HEIGHT,
         roughness: float | None = None,
+        floor_most: float = MAX_ROUGHNESS,
     ):
+        self.world = world
+        self.body = body
         self.render_mode = render_mode
-        self.reward_weights = reward_weights
+        self.reward_weights = world.reward
+        self.floor_most_wanted = floor_most  # the height field's top, raised only by tests of taller stones
         # A fixed target speed, or None to pick a random one for each attempt
         self.fixed_target_speed = target_speed
         self.target_speed = target_speed if target_speed is not None else EVALUATION_TARGET_SPEED
@@ -97,6 +103,14 @@ class DuckWalkEnv(gymnasium.Env):
         self.start_x = 0.0
         self.motor_count = self.model.nu
 
+        # Rocks thrown at the duck when the world has them. throw_rng can be set to throw from
+        # its own seed (the rocks challenge); otherwise the attempt's seed decides the throws
+        self.rock_thrower = None
+        self.throw_rng = None
+        if world.rocks:
+            floor_height = self.floor_most_wanted if self.model.nhfield else 0.0
+            self.rock_thrower = RockThrower(self.model, world.rocks, floor_height=floor_height)
+
         # Actions in [-1, 1] are scaled to each motor's own range
         self.action_space = gymnasium.spaces.Box(-1.0, 1.0, (self.motor_count,), dtype=np.float32)
         self.observation_space = gymnasium.spaces.Box(
@@ -108,17 +122,17 @@ class DuckWalkEnv(gymnasium.Env):
         if render_mode == "rgb_array":
             self.renderer = mujoco.Renderer(self.model, height=height, width=width)
 
-    # The duck's world: the old flat plane for a roughness of exactly 0, otherwise the height field floor.
-    # Other worlds (for example the rock test in duck/rocks.py) replace this to add things
+    # The model: the plain flat plane for a roughness of exactly 0 (or a flat world), otherwise the
+    # height field floor; with the body's numbers and the world's extras
     def _load_model(self, roughness: float | None) -> mujoco.MjModel:
-        trains_flat = roughness is None and TRAINING_ROUGHNESS == 0.0
-        return load_duck_model() if roughness == 0.0 or trains_flat else load_floor_model()
+        flat = roughness == 0.0 or (roughness is None and self.world.tallest_stones == 0.0)
+        return load_scene(self.world, self.body, flat=flat, most=self.floor_most_wanted)
 
     # The speed this attempt asks for: the fixed one, or a random one from the range
     def _pick_target_speed(self) -> float:
         if self.fixed_target_speed is not None:
             return self.fixed_target_speed
-        return float(self.np_random.uniform(*TARGET_SPEED_RANGE))
+        return float(self.np_random.uniform(*self.world.target_speed_range))
 
     # Put the duck back in its standing pose with a tiny random wobble in the joints,
     # one leg slightly ahead, choose the speed it should walk at this time and lay a new floor
@@ -133,13 +147,15 @@ class DuckWalkEnv(gymnasium.Env):
         mujoco.mj_forward(self.model, self.data)
         self.step_count = 0
         self.start_x = float(self.data.qpos[0])  # where this attempt began, for its distance
+        if self.rock_thrower:
+            self.rock_thrower.reset(self.throw_rng if self.throw_rng is not None else self.np_random)
         return self._observation(), self._info({})
 
     # The roughness of this attempt: the fixed one, or a random one up to the maximum
     def _pick_roughness(self) -> float:
         if self.fixed_roughness is not None:
             return self.fixed_roughness
-        return float(self.np_random.uniform(0.0, TRAINING_ROUGHNESS))
+        return float(self.np_random.uniform(0.0, self.world.tallest_stones))
 
     # Draw a new floor, show it to the renderer, and lift the duck above the stones near its start.
     # The flat plane model has no floor to draw
@@ -245,7 +261,11 @@ class DuckWalkEnv(gymnasium.Env):
         action = np.clip(np.asarray(action, dtype=np.float64), -1.0, 1.0)
         x_before = float(self.data.qpos[0])
         self.data.ctrl[:] = self._scale_action(action)
+        if self.rock_thrower:
+            self.rock_thrower.before_step(self.data)
         energy_joules = self._simulate_and_measure_energy()
+        if self.rock_thrower:
+            self.rock_thrower.after_step(self.data)
         self.step_count += 1
 
         reward, reward_parts = self._reward(x_before, energy_joules)

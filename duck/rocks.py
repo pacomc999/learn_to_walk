@@ -1,40 +1,29 @@
 """The rock test: throw stone balls at a walking duck and count how often it falls.
 
-A rock is a real MuJoCo body (a stone ball with its own free joint) added after the duck,
-so it pushes the duck by actually hitting it. The duck senses only its own joints, so the
-rock never shows up in its 39 senses. The duck walks on the flat floor at 0.4 m/s, so the
-rocks are the only difficulty. Every 2 s a rock flies at its body from a random side.
+The rock itself and the throwing rules live in duck/rock_thrower.py, so any world can have
+rocks (world extras). This file holds the rocks challenge's world: the duck on the flat
+floor at 0.4 m/s with rocks as the only difficulty, the throws decided by their own seed
+(as when the challenge was first run), and the films of one rock size.
 
 The test runs as the "rocks" challenge of duck/challenges.py, for example:
     python -m duck.challenges duck_catalogue/duck_03_1 rocks --film 150
-This file holds the world with the rock and the films of one rock size.
 """
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 
 import imageio
-import mujoco
 import numpy as np
 
+from duck.bodies import Body
 from duck.duck_env import EVALUATION_TARGET_SPEED, DuckWalkEnv
-from duck.model import DUCK_XML_PATH
+from duck.rock_thrower import FIRST_THROW, PARKED_POSITION, ROCK_LIFETIME, add_rock, rock_radius  # noqa: F401
 from duck.video import FilmCard, add_caption
 from duck.video import film_page as video_film_page
+from duck.worlds import Rocks, World
 
-# The rocks: stone balls (about granite) thrown at 4 m/s from 0.8 m to the side
-ROCK_DENSITY = 2500.0      # kg per cubic metre
-THROW_SPEED = 4.0          # metres per second
-THROW_DISTANCE = 0.8       # metres
-GRAVITY = 9.81             # metres per second squared, for the arc of the throw
-
-# When rocks fly: the first at 2 s, then every 2 s; each is taken away again after 1 s,
-# so a rock never lies on the floor as an obstacle
-FIRST_THROW = 2.0
-THROW_EVERY = 2.0
-ROCK_LIFETIME = 1.0
-
-# Where the rock waits between throws: off the walking line, behind the start
-PARKED_POSITION = (-1.5, 0.95, 0.05)
+# The challenge throws at 4 m/s every 2 s (the Rocks defaults)
+THROW_SPEED = Rocks(mass=1.0).speed
+THROW_EVERY = Rocks(mass=1.0).every_seconds
 
 # Films: one per attempt, 10 attempts
 ATTEMPTS = 10
@@ -44,96 +33,28 @@ FILM_FPS = 30
 SECONDS_AFTER_FALL = 1.5
 
 
-
 # ---------- The world with a rock ----------
 
-# The radius of a stone ball of this mass, in metres
-def rock_radius(mass: float) -> float:
-    return (3 * mass / (4 * np.pi * ROCK_DENSITY)) ** (1 / 3)
-
-
-# The duck XML with a grey stone ball after the duck, parked in the standing keyframe
-def add_rock(xml: str, mass: float) -> str:
-    x, y, z = PARKED_POSITION
-    rock = (f'    <body name="rock" pos="{x} {y} {z}"><freejoint name="rock"/>'
-            f'<geom name="rock" type="sphere" size="{rock_radius(mass):.4f}" mass="{mass}" '
-            f'rgba="0.45 0.45 0.45 1" contype="1" conaffinity="1"/></body>\n  </worldbody>')
-    xml = xml.replace("  </worldbody>", rock, 1)
-    key_start = xml.index('<key name="stand" qpos="') + len('<key name="stand" qpos="')
-    key_end = xml.index('"', key_start)
-    return xml[:key_end] + f"  {x} {y} {z} 1 0 0 0" + xml[key_end:]
-
-
-# The duck walking on the flat floor while a rock is thrown at it every THROW_EVERY seconds
+# The duck walking on the flat floor of its world while a rock is thrown at it every 2 s.
+# The sides of the throws come from throw_seed, not the attempt's seed, as in the first runs
 class RockWorld(DuckWalkEnv):
-    def __init__(self, rock_mass: float, throw_seed: int, **kwargs):
-        self.rock_mass = rock_mass  # needed by _load_model, which the parent calls
-        super().__init__(target_speed=EVALUATION_TARGET_SPEED, roughness=0.0, **kwargs)
+    def __init__(self, rock_mass: float, throw_seed: int, world: World, body: Body, **kwargs):
+        super().__init__(world=replace(world, rocks=Rocks(rock_mass)), body=body,
+                         target_speed=EVALUATION_TARGET_SPEED, roughness=0.0, **kwargs)
         self.throw_rng = np.random.default_rng(throw_seed)
-        self.rock_qpos = self.model.joint("rock").qposadr[0]
-        self.rock_qvel = self.model.joint("rock").dofadr[0]
-        self.rock_geom = self.model.geom("rock").id
-        self.floor_geom = self.model.geom("floor").id
 
-    # The flat duck world with the rock added
-    def _load_model(self, roughness: float | None) -> mujoco.MjModel:
-        return mujoco.MjModel.from_xml_string(add_rock(DUCK_XML_PATH.read_text(), self.rock_mass))
+    # Throws and hits so far, and where the rock's position starts in qpos
+    @property
+    def throws(self) -> int:
+        return self.rock_thrower.throws
 
-    # A normal start (the keyframe parks the rock), and no rocks thrown yet
-    def reset(self, seed=None, options=None):
-        result = super().reset(seed=seed, options=options)
-        self.next_throw = FIRST_THROW
-        self.thrown_at = None
-        self.hit_this_throw = False
-        self.throws = 0
-        self.hits = 0
-        return result
+    @property
+    def hits(self) -> int:
+        return self.rock_thrower.hits
 
-    # Throw the rock at the body from one side, aiming where the body will be and arcing for gravity
-    def _throw(self) -> None:
-        side = 1.0 if self.throw_rng.random() < 0.5 else -1.0
-        flight_seconds = THROW_DISTANCE / THROW_SPEED
-        target = self.data.body("torso").subtree_com + self.data.qvel[0:3] * flight_seconds
-        start = target + np.array([0.0, side * THROW_DISTANCE, 0.0])
-        velocity = (target - start) / flight_seconds
-        velocity[2] += 0.5 * GRAVITY * flight_seconds
-        self.data.qpos[self.rock_qpos:self.rock_qpos + 7] = [*start, 1, 0, 0, 0]
-        self.data.qvel[self.rock_qvel:self.rock_qvel + 6] = [*velocity, 0, 0, 0]
-        self.thrown_at = self.data.time
-        self.hit_this_throw = False
-        self.throws += 1
-
-    # Put the rock back where it waits
-    def _park(self) -> None:
-        self.data.qpos[self.rock_qpos:self.rock_qpos + 7] = [*PARKED_POSITION, 1, 0, 0, 0]
-        self.data.qvel[self.rock_qvel:self.rock_qvel + 6] = 0.0
-        self.thrown_at = None
-
-    # Whether the rock touches any part of the duck right now (anything but the floor)
-    def _rock_touches_duck(self) -> bool:
-        for contact in self.data.contact[:self.data.ncon]:
-            pair = {contact.geom1, contact.geom2}
-            if self.rock_geom in pair and self.floor_geom not in pair:
-                return True
-        return False
-
-    # Count a hit once per throw, and take the rock away when its time is up
-    def _follow_rock(self) -> None:
-        if not self.hit_this_throw and self._rock_touches_duck():
-            self.hit_this_throw = True
-            self.hits += 1
-        if self.data.time - self.thrown_at >= ROCK_LIFETIME:
-            self._park()
-
-    # One control step: throw when it is time, step the duck, then follow the rock
-    def step(self, action):
-        if self.data.time >= self.next_throw:
-            self._throw()
-            self.next_throw += THROW_EVERY
-        result = super().step(action)
-        if self.thrown_at is not None:
-            self._follow_rock()
-        return result
+    @property
+    def rock_qpos(self) -> int:
+        return self.rock_thrower.qpos_start
 
 
 # ---------- Films ----------
@@ -148,8 +69,8 @@ class RockAttempt:
 
 
 # The pictures of one attempt, and how it went. Once the duck falls it lies still (no commands)
-def film_attempt(policy, grams: int, seed: int) -> tuple[list[np.ndarray], RockAttempt]:
-    env = RockWorld(grams / 1000, throw_seed=seed, render_mode="rgb_array")
+def film_attempt(policy, grams: int, seed: int, world: World, body: Body) -> tuple[list[np.ndarray], RockAttempt]:
+    env = RockWorld(grams / 1000, throw_seed=seed, world=world, body=body, render_mode="rgb_array")
     observation, _ = env.reset(seed=seed)
     frames, fell_at = [env.render()], None
     while env.data.time < 20.0 and (fell_at is None or env.data.time < fell_at + SECONDS_AFTER_FALL):
@@ -170,11 +91,11 @@ def outcome_words(attempt: RockAttempt) -> str:
 
 
 # Film every attempt with one rock size and save a page that plays them all
-def film_round(policy, name: str, grams: int, folder: Path, attempts: int = ATTEMPTS) -> Path:
+def film_round(policy, name: str, grams: int, folder: Path, world: World, body: Body, attempts: int = ATTEMPTS) -> Path:
     folder.mkdir(parents=True, exist_ok=True)
     outcomes = []
     for seed in range(attempts):
-        frames, attempt = film_attempt(policy, grams, seed)
+        frames, attempt = film_attempt(policy, grams, seed, world, body)
         caption = f"{name}, {grams} g rocks at {THROW_SPEED:g} m/s: {outcome_words(attempt)}"
         imageio.mimsave(folder / f"attempt_{seed + 1}.mp4", [add_caption(frame, caption) for frame in frames],
                         fps=FILM_FPS, macro_block_size=1)

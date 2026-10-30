@@ -1,6 +1,7 @@
 import imageio.v3 as iio
 import numpy as np
 import pytest
+from tests.test_train import FLAT_SETTINGS
 from duck.video import caption_text, add_caption, make_video, record_clip
 from duck.train import train
 
@@ -29,7 +30,7 @@ def test_no_snapshots_gives_clear_error(tmp_path):
         make_video(tmp_path)
 
 def test_video_with_a_single_snapshot(tmp_path):
-    train(tmp_path, total_steps=0, snapshot_every=1024, n_envs=2,
+    train(tmp_path, total_steps=0, snapshot_every=1024, n_envs=2, settings=FLAT_SETTINGS,
           use_subprocess=False, ppo_overrides={"n_steps": 256, "batch_size": 64})
     path = make_video(tmp_path, seconds_per_clip=0.5, fps=30)
     assert path.exists()

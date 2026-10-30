@@ -2,6 +2,7 @@
 import numpy as np
 import pytest
 
+from tests.worlds_for_tests import BODY, FLAT, STONES
 from duck.challenges import (CHALLENGES, BackpackWorld, TallStoneWorld, _fall_seconds, challenge_row, film_value,
                              write_film_page, write_readme, write_table)
 from duck.duck_env import EVALUATION_TARGET_SPEED, DuckWalkEnv
@@ -14,15 +15,15 @@ def stand_still(observation):
 
 # The backpack adds its weight to the duck but nothing to its senses
 def test_backpack_adds_weight_not_senses():
-    packed = BackpackWorld(0.2)
-    plain = DuckWalkEnv(target_speed=EVALUATION_TARGET_SPEED, roughness=0.0)
+    packed = BackpackWorld(0.2, world=FLAT, body=BODY)
+    plain = DuckWalkEnv(world=FLAT, body=BODY, target_speed=EVALUATION_TARGET_SPEED, roughness=0.0)
     assert packed.model.body("torso").subtreemass[0] == pytest.approx(plain.model.body("torso").subtreemass[0] + 0.2)
     assert np.array_equal(packed.reset(seed=1)[0], plain.reset(seed=1)[0])
 
 
 # A test floor can be taller than the training limit, and its stones reach the asked height
 def test_tall_stones_reach_their_height():
-    env = TallStoneWorld(0.05)
+    env = TallStoneWorld(0.05, world=STONES, body=BODY)
     env.reset(seed=0)
     assert env.floor.max() == pytest.approx(0.05)
 

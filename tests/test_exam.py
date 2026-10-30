@@ -2,11 +2,13 @@ from datetime import datetime
 
 import pytest
 
-from duck.exam import (EXAM_LOG_HEADER, ExamResult, FullExamResult, append_exam, best_exam_score, exam_at,
+from duck.exam import (EXAM_LOG_HEADER, exam_speeds, ExamResult, FullExamResult, append_exam, best_exam_score, exam_at,
                        parts_in_words, read_exams, stone_exam_heights, stone_exam_speeds, take_exam, take_full_exam)
 from duck.floor import MAX_ROUGHNESS
+from tests.worlds_for_tests import BODY, FLAT, STONES
 from duck.train import build_vec_env, train
 from tests.test_train import FAST
+
 
 
 # A stone exam result whose two halves have the given scores
@@ -20,9 +22,9 @@ def full_result(lower_score: float, taller_score: float, falls: int = 0) -> Full
 # The exam is noise-free, so the same brain gets the same result twice
 def test_exam_is_repeatable(tmp_path):
     model = train(tmp_path, total_steps=0, **FAST)
-    vec_normalize = build_vec_env(1, seed=0, use_subprocess=False)
-    first = take_exam(model, vec_normalize, attempts=3)
-    second = take_exam(model, vec_normalize, attempts=3)
+    vec_normalize = build_vec_env(1, seed=0, world=FLAT, body=BODY, use_subprocess=False)
+    first = take_exam(model, vec_normalize, FLAT, BODY, attempts=3)
+    second = take_exam(model, vec_normalize, FLAT, BODY, attempts=3)
     vec_normalize.close()
     assert first == second
     assert 0 <= first.falls <= 3
@@ -31,9 +33,9 @@ def test_exam_is_repeatable(tmp_path):
 # Taking the exam must not change the sense scaling used for training
 def test_exam_leaves_scaling_alone(tmp_path):
     model = train(tmp_path, total_steps=0, **FAST)
-    vec_normalize = build_vec_env(1, seed=0, use_subprocess=False)
+    vec_normalize = build_vec_env(1, seed=0, world=FLAT, body=BODY, use_subprocess=False)
     count_before = vec_normalize.obs_rms.count
-    take_exam(model, vec_normalize, attempts=2)
+    take_exam(model, vec_normalize, FLAT, BODY, attempts=2)
     assert vec_normalize.obs_rms.count == count_before
     vec_normalize.close()
 
@@ -84,7 +86,7 @@ def test_resume_keeps_earlier_best(tmp_path):
 @pytest.fixture
 def flat_exam(monkeypatch):
     import duck.train
-    monkeypatch.setattr(duck.train, "take_full_exam", lambda model, vec_normalize: full_result(10.0, 10.0, falls=12))
+    monkeypatch.setattr(duck.train, "take_full_exam", lambda model, vec_normalize, world, body: full_result(10.0, 10.0, falls=12))
 
 
 # Training stops by itself after `patience` exams in a row without a new best
@@ -104,10 +106,9 @@ def test_patience_zero_never_stops(tmp_path, flat_exam):
 # Training on stones: the full exam is the plain average of the lower half and the taller half
 def test_full_exam_averages_the_two_halves(tmp_path, monkeypatch):
     import duck.exam
-    monkeypatch.setattr(duck.exam, "TRAINING_ROUGHNESS", MAX_ROUGHNESS)
     model = train(tmp_path, total_steps=0, **FAST)
-    vec_normalize = build_vec_env(1, seed=0, use_subprocess=False)
-    result = take_full_exam(model, vec_normalize)
+    vec_normalize = build_vec_env(1, seed=0, world=FLAT, body=BODY, use_subprocess=False)
+    result = take_full_exam(model, vec_normalize, STONES, BODY)
     vec_normalize.close()
     lower, taller = result.parts["lower"], result.parts["taller"]
     assert result.score == pytest.approx((lower.score + taller.score) / 2)
@@ -120,23 +121,21 @@ def test_full_exam_averages_the_two_halves(tmp_path, monkeypatch):
 # the first 12 in the lower half and the last 12 in the taller half
 def test_stone_exam_attempts(monkeypatch):
     import duck.exam
-    monkeypatch.setattr(duck.exam, "TRAINING_ROUGHNESS", MAX_ROUGHNESS)
     seen = []
     monkeypatch.setattr(duck.exam, "_exam_attempt_on",
-                        lambda model, vec_normalize, seed, roughness, speed: seen.append((seed, roughness)) or (1.0, False, 0.5))
-    result = take_full_exam(None, None)
+                        lambda model, vec_normalize, world, body, seed, roughness, speed: seen.append((seed, roughness)) or (1.0, False, 0.5))
+    result = take_full_exam(None, None, STONES, BODY)
     assert [seed for seed, _ in seen] == list(range(1000, 1024))
-    assert [height for _, height in seen] == pytest.approx(stone_exam_heights())
+    assert [height for _, height in seen] == pytest.approx(stone_exam_heights(STONES))
     assert set(result.parts) == {"lower", "taller"}
 
 
 # Training on the flat floor: the exam is only the flat part, 12 attempts, and logs empty stone columns
 def test_flat_training_gives_a_flat_exam(tmp_path, monkeypatch):
     import duck.exam
-    monkeypatch.setattr(duck.exam, "TRAINING_ROUGHNESS", 0.0)
     model = train(tmp_path, total_steps=0, **FAST)
-    vec_normalize = build_vec_env(1, seed=0, use_subprocess=False)
-    result = take_full_exam(model, vec_normalize)
+    vec_normalize = build_vec_env(1, seed=0, world=FLAT, body=BODY, use_subprocess=False)
+    result = take_full_exam(model, vec_normalize, FLAT, BODY)
     vec_normalize.close()
     assert set(result.parts) == {"flat"} and result.attempts == 12 and result.score == result.parts["flat"].score
     append_exam(tmp_path / "log", 100, result, datetime.now())
@@ -147,9 +146,9 @@ def test_flat_training_gives_a_flat_exam(tmp_path, monkeypatch):
 # The rough part uses the same floors every time, so the same brain scores the same
 def test_rough_part_is_repeatable(tmp_path):
     model = train(tmp_path, total_steps=0, **FAST)
-    vec_normalize = build_vec_env(1, seed=0, use_subprocess=False)
-    first = take_exam(model, vec_normalize, attempts=3, roughness=MAX_ROUGHNESS)
-    second = take_exam(model, vec_normalize, attempts=3, roughness=MAX_ROUGHNESS)
+    vec_normalize = build_vec_env(1, seed=0, world=FLAT, body=BODY, use_subprocess=False)
+    first = take_exam(model, vec_normalize, FLAT, BODY, attempts=3, roughness=MAX_ROUGHNESS)
+    second = take_exam(model, vec_normalize, FLAT, BODY, attempts=3, roughness=MAX_ROUGHNESS)
     vec_normalize.close()
     assert first.score == second.score
 
@@ -185,8 +184,7 @@ def test_new_log_has_both_halves(tmp_path):
 # The stone exam's heights spread evenly: 24 heights from flat up to the most, each one higher
 def test_stone_exam_heights_spread_from_flat_to_the_most(monkeypatch):
     import duck.exam
-    monkeypatch.setattr(duck.exam, "TRAINING_ROUGHNESS", MAX_ROUGHNESS)
-    heights = stone_exam_heights()
+    heights = stone_exam_heights(STONES)
     assert len(heights) == 24
     assert heights[0] == 0.0 and heights[-1] == pytest.approx(MAX_ROUGHNESS)
     assert all(low < high for low, high in zip(heights, heights[1:]))
@@ -195,9 +193,9 @@ def test_stone_exam_heights_spread_from_flat_to_the_most(monkeypatch):
 # Each half of the stone exam asks for all 12 exam speeds once, mixed, not slow to fast
 def test_stone_exam_speeds_give_each_half_every_speed():
     from duck.exam import exam_speeds
-    speeds = stone_exam_speeds()
+    speeds = stone_exam_speeds(STONES)
     assert len(speeds) == 24
-    assert sorted(speeds[:12]) == pytest.approx(exam_speeds()) and sorted(speeds[12:]) == pytest.approx(exam_speeds())
+    assert sorted(speeds[:12]) == pytest.approx(exam_speeds(STONES)) and sorted(speeds[12:]) == pytest.approx(exam_speeds(STONES))
     assert speeds[:12] != sorted(speeds[:12])
 
 
@@ -211,18 +209,17 @@ def test_take_exam_uses_one_height_per_attempt(tmp_path, monkeypatch):
     import duck.exam
     seen = []
     monkeypatch.setattr(duck.exam, "_exam_attempt_on",
-                        lambda model, vec_normalize, seed, roughness, speed: seen.append((seed, roughness)) or (1.0, False, 0.5))
-    take_exam(None, None, roughness=[0.01, 0.02, 0.03], attempts=3)
+                        lambda model, vec_normalize, world, body, seed, roughness, speed: seen.append((seed, roughness)) or (1.0, False, 0.5))
+    take_exam(None, None, FLAT, BODY, roughness=[0.01, 0.02, 0.03], attempts=3)
     assert seen == [(1000, 0.01), (1001, 0.02), (1002, 0.03)]
 
 
 # The exam's asked speeds are spread evenly from the slowest to the fastest training speed
 def test_exam_speeds_cover_the_training_range():
-    from duck.duck_env import TARGET_SPEED_RANGE
     from duck.exam import exam_speeds
-    speeds = exam_speeds()
+    speeds = exam_speeds(FLAT)
     assert len(speeds) == 12
-    assert speeds[0] == pytest.approx(TARGET_SPEED_RANGE[0]) and speeds[-1] == pytest.approx(TARGET_SPEED_RANGE[1])
+    assert speeds[0] == pytest.approx(FLAT.target_speed_range[0]) and speeds[-1] == pytest.approx(FLAT.target_speed_range[1])
     assert all(slow < fast for slow, fast in zip(speeds, speeds[1:]))
 
 
@@ -231,6 +228,25 @@ def test_take_exam_asks_the_spread_speeds(monkeypatch):
     import duck.exam
     seen = []
     monkeypatch.setattr(duck.exam, "_exam_attempt_on",
-                        lambda model, vec_normalize, seed, roughness, speed: seen.append(speed) or (1.0, False, 0.5))
-    take_exam(None, None, attempts=12)
-    assert seen == pytest.approx(duck.exam.exam_speeds())
+                        lambda model, vec_normalize, world, body, seed, roughness, speed: seen.append(speed) or (1.0, False, 0.5))
+    take_exam(None, None, FLAT, BODY, attempts=12)
+    assert seen == pytest.approx(duck.exam.exam_speeds(FLAT))
+
+
+# The exam's speeds follow the world's range
+def test_exam_speeds_follow_the_world():
+    from duck.worlds import load_world
+    speeds = exam_speeds(load_world("flat_running"))
+    assert speeds[0] == pytest.approx(0.2) and speeds[-1] == pytest.approx(1.5)
+
+
+# The world's extras are on in every exam attempt
+def test_exam_uses_the_worlds_extras(monkeypatch):
+    from dataclasses import replace
+    import duck.exam
+    from duck.worlds import Rocks
+    seen = []
+    monkeypatch.setattr(duck.exam, "_exam_attempt_on",
+                        lambda model, vec_normalize, world, body, seed, roughness, speed: seen.append(world.rocks) or (1.0, False, 0.5))
+    take_full_exam(None, None, replace(STONES, rocks=Rocks(0.1)), BODY)
+    assert seen == [Rocks(0.1)] * 24

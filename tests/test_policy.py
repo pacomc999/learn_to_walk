@@ -2,6 +2,8 @@
 import numpy as np
 import pytest
 
+from tests.worlds_for_tests import BODY, FLAT, STONES
+from tests.test_train import FLAT_SETTINGS
 from duck.duck_env import DuckWalkEnv
 from duck.policy import load_policy
 from duck.snapshots import latest_snapshot
@@ -13,7 +15,7 @@ from tests.test_train import save_plain_run
 @pytest.fixture(scope="module")
 def symmetric_snapshot(tmp_path_factory):
     run_dir = tmp_path_factory.mktemp("run")
-    train(run_dir, total_steps=0, snapshot_every=1024, n_envs=2,
+    train(run_dir, total_steps=0, snapshot_every=1024, n_envs=2, settings=FLAT_SETTINGS,
           use_subprocess=False, ppo_overrides={"n_steps": 256, "batch_size": 64})
     return latest_snapshot(run_dir)
 
@@ -28,7 +30,7 @@ def plain_snapshot(tmp_path_factory):
 
 # The policy gives 12 motor commands within the motor limits, and the same ones every time
 def check_policy(snapshot):
-    observation, _ = DuckWalkEnv().reset(seed=0)
+    observation, _ = DuckWalkEnv(world=STONES, body=BODY).reset(seed=0)
     policy = load_policy(snapshot)
     action = policy(observation)
     assert action.shape == (12,) and np.all(np.abs(action) <= 1)
