@@ -1,5 +1,5 @@
 {
-  "from_run": "runs/pilot_symmetric",
+  "from_run": "runs/duck_01/pilot_symmetric",
   "steps": 1605632,
   "measured": "2026-10-29 16:36",
   "exam_score": 484.5,

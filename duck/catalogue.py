@@ -36,7 +36,7 @@ from duck.exam import take_full_exam
 from duck.floor import FLOOR_SHAPE, MAX_ROUGHNESS
 from duck.policy import choose_snapshot_or_exit, load_policy
 from duck.rewards import RewardWeights
-from duck.snapshots import Snapshot, list_snapshots
+from duck.snapshots import Snapshot, list_snapshots, slim_brain_file
 from duck.train import DEFAULT_PPO_SETTINGS, NET_ARCH, NEW_RUN_POLICY, START_LOG_STD, STEP_SIZE_RULE
 from duck.video import add_caption, record_clip
 
@@ -195,6 +195,7 @@ def _copy_brain(duck_dir: Path, snapshot: Snapshot) -> None:
     brain_dir.mkdir(parents=True)
     shutil.copy2(snapshot.model_path, brain_dir / snapshot.model_path.name)
     shutil.copy2(snapshot.norm_path, brain_dir / snapshot.norm_path.name)
+    slim_brain_file(brain_dir / snapshot.model_path.name)  # a kept brain needs no optimizer memory
 
 
 # A film of the kept brain with the duck's name and exam score written on every frame

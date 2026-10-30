@@ -8,7 +8,7 @@
 
 **Tech Stack:** Python 3.12, MuJoCo, Gymnasium, Stable-Baselines3 PPO, PyTorch, pytest.
 
-**Spec:** `docs/superpowers/specs/2026-10-28-duck-walker-design.md` (see "Symmetric brain (2026-10-29)" under "Decided by Francisco").
+**Spec:** `docs/designs/2026-10-28-duck-walker-design.md` (see "Symmetric brain (2026-10-29)" under "Decided by Francisco").
 
 ## Global Constraints
 

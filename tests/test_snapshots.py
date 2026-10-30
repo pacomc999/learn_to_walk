@@ -4,7 +4,7 @@ from pathlib import Path
 import pytest
 import duck.snapshots as snapshots_module
 from duck.snapshots import (snapshot_paths, save_snapshot, list_snapshots,
-                            latest_snapshot, choose_for_video)
+                            latest_snapshot, choose_for_video, remove_other_snapshots, slim_brain_file)
 
 
 # A fake brain or statistics object that just writes a small file
@@ -78,3 +78,32 @@ def test_file_locked_for_good_raises(tmp_path, monkeypatch):
     with pytest.raises(PermissionError):
         save_snapshot(FakeSaver(), FakeSaver(), tmp_path, 2048)
     assert len(tries) == 5
+
+
+# Only the snapshot to keep is left; the others lose both their files
+def test_remove_other_snapshots(tmp_path):
+    for steps in (100, 200, 300):
+        save_snapshot(FakeSaver(), FakeSaver(), tmp_path, steps)
+    remove_other_snapshots(tmp_path, keep_steps=300)
+    assert [s.steps for s in list_snapshots(tmp_path)] == [300]
+    assert len(list((tmp_path / "snapshots").iterdir())) == 2
+
+
+# A slimmed brain is much smaller, acts exactly the same, and can still train
+def test_slimmed_brain_acts_the_same_and_still_trains(tmp_path):
+    import numpy as np
+    from stable_baselines3 import PPO
+    from duck.train import train
+    from tests.test_train import FAST
+    train(tmp_path, total_steps=512, snapshot_every=512, **FAST)  # at least one update, so the memory is full
+    brain = latest_snapshot(tmp_path).model_path
+    observations = np.random.default_rng(0).normal(size=(5, 39)).astype(np.float32)
+    before_size = brain.stat().st_size
+    before = PPO.load(str(brain), device="cpu").predict(observations, deterministic=True)[0]
+    assert slim_brain_file(brain)
+    assert brain.stat().st_size < before_size / 2
+    after = PPO.load(str(brain), device="cpu").predict(observations, deterministic=True)[0]
+    assert np.array_equal(before, after)
+    assert not slim_brain_file(brain)  # nothing left to empty
+    model = train(tmp_path, total_steps=1024, snapshot_every=512, resume=True, **FAST)
+    assert model.num_timesteps >= 1024

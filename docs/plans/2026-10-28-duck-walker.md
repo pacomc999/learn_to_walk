@@ -8,7 +8,7 @@
 
 **Tech Stack:** Python 3.12, MuJoCo, Gymnasium, Stable-Baselines3 (PPO), PyTorch (CPU build), NumPy, Matplotlib, Pillow, imageio with ffmpeg, pytest.
 
-**Spec:** `docs/superpowers/specs/2026-10-28-duck-walker-design.md`
+**Spec:** `docs/designs/2026-10-28-duck-walker-design.md`
 
 ## Global Constraints
 

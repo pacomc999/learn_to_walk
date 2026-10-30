@@ -56,7 +56,7 @@ Continue with more curiosity (more random experimenting):
 
 `.venv/Scripts/python -m duck.train --run runs/duck_v1 --steps 30000000 --resume --ent-coef 0.01`
 
-Training also gives the duck a noise-free exam every 250,000 steps (and at the start and end): the same 24 attempts each time, in two parts (12 on the flat floor and 12 on the rough floor, climbing evenly from a twelfth of the most up to the most, at 3 cm: 0.25 cm, 0.5 cm, ... 3 cm; Duck 3's exam used 1 cm for all 12; the score is the average of the two parts and the falls are added up), with the brain's best moves and no random wobble. Each result is added to `exam.csv` in the run folder (with extra columns for the flat and rough parts), and whenever a brain beats the best exam score so far it is saved in the run's `best` folder. That folder works like a run folder, so you can judge or watch the best brain with `runs/duck_v1/best`. Change how often with `--exam-every`. If 8 exams in a row (2 million steps, about 35 minutes) bring no new best score, training stops by itself, because the duck has stopped improving. The best brain is then waiting in the `best` folder. Change the limit with `--patience`, or turn it off with `--patience 0`.
+Training also gives the duck a noise-free exam every 250,000 steps (and at the start and end): the same 24 attempts each time, in two parts (12 on the flat floor and 12 on the rough floor, climbing evenly from a twelfth of the most up to the most, at 3 cm: 0.25 cm, 0.5 cm, ... 3 cm; Duck 3's exam used 1 cm for all 12; the score is the average of the two parts and the falls are added up), with the brain's best moves and no random wobble. Each result is added to `exam.csv` in the run folder (with extra columns for the flat and rough parts), and whenever a brain beats the best exam score so far it is saved in the run's `best` folder, replacing the previous best. That folder works like a run folder, so you can judge or watch the best brain with `runs/duck_v1/best`. Change how often with `--exam-every`. If 8 exams in a row (2 million steps, about 35 minutes) bring no new best score, training stops by itself, because the duck has stopped improving. The best brain is then waiting in the `best` folder. Change the limit with `--patience`, or turn it off with `--patience 0`.
 
 The step size adapts by itself: after each brain update, if the brain changed more than twice the target amount the learning rate is divided by 1.5, and if it changed less than half the target it is multiplied by 1.5. That keeps every update about the same size as the duck gets more precise. Without it, Duck 1's updates grew to 50 to 100 times the size PPO is designed for and the duck fell apart.
 
@@ -89,6 +89,15 @@ Make the video of all the snapshots:
 The video is saved as `evolution.mp4` inside the run folder.
 
 To judge or watch an older snapshot, add `--snapshot` and its step count, for example `--snapshot 1007616`.
+
+## Where things are
+
+- `duck/`: the code, and `tests/` its tests
+- `ducks/`: the catalogue, one folder per duck with its story, recipe, best brain and card (kept in git)
+- `runs/`: training output (not in git): `runs/duck_NN/<run>/` for each duck's runs, with the training output in `train.log`, and `runs/early_experiments/` for the runs before the catalogue
+- `docs/designs/` and `docs/plans/`: the design notes and build plans; `docs/duck_joints.html`: the joint explorer
+
+A finished run's brains can be slimmed: `.venv/Scripts/python -m duck.snapshots slim runs/duck_03` empties each brain's optimizer memory, two thirds of its size. The brains still load and walk exactly the same; only a run that is still training needs that memory.
 
 ## The duck's joints
 
@@ -179,4 +188,4 @@ The duck walks when it finishes at least 8 out of 10 attempts. Each attempt is 2
 
 ## More detail
 
-The design is in `docs/superpowers/specs/2026-10-28-duck-walker-design.md`. Notes for working on the code are in `CLAUDE.md`.
+The design is in `docs/designs/2026-10-28-duck-walker-design.md`. Notes for working on the code are in `CLAUDE.md`.

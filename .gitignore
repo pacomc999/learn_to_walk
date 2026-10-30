@@ -9,11 +9,7 @@ __pycache__/
 .venv/
 venv/
 
-# JavaScript
-node_modules/
-
 # Training output (saved models, logs, recordings)
-checkpoints/
 runs/
 *.log
 MUJOCO_LOG.TXT
@@ -22,5 +18,5 @@ MUJOCO_LOG.TXT
 ducks/*/*.mp4
 ducks/*/rocks/films/
 
-# Brainstorming mockups
+# Planning tool workspaces (recreated by the tools when needed)
 .superpowers/

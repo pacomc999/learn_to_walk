@@ -23,15 +23,15 @@ The best plain brain (night run 1, 4M steps: exam 905, no falls) hopped with the
 
 ## Training history
 
-- `runs/pilot_symmetric_stopped` (2026-10-29 11:06 to 11:08, 0 only): first start, stopped after two minutes; not used
-- `runs/pilot_symmetric` (2026-10-29 11:14 to 13:18, 0 to 6.0M): planned as a 1M pilot, then continued to 2M and 6M. Alternating steps with real knee bends appeared by 1.6M. Exam best at 1.61M (484, 7 falls of 12), then a collapse: 12 of 12 falls from 4.25M on, 22 points at 6M
-- `runs/measure_1.6M` (2026-10-29 15:35 to 16:09, 1.61M to 3.5M): rerun from 1.61M with the new exam and PPO stats. Exam swung between 164 and 439. Each brain update was 50 to 100 times bigger than PPO is designed for (approx_kl 0.5 to 1.1, safety limit hit by 83 to 87% of moves), growing as the wobble shrank. Likely cause of the collapse: a fixed step size
+- `runs/duck_01/pilot_symmetric_stopped` (2026-10-29 11:06 to 11:08, 0 only): first start, stopped after two minutes; not used
+- `runs/duck_01/pilot_symmetric` (2026-10-29 11:14 to 13:18, 0 to 6.0M): planned as a 1M pilot, then continued to 2M and 6M. Alternating steps with real knee bends appeared by 1.6M. Exam best at 1.61M (484, 7 falls of 12), then a collapse: 12 of 12 falls from 4.25M on, 22 points at 6M
+- `runs/duck_01/measure_1.6M` (2026-10-29 15:35 to 16:09, 1.61M to 3.5M): rerun from 1.61M with the new exam and PPO stats. Exam swung between 164 and 439. Each brain update was 50 to 100 times bigger than PPO is designed for (approx_kl 0.5 to 1.1, safety limit hit by 83 to 87% of moves), growing as the wobble shrank. Likely cause of the collapse: a fixed step size
 
 ## Best brain
 
 Film: [duck_01.mp4](duck_01.mp4), 16 s of the best brain at 0.4 m/s. It is not kept in git; make it with `python -m duck.catalogue film ducks/duck_01`.
 
-- From `runs/pilot_symmetric` at 1,605,632 steps (measured 2026-10-29 16:36)
+- From `runs/duck_01/pilot_symmetric` at 1,605,632 steps (measured 2026-10-29 16:36)
 - Exam (12 fixed attempts, no wobble): score 484, falls 7 of 12
 - Walking test: 8 of 10 attempts walked
 - At 0.4 m/s: speed 0.45 m/s, 34.6 J per metre, feet in the air 8%, one foot down 88%, both down 4%

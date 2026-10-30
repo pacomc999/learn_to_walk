@@ -28,7 +28,7 @@ from duck.duck_env import OBSERVATION_SIZE, DuckWalkEnv
 from duck.exam import append_exam, best_exam_score, best_folder, take_full_exam
 from duck.mirror import MirroredRunningMeanStd
 from duck.progress import append_progress
-from duck.snapshots import (Snapshot, latest_snapshot, list_snapshots, save_snapshot,
+from duck.snapshots import (Snapshot, latest_snapshot, list_snapshots, remove_other_snapshots, save_snapshot,
                             set_aside_broken_snapshot, snapshot_paths)
 from duck.symmetric_policy import SymmetricPolicy
 from duck.training_stats import append_stats, latest_update_stats
@@ -297,6 +297,7 @@ class ExamCallback(BaseCallback):
             self.best_score = result.score
             self.exams_without_best = 0
             _save_snapshot_once(self.model, self.vec_normalize, best_folder(self.run_dir), steps)
+            remove_other_snapshots(best_folder(self.run_dir), steps)  # only the newest best is ever used
             message += " New best brain saved."
         else:
             self.exams_without_best += 1

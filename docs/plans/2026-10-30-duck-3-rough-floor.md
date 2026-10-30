@@ -8,7 +8,7 @@
 
 **Tech Stack:** Python 3.12, MuJoCo 3.17 (height fields), Gymnasium, Stable-Baselines3 PPO, pytest.
 
-**Spec:** `docs/superpowers/specs/2026-10-30-duck-3-rough-floor-design.md` (read it first, including "Calls made by Claude after the builder check").
+**Spec:** `docs/designs/2026-10-30-duck-3-rough-floor-design.md` (read it first, including "Calls made by Claude after the builder check").
 
 ## Global Constraints
 

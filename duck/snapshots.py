@@ -2,16 +2,26 @@
 
 A snapshot has two files: the brain (.zip) and the statistics (_norm.pkl).
 A snapshot only counts as complete when both final files exist.
+
+Slimming a finished brain empties its optimizer memory (two thirds of the file), for example:
+    python -m duck.snapshots slim runs/duck_03
 """
+import io
 import os
 import re
+import sys
 import time
+import zipfile
 from dataclasses import dataclass
 from pathlib import Path
 
 # Windows can lock a file for a moment (for example a virus scanner), so renames are retried
 RENAME_TRIES = 5
 RENAME_WAIT_SECONDS = 0.2
+
+# Inside a brain file: the optimizer's memory of past updates. Training needs it to carry on
+# exactly where it stopped; watching, testing or starting a new duck does not
+OPTIMIZER_FILE = "policy.optimizer.pth"
 
 
 # One saved point in training: its step count and the two file paths
@@ -109,3 +119,66 @@ def choose_for_video(snapshots: list[Snapshot], max_count: int = 25) -> list[Sna
     last_index = len(snapshots) - 1
     step_indexes = [i * last_index // (max_count - 1) for i in range(max_count)]
     return [snapshots[i] for i in step_indexes]
+
+
+# Delete every snapshot in a run folder except the one at keep_steps (used for the best brain)
+def remove_other_snapshots(run_dir: Path, keep_steps: int) -> None:
+    for snap in list_snapshots(run_dir):
+        if snap.steps != keep_steps:
+            snap.model_path.unlink()
+            snap.norm_path.unlink()
+
+
+# The optimizer memory stored in a brain file, as PyTorch saved it
+def _read_optimizer(archive: zipfile.ZipFile) -> dict:
+    import torch  # only needed here, and slow to import
+    return torch.load(io.BytesIO(archive.read(OPTIMIZER_FILE)), map_location="cpu", weights_only=False)
+
+
+# The same optimizer settings with an empty memory, as bytes ready to store
+def _empty_optimizer_bytes(optimizer: dict) -> bytes:
+    import torch
+    buffer = io.BytesIO()
+    torch.save({**optimizer, "state": {}}, buffer)
+    return buffer.getvalue()
+
+
+# Empty a brain file's optimizer memory, keeping everything else exactly as it was.
+# The brain still loads everywhere; training from it starts with a fresh memory.
+# Returns False when there was nothing to empty
+def slim_brain_file(model_path: Path) -> bool:
+    with zipfile.ZipFile(model_path) as archive:
+        if OPTIMIZER_FILE not in archive.namelist():
+            return False
+        optimizer = _read_optimizer(archive)
+        if not optimizer["state"]:
+            return False
+        files = [(info, archive.read(info.filename)) for info in archive.infolist()]
+    temp_path = model_path.with_name(model_path.stem + ".tmp.zip")
+    with zipfile.ZipFile(temp_path, "w") as slim:
+        for info, data in files:
+            slim.writestr(info, _empty_optimizer_bytes(optimizer) if info.filename == OPTIMIZER_FILE else data)
+    replace_with_retry(temp_path, model_path)
+    return True
+
+
+# Slim every brain file in the given folders (and their subfolders); prints what it saved
+def slim_folders(folders: list[Path]) -> None:
+    before = after = slimmed = 0
+    for folder in folders:
+        for model_path in sorted(folder.rglob("snapshot_*.zip")):
+            if _steps_from_model_name(model_path.name) is None:
+                continue  # temp or broken files
+            size = model_path.stat().st_size
+            if slim_brain_file(model_path):
+                slimmed += 1
+                before += size
+                after += model_path.stat().st_size
+    print(f"Slimmed {slimmed} brains: {before / 1e6:.1f} MB became {after / 1e6:.1f} MB.")
+
+
+if __name__ == "__main__":
+    if len(sys.argv) < 3 or sys.argv[1] != "slim":
+        print("Usage: python -m duck.snapshots slim FOLDER [FOLDER ...]")
+        sys.exit(1)
+    slim_folders([Path(folder) for folder in sys.argv[2:]])

@@ -67,7 +67,7 @@ def test_training_takes_exams_and_keeps_best(tmp_path):
     exam_steps = [int(line.split(",")[1]) for line in lines[1:]]
     assert exam_steps == sorted(set(exam_steps))  # each step count examined once
     assert exam_steps[0] == 0 and exam_steps[-1] == 1024
-    assert list((tmp_path / "best" / "snapshots").glob("snapshot_*_norm.pkl"))
+    assert len(list((tmp_path / "best" / "snapshots").glob("snapshot_*_norm.pkl"))) == 1  # only the newest best
 
 
 # A resumed run only saves a new best brain if it beats the best of earlier sessions
