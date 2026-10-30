@@ -33,7 +33,7 @@ from duck.duck_env import (EVALUATION_TARGET_SPEED, FRAME_SKIP, MAX_EPISODE_SECO
                            START_STRIDE, TARGET_SPEED_RANGE, DuckWalkEnv)
 from duck.evaluate import evaluate_snapshot
 from duck.exam import take_full_exam
-from duck.floor import FLOOR_SHAPE, MAX_ROUGHNESS
+from duck.floor import FLOOR_SHAPE, TRAINING_ROUGHNESS
 from duck.policy import choose_snapshot_or_exit, load_policy
 from duck.rewards import RewardWeights
 from duck.snapshots import Snapshot, list_snapshots, slim_brain_file
@@ -75,7 +75,8 @@ def current_recipe() -> dict:
         "step_size_rule": STEP_SIZE_RULE,
         "reward": asdict(RewardWeights()),
         "forward_reward": f"{RewardWeights().forward} x (target - |speed - target|)",
-        "floor": {"max_roughness": MAX_ROUGHNESS, **FLOOR_SHAPE, "rough_exam": "climbing"},
+        "floor": {"max_roughness": TRAINING_ROUGHNESS, **FLOOR_SHAPE,
+                  "rough_exam": "climbing" if TRAINING_ROUGHNESS else "none"},
         "target_speed_range": list(TARGET_SPEED_RANGE),
         "attempt_seconds": MAX_EPISODE_SECONDS,
         "physics_steps_per_action": FRAME_SKIP,
@@ -168,21 +169,25 @@ def _gait_summary(snapshot: Snapshot, roughness: float = 0.0) -> dict:
 def measure_brain(snapshot: Snapshot, run_dir: Path) -> dict:
     exam = _exam_snapshot(snapshot)
     walking = evaluate_snapshot(snapshot, roughness=0.0)
-    walking_rough = evaluate_snapshot(snapshot, roughness=MAX_ROUGHNESS)
-    return {
+    results = {
         "from_run": run_dir.as_posix(),
         "steps": snapshot.steps,
         "measured": datetime.now().strftime("%Y-%m-%d %H:%M"),
         "exam_score": round(exam.score, 1),
         "exam_falls": exam.falls,
-        "exam_flat_score": round(exam.flat.score, 1),
-        "exam_rough_score": round(exam.rough.score, 1),
         "walking_test": f"{walking.successes} of {walking.attempts}",
-        "walking_test_rough": f"{walking_rough.successes} of {walking_rough.attempts}",
         "gait_at_judging_speed": _gait_summary(snapshot, 0.0),
-        "gait_on_rough_floor": _gait_summary(snapshot, MAX_ROUGHNESS),
-        "rough_floor_height": MAX_ROUGHNESS,
     }
+    if exam.rough is not None:  # training on stones: the rough exam part, walking test and gait too
+        walking_rough = evaluate_snapshot(snapshot, roughness=TRAINING_ROUGHNESS)
+        results.update({
+            "exam_flat_score": round(exam.flat.score, 1),
+            "exam_rough_score": round(exam.rough.score, 1),
+            "walking_test_rough": f"{walking_rough.successes} of {walking_rough.attempts}",
+            "gait_on_rough_floor": _gait_summary(snapshot, TRAINING_ROUGHNESS),
+            "rough_floor_height": TRAINING_ROUGHNESS,
+        })
+    return results
 
 
 # ---------- Keeping the best brain ----------
@@ -291,6 +296,8 @@ def _floor_line(recipe: dict) -> str:
     floor = recipe.get("floor")
     if floor is None:
         return "- Floor: flat"
+    if floor["max_roughness"] == 0:
+        return "- Floor: flat in training (training roughness 0; the cobblestone floor is kept for tests). The exam is flat only"
     low, high = floor["wavelength_range"]
     stone_low, stone_high = floor["stone_height_range"]
     return (f"- Floor: random cobblestones up to {floor['max_roughness']} m high, drawn at every reset with a random "

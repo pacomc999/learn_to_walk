@@ -94,7 +94,7 @@ class Challenge:
 CHALLENGES = {
     "speed": Challenge(
         title="Speeds above training",
-        description="Asked for one speed for the whole attempt, on the flat floor. Training asked for 0.2 to 0.7 m/s.",
+        description="Asked for one speed for the whole attempt, on the flat floor. Ducks up to 3.1 trained for 0.2 to 0.7 m/s, Duck 3.2 for up to 1.5.",
         column="asked m/s",
         label="{} m/s asked",
         values=(0.4, 0.7, 0.8, 0.9, 1.0, 1.2, 1.5),

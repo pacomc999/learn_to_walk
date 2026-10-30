@@ -292,7 +292,7 @@ class ExamCallback(BaseCallback):
         result = take_full_exam(self.model, self.vec_normalize)
         append_exam(self.run_dir, steps, result, datetime.now())
         message = (f"Exam at {steps:,} steps: score {result.score:.0f}, falls {result.falls} of {result.attempts} "
-                   f"(flat {result.flat.score:.0f}, rough {result.rough.score:.0f}).")
+                   + (f"(flat {result.flat.score:.0f}, rough {result.rough.score:.0f})." if result.rough else "(flat floor)."))
         if self.best_score is None or result.score > self.best_score:
             self.best_score = result.score
             self.exams_without_best = 0

@@ -3,7 +3,7 @@ import pytest
 import numpy as np
 from gymnasium.utils.env_checker import check_env
 import duck.duck_env as duck_env_module
-from duck.duck_env import DuckWalkEnv
+from duck.duck_env import TARGET_SPEED_RANGE, DuckWalkEnv
 from duck.floor import MAX_ROUGHNESS
 
 def test_passes_gymnasium_checks():
@@ -163,14 +163,27 @@ def test_zero_roughness_is_the_old_flat_world():
     assert env.model.geom("floor").type == mujoco.mjtGeom.mjGEOM_PLANE
     first, _ = env.reset(seed=0)
     assert env.floor is None and env.roughness == 0.0
-    assert np.array_equal(first, OLD_FLAT_SEED_0_START)
+    # Same start pose and senses; the last sense is the asked speed, drawn from today's speed range
+    assert np.array_equal(first[:-1], OLD_FLAT_SEED_0_START[:-1])
+    assert TARGET_SPEED_RANGE[0] <= first[-1] <= TARGET_SPEED_RANGE[1]
 
 
-# With no roughness given, every attempt draws its own roughness from 0 to the maximum
-def test_random_roughness_each_attempt():
+# With no roughness given and rough training, every attempt draws its own roughness from 0 to the training most
+def test_random_roughness_each_attempt(monkeypatch):
+    import duck.duck_env
+    monkeypatch.setattr(duck.duck_env, "TRAINING_ROUGHNESS", MAX_ROUGHNESS)
     env = DuckWalkEnv()
     values = [(env.reset(seed=s), env.roughness)[1] for s in range(30)]
     assert all(0.0 <= v <= MAX_ROUGHNESS for v in values) and len(set(values)) == 30
+
+
+# With a training roughness of 0, training uses the old flat plane (no height field, so faster physics)
+def test_flat_training_uses_the_plane(monkeypatch):
+    import duck.duck_env
+    monkeypatch.setattr(duck.duck_env, "TRAINING_ROUGHNESS", 0.0)
+    env = DuckWalkEnv()
+    env.reset(seed=0)
+    assert env.model.geom("floor").type == mujoco.mjtGeom.mjGEOM_PLANE and env.roughness == 0.0
 
 
 # A new layout every attempt, and the same layout again for the same seed

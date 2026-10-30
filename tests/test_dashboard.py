@@ -132,11 +132,11 @@ def test_status_has_no_parts_for_an_old_exam(tmp_path):
     assert (exam["attempts"], exam["flat_score"], exam["rough_score"]) == (12, None, None)
 
 
-# The dashboard films on the rough floor, on a fixed layout from seed 1000
-def test_dashboard_film_uses_the_rough_floor(tmp_path, monkeypatch):
+# The dashboard films on the training floor (flat when training is flat), on a fixed layout from seed 1000
+def test_dashboard_film_uses_the_training_floor(tmp_path, monkeypatch):
     import duck.dashboard
     from duck.exam import EXAM_FIRST_SEED
-    from duck.floor import MAX_ROUGHNESS
+    from duck.floor import TRAINING_ROUGHNESS
     seen = {}
 
     def fake_record_clip(policy, **kwargs):
@@ -147,4 +147,4 @@ def test_dashboard_film_uses_the_rough_floor(tmp_path, monkeypatch):
     monkeypatch.setattr(duck.dashboard, "load_policy", lambda snapshot: None)
     with pytest.raises(RuntimeError):
         duck.dashboard.make_snapshot_clip(tmp_path, None)
-    assert seen["roughness"] == MAX_ROUGHNESS and seen["seed"] == EXAM_FIRST_SEED
+    assert seen["roughness"] == TRAINING_ROUGHNESS and seen["seed"] == EXAM_FIRST_SEED

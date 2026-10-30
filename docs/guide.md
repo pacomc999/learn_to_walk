@@ -22,11 +22,11 @@ The brain is left/right symmetric (the "NET" method of Abdolhosseini and others,
 
 ### The floor
 
-From Duck 3 on, every training attempt gets a freshly drawn cobblestone floor: rolling bumps with square 6 cm stones on top, at a random height from flat up to the most (1 cm for Duck 3, 3 cm from Duck 3.1 on). A height of exactly 0 is the old flat floor. The floor code is in `duck/floor.py`.
+From Duck 3 on, every training attempt gets a freshly drawn cobblestone floor: rolling bumps with square 6 cm stones on top, at a random height from flat up to the most (1 cm for Duck 3, 3 cm for Duck 3.1). A height of exactly 0 is the old flat floor. Duck 3.2, which learns to run, trains on the flat floor again: `TRAINING_ROUGHNESS` in `duck/floor.py` sets the tallest stones training uses, and 0 means flat. The cobblestones stay available for later ducks and for the tests. The floor code is in `duck/floor.py`.
 
 ### How it is scored
 
-Every attempt asks for a random walking speed from 0.2 to 0.7 m/s. On each of the 50 steps per second the duck earns:
+Every attempt asks for a random walking speed: from 0.2 to 0.7 m/s up to Duck 3.1, and from 0.2 to 1.5 m/s from Duck 3.2 on, which learns to run (`TARGET_SPEED_RANGE` in `duck/duck_env.py`). On each of the 50 steps per second the duck earns:
 
 - **Forward:** 3 points per m/s of forward speed, at most at the asked speed. Going faster loses points the same way as going slower: the reward is 3 x (target - |speed - target|).
 - **Staying up:** 0.2 points.
@@ -40,7 +40,7 @@ An attempt ends after 20 seconds, or earlier if the duck falls (its body drops b
 Training scores jump around because of the wobble and the random speeds, so training also gives the brain a fixed, noise-free exam: at the start, every 250,000 steps and at the end. It has two parts of 12 attempts each, always the same attempts (seeds 1000 to 1011, each with its own asked speed):
 
 - **Flat:** 12 attempts on the flat floor.
-- **Rough:** the same 12 attempts on cobblestones, climbing evenly up to the most height (at 3 cm: 0.25 cm, 0.5 cm, and so on up to 3 cm). Duck 3's exam used the full 1 cm for all 12.
+- **Rough:** the same 12 attempts on cobblestones, climbing evenly up to the most height (at 3 cm: 0.25 cm, 0.5 cm, and so on up to 3 cm). Duck 3's exam used the full 1 cm for all 12. When training is flat (Duck 3.2) there is no rough part: the exam is the 12 flat attempts.
 
 The exam score is the average of the two parts; the falls are added up, out of 24. The best possible score is about 1,150, which would need walking at exactly the asked speed with no energy at all. A realistic best for this duck is around 1,045.
 
@@ -134,7 +134,7 @@ Challenges put a duck's kept brain in situations it never trained for. They are 
 
 | Challenge | What it asks |
 |---|---|
-| `speed` | Walk at one speed from 0.4 up to 1.5 m/s on the flat floor; training asked for 0.2 to 0.7 |
+| `speed` | Walk at one speed from 0.4 up to 1.5 m/s on the flat floor; ducks up to 3.1 trained for 0.2 to 0.7, Duck 3.2 for up to 1.5 |
 | `backpack` | Carry a box of 100 to 800 g on its back, on the flat floor at 0.4 m/s |
 | `perilous_road` | Walk a road of cobblestones of one height, from 1 up to 8 cm, at 0.4 m/s (30 attempts per height) |
 | `rocks` | Keep walking while a stone ball of 25 to 400 g is thrown at its body every 2 seconds |

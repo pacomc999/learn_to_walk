@@ -4,7 +4,8 @@ The training score includes the brain's random experimenting and a random target
 speed per attempt, so it jumps around a lot. The exam removes that noise: the same
 12 starts and target speeds every time, and the brain's best action without wobble.
 It has two parts, a flat floor and a rough floor, and the average of the two is the score.
-The rough part climbs: its 12 attempts are spread evenly from 1/12 of MAX_ROUGHNESS up to all of it.
+The rough part climbs: its 12 attempts are spread evenly from 1/12 of TRAINING_ROUGHNESS up to all of it.
+When training is flat (TRAINING_ROUGHNESS 0) there is no rough part and the score is the flat part's.
 Results go to <run>/exam.csv; the best brain so far is kept in <run>/best/.
 """
 import csv
@@ -15,7 +16,7 @@ from pathlib import Path
 import numpy as np
 
 from duck.duck_env import DuckWalkEnv
-from duck.floor import MAX_ROUGHNESS
+from duck.floor import TRAINING_ROUGHNESS
 
 # The same attempts every exam: seeds 1000 to 1011, each with its own random target speed
 EXAM_ATTEMPTS = 12
@@ -48,7 +49,7 @@ class FullExamResult:
     distance: float
     attempts: int
     flat: ExamResult
-    rough: ExamResult
+    rough: ExamResult | None  # None when training (and so the exam) is flat
 
 
 # One noise-free attempt; returns its score, whether it fell and its forward distance
@@ -64,10 +65,10 @@ def _exam_attempt(model, vec_normalize, env: DuckWalkEnv, seed: int) -> tuple[fl
             return total, fell, info["forward_distance"]
 
 
-# The floor height of each rough exam attempt: evenly spread up to MAX_ROUGHNESS, like training,
+# The floor height of each rough exam attempt: evenly spread up to TRAINING_ROUGHNESS, like training,
 # which picks any height from 0 to the most (at 3 cm: 0.25 cm, 0.5 cm, ... 3 cm)
 def rough_exam_heights(attempts: int = EXAM_ATTEMPTS) -> list[float]:
-    return [MAX_ROUGHNESS * (i + 1) / attempts for i in range(attempts)]
+    return [TRAINING_ROUGHNESS * (i + 1) / attempts for i in range(attempts)]
 
 
 # One attempt on its own floor height. Each attempt keeps its seed, so its target speed
@@ -90,9 +91,12 @@ def take_exam(model, vec_normalize, attempts: int = EXAM_ATTEMPTS,
     return ExamResult(float(np.mean(scores)), int(sum(falls)), float(np.mean(distances)))
 
 
-# Give the brain both parts of the exam, flat floor and climbing rough floor, and combine them
+# Give the brain the exam: the flat floor, and when training is rough also the climbing rough floor, combined
 def take_full_exam(model, vec_normalize) -> FullExamResult:
     flat = take_exam(model, vec_normalize, roughness=0.0)
+    if TRAINING_ROUGHNESS == 0.0:
+        return FullExamResult(score=flat.score, falls=flat.falls, distance=flat.distance,
+                              attempts=EXAM_ATTEMPTS, flat=flat, rough=None)
     rough = take_exam(model, vec_normalize, roughness=rough_exam_heights())
     return FullExamResult(
         score=(flat.score + rough.score) / 2,
@@ -110,7 +114,8 @@ def _exam_row_values(timesteps: int, result: FullExamResult, when: datetime) -> 
         "time": when.isoformat(), "timesteps": timesteps, "score": result.score, "falls": result.falls,
         "distance": result.distance, "attempts": result.attempts,
         "flat_score": result.flat.score, "flat_falls": result.flat.falls,
-        "rough_score": result.rough.score, "rough_falls": result.rough.falls,
+        "rough_score": result.rough.score if result.rough else "",
+        "rough_falls": result.rough.falls if result.rough else "",
     }
 
 

@@ -12,7 +12,7 @@ from duck.model import (
     torso_up_z,
 )
 from duck.floor import (
-    MAX_ROUGHNESS,
+    TRAINING_ROUGHNESS,
     floor_heights,
     floor_most,
     highest_floor_near,
@@ -44,8 +44,9 @@ START_NOISE = 0.02
 # so the nudge can narrow the gap between the hips but never close it
 START_STRIDE = 2 * START_NOISE
 
-# Each training attempt asks for a random speed in this range, in metres per second
-TARGET_SPEED_RANGE = (0.2, 0.7)
+# Each training attempt asks for a random speed in this range, in metres per second.
+# 0.2 to 0.7 up to Duck 3.1; Duck 3.2 goes up to 1.5 to learn to run
+TARGET_SPEED_RANGE = (0.2, 1.5)
 
 # The speed asked for when judging the duck and making videos
 EVALUATION_TARGET_SPEED = 0.4
@@ -110,7 +111,8 @@ class DuckWalkEnv(gymnasium.Env):
     # The duck's world: the old flat plane for a roughness of exactly 0, otherwise the height field floor.
     # Other worlds (for example the rock test in duck/rocks.py) replace this to add things
     def _load_model(self, roughness: float | None) -> mujoco.MjModel:
-        return load_duck_model() if roughness == 0.0 else load_floor_model()
+        trains_flat = roughness is None and TRAINING_ROUGHNESS == 0.0
+        return load_duck_model() if roughness == 0.0 or trains_flat else load_floor_model()
 
     # The speed this attempt asks for: the fixed one, or a random one from the range
     def _pick_target_speed(self) -> float:
@@ -137,13 +139,13 @@ class DuckWalkEnv(gymnasium.Env):
     def _pick_roughness(self) -> float:
         if self.fixed_roughness is not None:
             return self.fixed_roughness
-        return float(self.np_random.uniform(0.0, MAX_ROUGHNESS))
+        return float(self.np_random.uniform(0.0, TRAINING_ROUGHNESS))
 
     # Draw a new floor, show it to the renderer, and lift the duck above the stones near its start.
     # The flat plane model has no floor to draw
     def _lay_new_floor(self) -> None:
         self.roughness = self._pick_roughness()
-        if self.fixed_roughness == 0.0:
+        if self.model.nhfield == 0:  # the flat plane model
             return
         self.floor = floor_heights(self.np_random, self.roughness, most=floor_most(self.model))
         set_floor(self.model, self.floor)

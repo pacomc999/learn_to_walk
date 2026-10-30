@@ -50,7 +50,8 @@ def test_keep_brain_fills_the_duck_folder(tmp_path, small_run):
     kept = list_snapshots(duck_dir / "brain")
     assert [snap.steps for snap in kept] == [snapshot.steps]
     results = json.loads((duck_dir / "results.json").read_text())
-    assert results["steps"] == snapshot.steps and 0 <= results["exam_falls"] <= 24 and "exam_rough_score" in results
+    assert results["steps"] == snapshot.steps and 0 <= results["exam_falls"] <= 24
+    assert ("exam_rough_score" in results) == (catalogue.TRAINING_ROUGHNESS > 0)  # flat training: no rough part
     assert (duck_dir / "duck_01.mp4").stat().st_size > 0
     assert "catalogue film duck_catalogue/duck_01" in (duck_dir / "card.md").read_text()
     assert "fixed attempts" in (duck_dir / "card.md").read_text()
@@ -80,8 +81,9 @@ def test_index_lists_every_duck(tmp_path):
     assert "none yet" in index
 
 
-# The recipe records the floor (every shape number) and the forward reward rule
-def test_recipe_records_floor_and_forward_rule():
+# The recipe records the floor (the training roughness and every shape number) and the forward reward rule
+def test_recipe_records_floor_and_forward_rule(monkeypatch):
+    monkeypatch.setattr(catalogue, "TRAINING_ROUGHNESS", 0.03)
     recipe = catalogue.current_recipe()
     assert recipe["floor"]["max_roughness"] == 0.03 and recipe["floor"]["rough_exam"] == "climbing"
     assert recipe["floor"]["stone_size"] == 0.06 and recipe["floor"]["waves"] == 8
@@ -97,13 +99,23 @@ def test_old_recipe_card_lines_say_flat():
     assert "per m/s up to the target speed" in text
 
 
-# A new recipe lists the floor numbers and the overshoot rule
-def test_new_recipe_card_lines_list_the_floor():
+# A recipe training on stones lists the floor numbers and the overshoot rule
+def test_new_recipe_card_lines_list_the_floor(monkeypatch):
+    monkeypatch.setattr(catalogue, "TRAINING_ROUGHNESS", 0.03)
     text = "\n".join(catalogue._recipe_lines(catalogue.current_recipe()))
     assert "- Floor: random cobblestones up to 0.03 m" in text
     assert "rough part climbs" in text
     assert "stones 0.06 m" in text and "gaps 0.07" in text
     assert "3.0 x (target - |speed - target|)" in text
+
+
+# A recipe training on the flat floor says so, and that the exam is flat only
+def test_flat_training_recipe_says_flat(monkeypatch):
+    monkeypatch.setattr(catalogue, "TRAINING_ROUGHNESS", 0.0)
+    recipe = catalogue.current_recipe()
+    assert recipe["floor"]["max_roughness"] == 0.0 and recipe["floor"]["rough_exam"] == "none"
+    text = "\n".join(catalogue._recipe_lines(recipe))
+    assert "- Floor: flat in training" in text and "exam is flat only" in text
 
 
 OLD_RESULTS = {

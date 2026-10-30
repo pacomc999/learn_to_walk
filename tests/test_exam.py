@@ -100,8 +100,10 @@ def test_patience_zero_never_stops(tmp_path, flat_exam):
     assert model.num_timesteps >= 2048
 
 
-# The full exam is the plain average of the flat part and the rough part
-def test_full_exam_averages_the_two_parts(tmp_path):
+# Training on stones: the full exam is the plain average of the flat part and the rough part
+def test_full_exam_averages_the_two_parts(tmp_path, monkeypatch):
+    import duck.exam
+    monkeypatch.setattr(duck.exam, "TRAINING_ROUGHNESS", MAX_ROUGHNESS)
     model = train(tmp_path, total_steps=0, **FAST)
     vec_normalize = build_vec_env(1, seed=0, use_subprocess=False)
     result = take_full_exam(model, vec_normalize)
@@ -110,6 +112,20 @@ def test_full_exam_averages_the_two_parts(tmp_path):
     assert result.distance == pytest.approx((result.flat.distance + result.rough.distance) / 2)
     assert result.falls == result.flat.falls + result.rough.falls
     assert result.attempts == 24
+
+
+# Training on the flat floor: the exam is only the flat part, 12 attempts, and logs empty rough columns
+def test_flat_training_gives_a_flat_exam(tmp_path, monkeypatch):
+    import duck.exam
+    monkeypatch.setattr(duck.exam, "TRAINING_ROUGHNESS", 0.0)
+    model = train(tmp_path, total_steps=0, **FAST)
+    vec_normalize = build_vec_env(1, seed=0, use_subprocess=False)
+    result = take_full_exam(model, vec_normalize)
+    vec_normalize.close()
+    assert result.rough is None and result.attempts == 12 and result.score == result.flat.score
+    append_exam(tmp_path / "log", 100, result, datetime.now())
+    row = read_exams(tmp_path / "log")[0]
+    assert row["attempts"] == 12 and row["rough_score"] is None and row["flat_score"] == pytest.approx(result.score)
 
 
 # The rough part uses the same floors every time, so the same brain scores the same
@@ -140,7 +156,9 @@ def test_new_log_has_both_parts(tmp_path):
 
 
 # The rough part climbs evenly: 12 heights from a twelfth of the most up to the most, each one higher
-def test_rough_exam_heights_climb_to_the_most():
+def test_rough_exam_heights_climb_to_the_most(monkeypatch):
+    import duck.exam
+    monkeypatch.setattr(duck.exam, "TRAINING_ROUGHNESS", MAX_ROUGHNESS)
     heights = rough_exam_heights()
     assert len(heights) == 12
     assert heights[0] == pytest.approx(MAX_ROUGHNESS / 12) and heights[-1] == pytest.approx(MAX_ROUGHNESS)
