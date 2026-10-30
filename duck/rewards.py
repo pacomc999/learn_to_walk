@@ -12,10 +12,17 @@ class RewardWeights:
     sideways: float = 0.5  # penalty per metre of sideways drift
 
 
-# Points for moving forward, up to the target speed and no more.
+# Points for moving forward. The most points come at the target speed, and going
+# faster or slower than it loses the same amount per metre per second.
+# With no target speed (infinite), the points just grow with speed.
 # Walking backwards gives a negative value
 def _forward_part(forward_velocity: float, target_speed: float, weights: RewardWeights) -> float:
-    return weights.forward * min(forward_velocity, target_speed)
+    # No target: no upper limit, so the points are just speed times the weight
+    if math.isinf(target_speed):
+        return weights.forward * forward_velocity
+    # Distance away from the target speed is subtracted from the target speed
+    gap_from_target = abs(forward_velocity - target_speed)
+    return weights.forward * (target_speed - gap_from_target)
 
 
 # Points for staying upright, the same on every step

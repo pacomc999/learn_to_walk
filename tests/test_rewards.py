@@ -16,12 +16,26 @@ def test_energy_penalty_per_joule():
     assert total == pytest.approx(2.0)
 
 
-# Going faster than the target speed earns no extra forward points
-def test_forward_points_stop_at_target_speed():
+# Below the target speed the forward points are the same as before: 3.0 x 0.3
+def test_forward_points_below_target_are_unchanged():
+    _, parts = compute_reward(0.3, 0.0, 0.0, target_speed=0.4)
+    assert parts["forward"] == pytest.approx(3.0 * 0.3)
+
+# Going 0.1 m/s too fast loses as many points as going 0.1 m/s too slow
+def test_overshoot_loses_points_like_undershoot():
+    _, fast = compute_reward(0.5, 0.0, 0.0, target_speed=0.4)
     _, slow = compute_reward(0.3, 0.0, 0.0, target_speed=0.4)
-    _, fast = compute_reward(0.9, 0.0, 0.0, target_speed=0.4)
-    assert slow["forward"] == pytest.approx(0.9)
-    assert fast["forward"] == pytest.approx(1.2)
+    assert fast["forward"] == pytest.approx(slow["forward"])
+
+# Exactly the target speed gives the most forward points: 3.0 x 0.4
+def test_most_points_at_the_target_speed():
+    _, exact = compute_reward(0.4, 0.0, 0.0, target_speed=0.4)
+    assert exact["forward"] == pytest.approx(1.2)
+
+# Walking backwards still gives negative forward points when there is a target speed
+def test_backwards_is_unchanged():
+    _, parts = compute_reward(-0.2, 0.0, 0.0, target_speed=0.4)
+    assert parts["forward"] == pytest.approx(-0.6)
 
 
 # Walking backwards still loses points when there is a target speed

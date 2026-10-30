@@ -32,7 +32,7 @@ Position motors with limited force. Wings are fixed to the body.
 
 ## Reward (per step) and fall rules
 - Target speed: each attempt picks one at random from `TARGET_SPEED_RANGE` (0.2 to 0.7 m/s); `DuckWalkEnv(target_speed=...)` fixes it. Evaluate and video use `EVALUATION_TARGET_SPEED` (0.4), the viewer takes `--speed`
-- Forward: +3.0 per metre per second of forward speed, up to the target speed and no more. Speed is the distance moved over the control step (0.02 s) divided by that time, not a single velocity sample
+- Forward: +3.0 per metre per second of forward speed at most, and the most at the target speed. Going faster or slower than the target loses the same points per metre per second off the top (at target 0.4, 0.5 m/s scores the same as 0.3 m/s). With no target speed the points just grow with speed. Speed is the distance moved over the control step (0.02 s) divided by that time, not a single velocity sample
 - Alive: +0.2 per step (so standing still for 20 s scores only about 200)
 - Energy: -1.5 per joule of motor work, summed over the 4 physics substeps of each control step as |actuator force x actuator velocity| x timestep. Replaced the old squared action penalty, which did not measure energy. At 1.5 with no speed target the duck hopped; at 3.0 it dove forward and fell after 0.9 s
 - Sideways: -0.5 per metre of drift from the straight line

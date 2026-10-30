@@ -60,7 +60,8 @@ def test_forward_reward_uses_distance_moved():
     x_before = float(env.data.qpos[0])
     _, _, _, _, info = env.step(np.ones(12))
     speed = (info["x_position"] - x_before) / control_step_seconds
-    expected = env.reward_weights.forward * min(speed, env.target_speed)
+    # Points peak at the target speed and fall off on both sides of it
+    expected = env.reward_weights.forward * (env.target_speed - abs(speed - env.target_speed))
     assert info["reward_parts"]["forward"] == pytest.approx(expected)
     assert info["reward_parts"]["forward"] != pytest.approx(env.reward_weights.forward * float(env.data.qvel[0]))
 
