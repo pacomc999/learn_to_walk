@@ -30,9 +30,9 @@ def test_tall_stones_reach_their_height():
 
 # One row sums up its attempts; the rock rows also count hits and give the rock's size
 def test_rows_sum_up_their_attempts():
-    row = challenge_row(CHALLENGES["speed"], 0.4, stand_still, attempts=1)
+    row = challenge_row(CHALLENGES["speed"], 0.4, stand_still, 1, FLAT, BODY)
     assert row["asked m/s"] == 0.4 and row["attempts"] == 1 and 0 <= row["walked"] <= 1
-    rock_row = challenge_row(CHALLENGES["rocks"], 100, stand_still, attempts=1)
+    rock_row = challenge_row(CHALLENGES["rocks"], 100, stand_still, 1, FLAT, BODY)
     assert rock_row["rock diameter cm"] == pytest.approx(4.2, abs=0.1) and rock_row["hits"] >= 0
 
 
@@ -57,7 +57,7 @@ def test_fall_seconds():
 # A short film of one value is saved, and the challenge's page lists it with its label and outcome
 def test_film_value_and_page(tmp_path):
     folder = tmp_path / "challenges" / "backpack" / "films"
-    film_value("backpack", 200, stand_still, folder / "200.mp4", "Duck 9", seconds=0.2)
+    film_value("backpack", 200, stand_still, folder / "200.mp4", "Duck 9", FLAT, BODY, seconds=0.2)
     assert (folder / "200.mp4").stat().st_size > 0
     (folder / "outcomes.json").write_text('{"200": null, "800": 5.0}')
     page = write_film_page(tmp_path, "backpack").read_text(encoding="utf-8")
@@ -65,3 +65,24 @@ def test_film_value_and_page(tmp_path):
     assert '"800.mp4"' in page and "falls after 5.0 s" in page
     write_table([{"backpack g": 200, "walked": 10}], tmp_path / "challenges" / "backpack" / "results.csv")
     assert "`backpack/films/index.html`" in write_readme(tmp_path, "Duck 9").read_text(encoding="utf-8")
+
+
+# Energy points become joules with the world's own energy weight: twice the weight, the same joules
+def test_challenge_energy_uses_the_worlds_weight():
+    from dataclasses import replace
+    from duck.challenges import run_attempt
+    from duck.rewards import RewardWeights
+    costly = replace(FLAT, reward=RewardWeights(forward=3.0, alive=0.2, energy=3.0, sideways=0.5))
+    usual = run_attempt(DuckWalkEnv(world=FLAT, body=BODY, target_speed=0.4, roughness=0.0), stand_still, 0)
+    doubled = run_attempt(DuckWalkEnv(world=costly, body=BODY, target_speed=0.4, roughness=0.0), stand_still, 0)
+    assert doubled.joules_per_metre == pytest.approx(usual.joules_per_metre)
+
+
+# The challenges use the duck's body: a stronger body is the one in the challenge's world
+def test_challenge_worlds_use_the_ducks_body():
+    from duck.bodies import body_from_dict
+    strong = body_from_dict({"name": "strong", "description": "x", "motor_force_limits": {"knees": 8}})
+    for name, value in (("speed", 0.4), ("backpack", 100), ("perilous_road", 2), ("rocks", 100)):
+        env = CHALLENGES[name].world(value, 0, FLAT, strong)
+        assert list(env.model.actuator("left_knee").forcerange) == [-8, 8]
+        env.close()

@@ -8,8 +8,8 @@ import json
 from dataclasses import dataclass
 from pathlib import Path
 
-from duck.bodies import Body, body_from_dict, body_to_dict
-from duck.worlds import World, world_from_dict, world_to_dict
+from duck.bodies import STANDARD_BODY, Body, body_from_dict, body_to_dict, load_body
+from duck.worlds import World, load_world, world_from_dict, world_to_dict
 
 # The settings file of a run, and the story file of a duck
 RUN_SETTINGS_NAME = "run_settings.json"
@@ -72,3 +72,34 @@ def settings_for_folder(folder: Path) -> RunSettings | None:
     if (folder / STORY_NAME).exists():
         return duck_settings(folder)
     return None
+
+
+# ---------- For the tools ----------
+
+# The world and body a tool should use for a folder: the folder's own, each replaced by a named file when
+# given. A folder from before worlds needs --world (the body falls back to the standard duck)
+def resolve_settings(folder: Path, world_name: str | None, body_name: str | None) -> tuple[World, Body]:
+    own = settings_for_folder(folder)
+    if own is None and world_name is None:
+        raise ValueError(f"{folder.as_posix()} has no world yet (it is older than worlds). "
+                         "Add --world NAME, for example --world flat_walking.")
+    world = load_world(world_name) if world_name else own.world
+    body = load_body(body_name) if body_name else (own.body if own else STANDARD_BODY)
+    return world, body
+
+
+# Add --world and --body to a tool's command line
+def add_settings_arguments(parser) -> None:
+    parser.add_argument("--world", default=None,
+                        help="try another world (a file name in worlds/); default: the folder's own world")
+    parser.add_argument("--body", default=None,
+                        help="try another body (a file name in bodies/); default: the folder's own body")
+
+
+# resolve_settings for a command line: on a problem, print it as one plain sentence and stop with code 1
+def settings_or_exit(folder: Path, world_name: str | None, body_name: str | None) -> tuple[World, Body]:
+    try:
+        return resolve_settings(folder, world_name, body_name)
+    except ValueError as error:
+        print(error)
+        raise SystemExit(1)

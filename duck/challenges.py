@@ -5,7 +5,8 @@ Each challenge walks the duck's kept brain through a fixed set of attempts and s
 so ducks can be compared fairly. challenges/README.md is rewritten from every saved table after
 each run; remarks written by hand go in challenges/notes.md and are copied into it.
 
-Run from the project root, for example:
+The duck walks with its own body; each challenge changes the duck's own world (its reward counts the energy).
+--world and --body try other ones. Run from the project root, for example:
     python -m duck.challenges duck_catalogue/duck_03_1 speed backpack
     python -m duck.challenges duck_catalogue/duck_03_1 rocks --film 150
     python -m duck.challenges duck_catalogue/duck_03_1 speed backpack perilous_road rocks --films
@@ -24,7 +25,7 @@ from duck.bodies import Body
 from duck.duck_env import EVALUATION_TARGET_SPEED, DuckWalkEnv
 from duck.floor import MAX_ROUGHNESS
 from duck.policy import choose_snapshot_or_exit, load_policy
-from duck.rewards import RewardWeights
+from duck.run_settings import add_settings_arguments, settings_or_exit
 from duck.rocks import RockWorld, film_round, rock_radius
 from duck.scene import add_backpack  # noqa: F401 (kept importable from here)
 from duck.video import FilmCard, add_caption, film_page, record_clip
@@ -70,7 +71,7 @@ class Challenge:
     column: str                              # what the tried value means, for the table
     label: str                               # one value in words, for films, for example "{} m/s asked"
     values: tuple
-    world: Callable[..., DuckWalkEnv]        # (value, seed, render_mode=... for films) -> the world
+    world: Callable[..., DuckWalkEnv]        # (value, seed, world, body, render_mode=... for films) -> the world
     attempts: int = 10
 
 
@@ -81,7 +82,8 @@ CHALLENGES = {
         column="asked m/s",
         label="{} m/s asked",
         values=(0.4, 0.7, 0.8, 0.9, 1.0, 1.2, 1.5),
-        world=lambda speed, seed, **film: DuckWalkEnv(target_speed=speed, roughness=0.0, **film),
+        world=lambda speed, seed, world, body, **film: DuckWalkEnv(world=world, body=body, target_speed=speed,
+                                                                  roughness=0.0, **film),
     ),
     "backpack": Challenge(
         title="A backpack",
@@ -90,8 +92,9 @@ CHALLENGES = {
         column="backpack g",
         label="{} g backpack",
         values=(0, 100, 200, 300, 500, 800),
-        world=lambda grams, seed, **film: (BackpackWorld(grams / 1000, **film) if grams
-                                           else DuckWalkEnv(target_speed=EVALUATION_TARGET_SPEED, roughness=0.0, **film)),
+        world=lambda grams, seed, world, body, **film: (
+            BackpackWorld(grams / 1000, world, body, **film) if grams
+            else DuckWalkEnv(world=world, body=body, target_speed=EVALUATION_TARGET_SPEED, roughness=0.0, **film)),
     ),
     "perilous_road": Challenge(
         title="Perilous road",
@@ -100,7 +103,7 @@ CHALLENGES = {
         column="stones cm",
         label="{} cm stones",
         values=(1, 2, 3, 4, 5, 6, 8),
-        world=lambda cm, seed, **film: TallStoneWorld(cm / 100, **film),
+        world=lambda cm, seed, world, body, **film: TallStoneWorld(cm / 100, world, body, **film),
         attempts=30,
     ),
     "rocks": Challenge(
@@ -110,7 +113,8 @@ CHALLENGES = {
         column="rock g",
         label="{} g rocks",
         values=(25, 50, 100, 125, 150, 175, 200, 400),
-        world=lambda grams, seed, **film: RockWorld(grams / 1000, throw_seed=seed, **film),
+        world=lambda grams, seed, world, body, **film: RockWorld(grams / 1000, throw_seed=seed, world=world,
+                                                                 body=body, **film),
     ),
 }
 
@@ -136,15 +140,16 @@ def run_attempt(env: DuckWalkEnv, policy, seed: int) -> Attempt:
         energy_points += info["reward_parts"].get("energy", 0.0)
         finished = fell or timed_out
     seconds, distance = env.data.time, info["x_position"] - start_x
-    joules = -energy_points / RewardWeights().energy
+    joules = -energy_points / env.reward_weights.energy  # the world's own energy weight
     return Attempt(seconds, fell, distance / seconds, joules / max(distance, 1e-6), getattr(env, "hits", None))
 
 
-# One row of a challenge's table: every attempt with one value, summed up
-def challenge_row(challenge: Challenge, value, policy, attempts: int) -> dict:
+# One row of a challenge's table: every attempt with one value, summed up. The duck is its body in the
+# challenge's version of its world
+def challenge_row(challenge: Challenge, value, policy, attempts: int, world: World, body: Body) -> dict:
     results = []
     for seed in range(attempts):
-        env = challenge.world(value, seed)
+        env = challenge.world(value, seed, world, body)
         results.append(run_attempt(env, policy, seed))
         env.close()
     row = {
@@ -162,11 +167,12 @@ def challenge_row(challenge: Challenge, value, policy, attempts: int) -> dict:
 
 
 # Run one challenge and save its table
-def run_challenge(name: str, policy, duck_dir: Path, attempts: int | None = None) -> list[dict]:
+def run_challenge(name: str, policy, duck_dir: Path, world: World, body: Body,
+                  attempts: int | None = None) -> list[dict]:
     challenge = CHALLENGES[name]
     rows = []
     for value in challenge.values:
-        rows.append(challenge_row(challenge, value, policy, attempts or challenge.attempts))
+        rows.append(challenge_row(challenge, value, policy, attempts or challenge.attempts, world, body))
         print(f"{name} {value}: {rows[-1]['walked']} of {rows[-1]['attempts']} walked", flush=True)
     write_table(rows, duck_dir / CHALLENGES_FOLDER / name / RESULTS_NAME)
     return rows
@@ -196,11 +202,13 @@ def outcome_words(fell_at: float | None) -> str:
 
 
 # Film attempt 1 of one challenge value to a file; returns when it fell, or None
-def film_value(name: str, value, policy, path: Path, duck: str, seconds: float = FILM_SECONDS) -> float | None:
+def film_value(name: str, value, policy, path: Path, duck: str, world: World, body: Body,
+               seconds: float = FILM_SECONDS) -> float | None:
     challenge = CHALLENGES[name]
     fallen = []
-    frames = record_clip(policy, seconds=seconds, fps=FILM_FPS, on_frame=lambda observation, down: fallen.append(down),
-                         world=challenge.world(value, 0, render_mode="rgb_array"))
+    frames = record_clip(policy, world, body, seconds=seconds, fps=FILM_FPS,
+                         on_frame=lambda observation, down: fallen.append(down),
+                         scene=challenge.world(value, 0, world, body, render_mode="rgb_array"))
     fell_at = _fall_seconds(fallen)
     if fell_at is not None:
         frames = frames[:round((fell_at + SECONDS_AFTER_FALL) * FILM_FPS) + 1]
@@ -216,12 +224,12 @@ def films_folder(duck_dir: Path, name: str) -> Path:
 
 
 # Film every value of one challenge, then write its page; returns the page
-def film_challenge(name: str, policy, duck_dir: Path) -> Path:
+def film_challenge(name: str, policy, duck_dir: Path, world: World, body: Body) -> Path:
     folder = films_folder(duck_dir, name)
     duck = duck_name(duck_dir)
     outcomes = {}
     for value in CHALLENGES[name].values:
-        outcomes[str(value)] = film_value(name, value, policy, folder / f"{value}.mp4", duck)
+        outcomes[str(value)] = film_value(name, value, policy, folder / f"{value}.mp4", duck, world, body)
         print(f"Filmed {name} {value}: {outcome_words(outcomes[str(value)])}", flush=True)
     (folder / OUTCOMES_NAME).write_text(json.dumps(outcomes, indent=2), encoding="utf-8")
     return write_film_page(duck_dir, name)
@@ -293,17 +301,19 @@ def main() -> None:
     parser.add_argument("--attempts", type=int, default=None, help="attempts per value (default: the challenge's own)")
     parser.add_argument("--films", action="store_true", help="also film attempt 1 of every value, with a page showing them all")
     parser.add_argument("--film", type=int, default=None, help="rocks only: film every attempt with rocks of this many grams")
+    add_settings_arguments(parser)
     arguments = parser.parse_args()
 
     policy = load_policy(choose_snapshot_or_exit(arguments.duck_dir / "brain", None))
+    world, body = settings_or_exit(arguments.duck_dir, arguments.world, arguments.body)
     for name in arguments.challenges:
-        run_challenge(name, policy, arguments.duck_dir, arguments.attempts)
+        run_challenge(name, policy, arguments.duck_dir, world, body, arguments.attempts)
     if arguments.films:
         for name in arguments.challenges:
-            print(f"Films saved, see {film_challenge(name, policy, arguments.duck_dir)}")
+            print(f"Films saved, see {film_challenge(name, policy, arguments.duck_dir, world, body)}")
     if arguments.film is not None and "rocks" in arguments.challenges:
         film_round(policy, duck_name(arguments.duck_dir), arguments.film,
-                   films_folder(arguments.duck_dir, "rocks") / f"round_{arguments.film}g")
+                   films_folder(arguments.duck_dir, "rocks") / f"round_{arguments.film}g", world, body)
     print(f"Saved in {write_readme(arguments.duck_dir, duck_name(arguments.duck_dir))}")
 
 

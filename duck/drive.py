@@ -8,7 +8,8 @@ Two windows open: the MuJoCo viewer, whose camera follows the duck, and a small 
 with the speed slider, the Reset button and what the duck is doing. The duck walks on the flat
 floor for as long as you like (no 20 s limit). After a fall it lies still until you press Reset.
 Close either window to stop. With no folder given it drives the newest brain: the most recently
-saved best brain of any run, or kept brain in the catalogue.
+saved best brain of any run, or kept brain in the catalogue. The duck has the brain's own body
+(--body tries another); the floor is always flat, whatever world the brain trained in.
 """
 import argparse
 import time
@@ -20,9 +21,15 @@ import mujoco
 import mujoco.viewer
 import numpy as np
 
+from duck.bodies import STANDARD_BODY, Body, load_body
 from duck.duck_env import EVALUATION_TARGET_SPEED, DuckWalkEnv
 from duck.policy import choose_snapshot_or_exit, load_policy
+from duck.run_settings import settings_for_folder
 from duck.snapshots import latest_snapshot
+from duck.worlds import load_world
+
+# The drive tool's world: the flat floor (its speed comes from the slider, not the world)
+DRIVE_WORLD = "flat_walking"
 
 # The slider's range, in metres per second (training asked for 0.2 to 1.5 from Duck 3.2 on)
 SLIDER_RANGE = (0.1, 2.0)
@@ -38,9 +45,9 @@ SPEED_WINDOW_STEPS = 50
 # ---------- The duck being driven (no windows, so it can be tested) ----------
 
 class Driver:
-    def __init__(self, policy, speed: float):
+    def __init__(self, policy, speed: float, body: Body = STANDARD_BODY):
         self.policy = policy
-        self.env = DuckWalkEnv(target_speed=speed, roughness=0.0)
+        self.env = DuckWalkEnv(world=load_world(DRIVE_WORLD), body=body, target_speed=speed, roughness=0.0)
         self.attempt = 0
         self.reset()
 
@@ -83,6 +90,14 @@ def newest_brain(project: Path = Path(".")) -> Path | None:
     folders = list(project.glob("runs/duck_*/*/best")) + list(project.glob("duck_catalogue/*/brain"))
     saved = [(latest_snapshot(folder).model_path.stat().st_mtime, folder) for folder in folders if latest_snapshot(folder)]
     return max(saved)[1] if saved else None
+
+
+# The body to drive: the one named with --body, else the brain folder's own, else the standard duck
+def body_to_drive(brain_dir: Path, body_name: str | None) -> Body:
+    if body_name:
+        return load_body(body_name)
+    settings = settings_for_folder(brain_dir)
+    return settings.body if settings else STANDARD_BODY
 
 
 # ---------- The windows ----------
@@ -135,6 +150,7 @@ def main() -> None:
     parser.add_argument("brain_dir", type=Path, nargs="?", default=None,
                         help="a folder with snapshots, for example runs/duck_03_2/from_duck_03_1/best (default: the newest brain)")
     parser.add_argument("--speed", type=float, default=EVALUATION_TARGET_SPEED, help="starting speed in m/s")
+    parser.add_argument("--body", default=None, help="try another body (a file name in bodies/)")
     arguments = parser.parse_args()
     brain_dir = arguments.brain_dir or newest_brain()
     if brain_dir is None:
@@ -142,7 +158,12 @@ def main() -> None:
         return
     snapshot = choose_snapshot_or_exit(brain_dir, None)
     print(f"Driving the brain in {brain_dir} from {snapshot.steps:,} steps. Close a window to stop.")
-    driver = Driver(load_policy(snapshot), arguments.speed)
+    try:
+        body = body_to_drive(brain_dir, arguments.body)
+    except ValueError as error:
+        print(error)  # a plain message, no traceback
+        raise SystemExit(1)
+    driver = Driver(load_policy(snapshot), arguments.speed, body)
     drive(driver)
     driver.env.close()
 

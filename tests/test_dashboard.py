@@ -133,19 +133,26 @@ def test_status_has_no_parts_for_an_old_exam(tmp_path):
     assert (exam["attempts"], exam["flat_score"], exam["rough_score"]) == (12, None, None)
 
 
-# The dashboard films on the training floor (flat when training is flat), on a fixed layout from seed 1000
-def test_dashboard_film_uses_the_training_floor(tmp_path, monkeypatch):
+# The dashboard films the run's own world and body, on its tallest stones (flat in a flat world),
+# on a fixed layout from seed 1000
+@pytest.mark.parametrize("world_name, roughness", [("stones_up_to_4cm", 0.04), ("flat_running", 0.0)])
+def test_dashboard_film_uses_the_runs_world(tmp_path, monkeypatch, world_name, roughness):
     import duck.dashboard
+    from duck.bodies import STANDARD_BODY
     from duck.exam import EXAM_FIRST_SEED
-    from duck.floor import TRAINING_ROUGHNESS
+    from duck.run_settings import RunSettings, write_run_settings
+    from duck.worlds import load_world
+    world = load_world(world_name)
+    write_run_settings(tmp_path, RunSettings(None, world, STANDARD_BODY))
     seen = {}
 
-    def fake_record_clip(policy, **kwargs):
-        seen.update(kwargs)
+    def fake_record_clip(policy, world, body, **kwargs):
+        seen.update(kwargs, world=world, body=body)
         raise RuntimeError("stop here")
 
     monkeypatch.setattr(duck.dashboard, "record_clip", fake_record_clip)
     monkeypatch.setattr(duck.dashboard, "load_policy", lambda snapshot: None)
     with pytest.raises(RuntimeError):
         duck.dashboard.make_snapshot_clip(tmp_path, None)
-    assert seen["roughness"] == TRAINING_ROUGHNESS and seen["seed"] == EXAM_FIRST_SEED
+    assert seen["roughness"] == roughness and seen["seed"] == EXAM_FIRST_SEED
+    assert seen["world"] == world and seen["body"] == STANDARD_BODY

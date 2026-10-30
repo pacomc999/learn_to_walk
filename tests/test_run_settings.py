@@ -39,3 +39,20 @@ def test_duck_without_a_world_is_refused(tmp_path):
     (tmp_path / "duck.json").write_text(json.dumps({"name": "Duck 0"}))
     with pytest.raises(ValueError, match="no world"):
         duck_settings(tmp_path)
+
+
+# A tool given a run uses the run's world and body, each replaced by a named file when given
+def test_resolve_from_a_run_with_overrides(tmp_path):
+    from duck.run_settings import resolve_settings
+    write_run_settings(tmp_path, RunSettings(None, FLAT, BODY))
+    assert resolve_settings(tmp_path / "best", None, None) == (FLAT, BODY)
+    world, body = resolve_settings(tmp_path, "stones_up_to_4cm", None)
+    assert world == STONES and body == BODY
+
+
+# A folder from before worlds asks for --world in a plain sentence, and works once it is given
+def test_old_folder_asks_for_a_world(tmp_path):
+    from duck.run_settings import resolve_settings
+    with pytest.raises(ValueError, match="--world"):
+        resolve_settings(tmp_path, None, None)
+    assert resolve_settings(tmp_path, "flat_walking", None) == (FLAT, BODY)

@@ -60,3 +60,14 @@ def test_evaluate_passes_the_roughness(monkeypatch):
     with pytest.raises(RuntimeError):
         evaluate_snapshot(None, FLAT, BODY, roughness=0.01)
     assert seen["roughness"] == 0.01
+
+
+# An old run with no world and no --world: one plain sentence, no traceback
+def test_cli_without_a_world_asks_for_one(tmp_path):
+    train(tmp_path, total_steps=0, snapshot_every=1024, n_envs=2, settings=FLAT_SETTINGS,
+          use_subprocess=False, ppo_overrides={"n_steps": 256, "batch_size": 64})
+    (tmp_path / "run_settings.json").unlink()
+    run = subprocess.run([sys.executable, "-m", "duck.evaluate", str(tmp_path)], capture_output=True, text=True)
+    assert run.returncode == 1
+    assert "--world" in run.stdout
+    assert "Traceback" not in run.stderr

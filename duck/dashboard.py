@@ -20,8 +20,8 @@ import numpy as np
 
 from duck.duck_env import FILM_HEIGHT, FILM_WIDTH
 from duck.exam import EXAM_FIRST_SEED, best_folder, exam_at
-from duck.floor import MAX_ROUGHNESS
 from duck.policy import load_policy
+from duck.run_settings import resolve_settings
 from duck.progress import ProgressRow, minutes_since_improvement, read_progress
 from duck.snapshots import Snapshot, latest_snapshot, replace_with_retry
 from duck.video import record_clip
@@ -115,12 +115,13 @@ def save_mp4(frames: list[np.ndarray], path: Path, fps: int = CLIP_FPS) -> None:
     replace_with_retry(temp_path, path)
 
 
-# Film a snapshot walking at the judging speed on the roughest floor, on a fixed rough layout
-# built from seed 1000. It is not the exam's first rough layout, because the film fixes the
-# speed at 0.4 and so draws no target speed before the floor
+# Film a snapshot in the run's own world and body, walking at the judging speed on the world's tallest
+# stones (flat in a flat world), on a fixed layout built from seed 1000. It is not the exam's first
+# layout, because the film fixes the speed at 0.4 and so draws no target speed before the floor
 def make_snapshot_clip(run_dir: Path, snapshot: Snapshot) -> None:
-    frames = record_clip(load_policy(snapshot), seconds=CLIP_SECONDS, fps=CLIP_FPS,
-                         width=CLIP_WIDTH, height=CLIP_HEIGHT, seed=EXAM_FIRST_SEED, roughness=MAX_ROUGHNESS)
+    world, body = resolve_settings(run_dir, None, None)
+    frames = record_clip(load_policy(snapshot), world, body, seconds=CLIP_SECONDS, fps=CLIP_FPS, width=CLIP_WIDTH,
+                         height=CLIP_HEIGHT, seed=EXAM_FIRST_SEED, roughness=world.tallest_stones)
     save_mp4(frames, run_dir / CLIP_NAME)
     (run_dir / CLIP_STEPS_NAME).write_text(str(snapshot.steps))
 

@@ -48,3 +48,16 @@ def test_newest_brain(tmp_path):
             (snapshots / name).write_text("x")
             os.utime(snapshots / name, (age, age))
     assert newest_brain(tmp_path) == tmp_path / "runs/duck_09/a/best"
+
+
+# The driven duck has the brain folder's own body, the standard duck for an old folder, or the one named
+def test_body_to_drive(tmp_path):
+    from duck.bodies import STANDARD_BODY, body_from_dict
+    from duck.drive import body_to_drive
+    from duck.run_settings import RunSettings, write_run_settings
+    from tests.worlds_for_tests import FLAT
+    assert body_to_drive(tmp_path, None) == STANDARD_BODY
+    strong = body_from_dict({"name": "strong", "description": "x", "motor_force_limits": {"knees": 8}})
+    write_run_settings(tmp_path, RunSettings(None, FLAT, strong))
+    assert body_to_drive(tmp_path / "best", None) == strong
+    assert body_to_drive(tmp_path, "standard") == STANDARD_BODY

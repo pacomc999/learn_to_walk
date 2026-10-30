@@ -19,6 +19,7 @@ from duck.bodies import Body
 from duck.duck_env import EVALUATION_TARGET_SPEED, FILM_HEIGHT, FILM_WIDTH, DuckWalkEnv
 from duck.floor import roughness_argument
 from duck.policy import load_policy
+from duck.run_settings import add_settings_arguments, settings_or_exit
 from duck.snapshots import choose_for_video, list_snapshots
 from duck.worlds import World
 
@@ -112,7 +113,7 @@ def record_clip(policy, world: World, body: Body, seconds: float = 6.0, fps: int
 
 
 # Record every chosen snapshot with its caption, one clip after another, and save one MP4
-def make_video(run_dir: Path, out_path: Path | None = None, max_snapshots: int = 25,
+def make_video(run_dir: Path, world: World, body: Body, out_path: Path | None = None, max_snapshots: int = 25,
                seconds_per_clip: float = 6.0, fps: int = 30, roughness: float = 0.0) -> Path:
     snapshots = list_snapshots(run_dir)
     if not snapshots:
@@ -125,7 +126,7 @@ def make_video(run_dir: Path, out_path: Path | None = None, max_snapshots: int =
     try:
         for position, snapshot in enumerate(chosen, start=1):
             print(f"Recording snapshot {position} of {len(chosen)}")
-            clip = record_clip(load_policy(snapshot), seconds_per_clip, fps, roughness=roughness)
+            clip = record_clip(load_policy(snapshot), world, body, seconds_per_clip, fps, roughness=roughness)
             caption = caption_text(position, len(chosen), snapshot.steps)
             for frame in clip:
                 writer.append_data(add_caption(frame, caption))
@@ -140,9 +141,11 @@ def main() -> None:
     parser.add_argument("run_dir", type=Path, help="run folder, for example runs/duck_v1")
     parser.add_argument("--seconds", type=float, default=6.0, help="seconds per snapshot clip (default 6)")
     parser.add_argument("--roughness", type=roughness_argument, default=0.0, help="height of the cobblestones in metres (default 0, a flat floor)")
+    add_settings_arguments(parser)
     arguments = parser.parse_args()
+    world, body = settings_or_exit(arguments.run_dir, arguments.world, arguments.body)
     try:
-        make_video(arguments.run_dir, seconds_per_clip=arguments.seconds, roughness=arguments.roughness)
+        make_video(arguments.run_dir, world, body, seconds_per_clip=arguments.seconds, roughness=arguments.roughness)
     except ValueError as error:
         print(error)
         raise SystemExit(1)
