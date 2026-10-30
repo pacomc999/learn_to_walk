@@ -60,7 +60,7 @@ A stone ball thrown at the body every 2 s from a random side at 4 m/s, on the fl
 
 ## Films
 
-Not kept in git; make them again with `--films` (and `--film GRAMS` for a rock round). `index.html` plays every challenge's films on one page.
+Not kept in git; make them again with `--films` (and `--film GRAMS` for a rock round).
 
 - `speed/films/index.html`: attempt 1 of every value
 - `backpack/films/index.html`: attempt 1 of every value

@@ -20,7 +20,6 @@ MUJOCO_LOG.TXT
 # Duck catalogue films: made again from the kept brain with the film command
 duck_catalogue/*/*.mp4
 duck_catalogue/*/challenges/*/films/
-duck_catalogue/*/challenges/index.html
 
 # Planning tool workspaces (recreated by the tools when needed)
 .superpowers/

@@ -259,25 +259,6 @@ def write_film_page(duck_dir: Path, name: str) -> Path:
     return page
 
 
-# One page for the whole duck: every challenge's films in sections (the films stay in each challenge's folder)
-def write_films_index(duck_dir: Path) -> Path:
-    sections = []
-    for name, challenge in CHALLENGES.items():
-        outcomes_path = films_folder(duck_dir, name) / OUTCOMES_NAME
-        if not outcomes_path.exists():
-            continue
-        outcomes = json.loads(outcomes_path.read_text(encoding="utf-8"))
-        cards = [FilmCard(f"{name}/{FILMS_FOLDER}/{value}.mp4", challenge.label.format(value), outcome_words(fell_at),
-                          fell_at is not None) for value, fell_at in outcomes.items()]
-        sections.append((challenge.title, challenge.description, cards))
-    intro = ("Attempt 1 of every value of every challenge, filmed with the duck's kept brain (no wobble). Falling films "
-             f"stop {SECONDS_AFTER_FALL:g} s after the fall. Each challenge's folder has these films and its own page; "
-             "the tables in README.md count all attempts.")
-    page = duck_dir / CHALLENGES_FOLDER / FILM_PAGE_NAME
-    page.write_text(film_page(f"{duck_name(duck_dir)}: challenge films", intro, sections), encoding="utf-8")
-    return page
-
-
 # ---------- The README ----------
 
 # A saved table as Markdown
@@ -304,8 +285,7 @@ def write_readme(duck_dir: Path, name: str) -> Path:
     rounds = sorted(f"`rocks/{FILMS_FOLDER}/{round_page.parent.name}/{FILM_PAGE_NAME}`"
                     for round_page in (folder / "rocks" / FILMS_FOLDER).glob(f"round_*/{FILM_PAGE_NAME}"))
     if pages or rounds:
-        lines += ["## Films", "", "Not kept in git; make them again with `--films` (and `--film GRAMS` for a rock round). "
-                  f"`{FILM_PAGE_NAME}` plays every challenge's films on one page.", ""]
+        lines += ["## Films", "", "Not kept in git; make them again with `--films` (and `--film GRAMS` for a rock round).", ""]
         lines += [f"- {page}: attempt 1 of every value" for page in pages]
         lines += [f"- {page}: every attempt of one rock size" for page in rounds]
         lines.append("")
@@ -338,7 +318,6 @@ def main() -> None:
     if arguments.films:
         for name in arguments.challenges:
             print(f"Films saved, see {film_challenge(name, policy, arguments.duck_dir)}")
-        print(f"All films on one page: {write_films_index(arguments.duck_dir)}")
     if arguments.film is not None and "rocks" in arguments.challenges:
         film_round(policy, duck_name(arguments.duck_dir), arguments.film,
                    films_folder(arguments.duck_dir, "rocks") / f"round_{arguments.film}g")
