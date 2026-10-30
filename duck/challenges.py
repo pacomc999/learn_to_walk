@@ -8,6 +8,7 @@ each run; remarks written by hand go in challenges/notes.md and are copied into 
 Run from the project root, for example:
     python -m duck.challenges duck_catalogue/duck_03_1 speed backpack
     python -m duck.challenges duck_catalogue/duck_03_1 rocks --film 150
+    python -m duck.challenges duck_catalogue/duck_03_1 speed backpack stones rocks --films
 """
 import argparse
 import csv
@@ -16,6 +17,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable
 
+import imageio
 import mujoco
 import numpy as np
 
@@ -25,11 +27,21 @@ from duck.model import DUCK_XML_PATH
 from duck.policy import choose_snapshot_or_exit, load_policy
 from duck.rewards import RewardWeights
 from duck.rocks import RockWorld, film_round, rock_radius
+from duck.video import FilmCard, add_caption, film_page, record_clip
 
 CHALLENGES_FOLDER = "challenges"
 RESULTS_NAME = "results.csv"
 NOTES_NAME = "notes.md"
 README_NAME = "README.md"
+
+# Films: attempt 1 of every value, in <challenge>/films/, 30 pictures a second, stopping 1.5 s after a fall
+# (not kept in git). The rock round of one size goes in rocks/films/round_<grams>g/
+FILMS_FOLDER = "films"
+FILM_PAGE_NAME = "index.html"
+OUTCOMES_NAME = "outcomes.json"
+FILM_FPS = 30
+FILM_SECONDS = 20.0
+SECONDS_AFTER_FALL = 1.5
 
 # The backpack: an 8 x 7 x 4 cm box fixed on the back, slightly behind the middle (a body part, no joint)
 BACKPACK_SIZE = "0.04 0.035 0.02"
@@ -73,8 +85,9 @@ class Challenge:
     title: str
     description: str
     column: str                              # what the tried value means, for the table
+    label: str                               # one value in words, for films, for example "{} m/s asked"
     values: tuple
-    world: Callable[[float, int], DuckWalkEnv]
+    world: Callable[..., DuckWalkEnv]        # (value, seed, render_mode=... for films) -> the world
     attempts: int = 10
 
 
@@ -83,25 +96,28 @@ CHALLENGES = {
         title="Speeds above training",
         description="Asked for one speed for the whole attempt, on the flat floor. Training asked for 0.2 to 0.7 m/s.",
         column="asked m/s",
+        label="{} m/s asked",
         values=(0.4, 0.7, 0.8, 0.9, 1.0, 1.2, 1.5),
-        world=lambda speed, seed: DuckWalkEnv(target_speed=speed, roughness=0.0),
+        world=lambda speed, seed, **film: DuckWalkEnv(target_speed=speed, roughness=0.0, **film),
     ),
     "backpack": Challenge(
         title="A backpack",
         description=f"An 8 x 7 x 4 cm box fixed on the back, on the flat floor at "
                     f"{EVALUATION_TARGET_SPEED} m/s. The duck weighs 1.53 kg and has no sense for the extra weight.",
         column="backpack g",
+        label="{} g backpack",
         values=(0, 100, 200, 300, 500, 800),
-        world=lambda grams, seed: (BackpackWorld(grams / 1000) if grams
-                                   else DuckWalkEnv(target_speed=EVALUATION_TARGET_SPEED, roughness=0.0)),
+        world=lambda grams, seed, **film: (BackpackWorld(grams / 1000, **film) if grams
+                                           else DuckWalkEnv(target_speed=EVALUATION_TARGET_SPEED, roughness=0.0, **film)),
     ),
     "stones": Challenge(
         title="Taller stones",
         description=f"Cobblestones of one height for the whole attempt, at {EVALUATION_TARGET_SPEED} m/s, a new layout "
                     "each attempt. 30 attempts per height, because on tall stones tiny differences decide falls.",
         column="stones cm",
+        label="{} cm stones",
         values=(1, 2, 3, 4, 5, 6, 8),
-        world=lambda cm, seed: TallStoneWorld(cm / 100),
+        world=lambda cm, seed, **film: TallStoneWorld(cm / 100, **film),
         attempts=30,
     ),
     "rocks": Challenge(
@@ -109,8 +125,9 @@ CHALLENGES = {
         description=f"A stone ball thrown at the body every 2 s from a random side at 4 m/s, on the flat floor at "
                     f"{EVALUATION_TARGET_SPEED} m/s (see duck/rocks.py). The rock is taken away 1 s after each throw.",
         column="rock g",
+        label="{} g rocks",
         values=(25, 50, 100, 125, 150, 175, 200, 400),
-        world=lambda grams, seed: RockWorld(grams / 1000, throw_seed=seed),
+        world=lambda grams, seed, **film: RockWorld(grams / 1000, throw_seed=seed, **film),
     ),
 }
 
@@ -181,6 +198,86 @@ def write_table(rows: list[dict], path: Path) -> None:
         writer.writerows(rows)
 
 
+# ---------- Films ----------
+
+# When the duck fell, in seconds, from the fallen flag of every picture; None if it walked to the end
+def _fall_seconds(fallen: list[bool]) -> float | None:
+    if True not in fallen or fallen.index(True) >= len(fallen) - 1:
+        return None  # the very last picture is the 20 s end, not a fall
+    return fallen.index(True) / FILM_FPS
+
+
+# How a filmed attempt ended, in words
+def outcome_words(fell_at: float | None) -> str:
+    return "walks all 20 s" if fell_at is None else f"falls after {fell_at:.1f} s"
+
+
+# Film attempt 1 of one challenge value to a file; returns when it fell, or None
+def film_value(name: str, value, policy, path: Path, duck: str, seconds: float = FILM_SECONDS) -> float | None:
+    challenge = CHALLENGES[name]
+    fallen = []
+    frames = record_clip(policy, seconds=seconds, fps=FILM_FPS, on_frame=lambda observation, down: fallen.append(down),
+                         world=challenge.world(value, 0, render_mode="rgb_array"))
+    fell_at = _fall_seconds(fallen)
+    if fell_at is not None:
+        frames = frames[:round((fell_at + SECONDS_AFTER_FALL) * FILM_FPS) + 1]
+    caption = f"{duck}, {challenge.label.format(value)}: {outcome_words(fell_at)}"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    imageio.mimsave(path, [add_caption(frame, caption) for frame in frames], fps=FILM_FPS, macro_block_size=1)
+    return fell_at
+
+
+# The folder that holds one challenge's films
+def films_folder(duck_dir: Path, name: str) -> Path:
+    return duck_dir / CHALLENGES_FOLDER / name / FILMS_FOLDER
+
+
+# Film every value of one challenge, then write its page; returns the page
+def film_challenge(name: str, policy, duck_dir: Path) -> Path:
+    folder = films_folder(duck_dir, name)
+    duck = duck_name(duck_dir)
+    outcomes = {}
+    for value in CHALLENGES[name].values:
+        outcomes[str(value)] = film_value(name, value, policy, folder / f"{value}.mp4", duck)
+        print(f"Filmed {name} {value}: {outcome_words(outcomes[str(value)])}", flush=True)
+    (folder / OUTCOMES_NAME).write_text(json.dumps(outcomes, indent=2), encoding="utf-8")
+    return write_film_page(duck_dir, name)
+
+
+# The page of one challenge's films, from the outcomes saved next to them
+def write_film_page(duck_dir: Path, name: str) -> Path:
+    folder = films_folder(duck_dir, name)
+    challenge = CHALLENGES[name]
+    outcomes = json.loads((folder / OUTCOMES_NAME).read_text(encoding="utf-8"))
+    cards = [FilmCard(f"{value}.mp4", challenge.label.format(value), outcome_words(fell_at), fell_at is not None)
+             for value, fell_at in outcomes.items()]
+    intro = (f"{challenge.description} Attempt 1 of every value, filmed with the duck's kept brain (no wobble). "
+             f"Falling films stop {SECONDS_AFTER_FALL:g} s after the fall. The table in results.csv counts all attempts.")
+    page = folder / FILM_PAGE_NAME
+    page.write_text(film_page(f"{duck_name(duck_dir)}: {challenge.title.lower()}", intro, [(None, None, cards)]),
+                    encoding="utf-8")
+    return page
+
+
+# One page for the whole duck: every challenge's films in sections (the films stay in each challenge's folder)
+def write_films_index(duck_dir: Path) -> Path:
+    sections = []
+    for name, challenge in CHALLENGES.items():
+        outcomes_path = films_folder(duck_dir, name) / OUTCOMES_NAME
+        if not outcomes_path.exists():
+            continue
+        outcomes = json.loads(outcomes_path.read_text(encoding="utf-8"))
+        cards = [FilmCard(f"{name}/{FILMS_FOLDER}/{value}.mp4", challenge.label.format(value), outcome_words(fell_at),
+                          fell_at is not None) for value, fell_at in outcomes.items()]
+        sections.append((challenge.title, challenge.description, cards))
+    intro = ("Attempt 1 of every value of every challenge, filmed with the duck's kept brain (no wobble). Falling films "
+             f"stop {SECONDS_AFTER_FALL:g} s after the fall. Each challenge's folder has these films and its own page; "
+             "the tables in README.md count all attempts.")
+    page = duck_dir / CHALLENGES_FOLDER / FILM_PAGE_NAME
+    page.write_text(film_page(f"{duck_name(duck_dir)}: challenge films", intro, sections), encoding="utf-8")
+    return page
+
+
 # ---------- The README ----------
 
 # A saved table as Markdown
@@ -202,6 +299,16 @@ def write_readme(duck_dir: Path, name: str) -> Path:
         table = folder / key / RESULTS_NAME
         if table.exists():
             lines += [f"## {challenge.title} (`{key}`)", "", challenge.description, "", *_markdown_table(table), ""]
+    pages = [f"`{key}/{FILMS_FOLDER}/{FILM_PAGE_NAME}`" for key in CHALLENGES
+             if (folder / key / FILMS_FOLDER / FILM_PAGE_NAME).exists()]
+    rounds = sorted(f"`rocks/{FILMS_FOLDER}/{round_page.parent.name}/{FILM_PAGE_NAME}`"
+                    for round_page in (folder / "rocks" / FILMS_FOLDER).glob(f"round_*/{FILM_PAGE_NAME}"))
+    if pages or rounds:
+        lines += ["## Films", "", "Not kept in git; make them again with `--films` (and `--film GRAMS` for a rock round). "
+                  f"`{FILM_PAGE_NAME}` plays every challenge's films on one page.", ""]
+        lines += [f"- {page}: attempt 1 of every value" for page in pages]
+        lines += [f"- {page}: every attempt of one rock size" for page in rounds]
+        lines.append("")
     notes = folder / NOTES_NAME
     if notes.exists():
         lines += ["## Notes", "", notes.read_text(encoding="utf-8").strip(), ""]
@@ -221,15 +328,20 @@ def main() -> None:
     parser.add_argument("duck_dir", type=Path, help="duck folder, for example duck_catalogue/duck_03_1")
     parser.add_argument("challenges", nargs="+", choices=list(CHALLENGES), help="which challenges to run")
     parser.add_argument("--attempts", type=int, default=None, help="attempts per value (default: the challenge's own)")
+    parser.add_argument("--films", action="store_true", help="also film attempt 1 of every value, with a page showing them all")
     parser.add_argument("--film", type=int, default=None, help="rocks only: film every attempt with rocks of this many grams")
     arguments = parser.parse_args()
 
     policy = load_policy(choose_snapshot_or_exit(arguments.duck_dir / "brain", None))
     for name in arguments.challenges:
         run_challenge(name, policy, arguments.duck_dir, arguments.attempts)
+    if arguments.films:
+        for name in arguments.challenges:
+            print(f"Films saved, see {film_challenge(name, policy, arguments.duck_dir)}")
+        print(f"All films on one page: {write_films_index(arguments.duck_dir)}")
     if arguments.film is not None and "rocks" in arguments.challenges:
         film_round(policy, duck_name(arguments.duck_dir), arguments.film,
-                   arguments.duck_dir / CHALLENGES_FOLDER / "rocks" / "films")
+                   films_folder(arguments.duck_dir, "rocks") / f"round_{arguments.film}g")
     print(f"Saved in {write_readme(arguments.duck_dir, duck_name(arguments.duck_dir))}")
 
 

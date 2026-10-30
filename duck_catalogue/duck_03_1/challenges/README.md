@@ -58,9 +58,19 @@ A stone ball thrown at the body every 2 s from a random side at 4 m/s, on the fl
 | 200 | 0 | 10 | 6.2 | 0.36 | 13.4 | 5.3 | 26 |
 | 400 | 0 | 10 | 2.6 | 0.35 | 14.8 | 6.7 | 10 |
 
+## Films
+
+Not kept in git; make them again with `--films` (and `--film GRAMS` for a rock round). `index.html` plays every challenge's films on one page.
+
+- `speed/films/index.html`: attempt 1 of every value
+- `backpack/films/index.html`: attempt 1 of every value
+- `stones/films/index.html`: attempt 1 of every value
+- `rocks/films/index.html`: attempt 1 of every value
+- `rocks/films/round_150g/index.html`: every attempt of one rock size
+
 ## Notes
 
-First run on 2026-10-30, for Duck 2.1, Duck 3 and Duck 3.1 with the same command, so the three can be compared. The films of the 150 g rocks round (`rocks/films/index.html`: 2 attempts walk, 8 fall) were made with `--film 150`.
+First run on 2026-10-30, for Duck 2.1, Duck 3 and Duck 3.1 with the same command, so the three can be compared. The films of the 150 g rocks round (`rocks/films/round_150g/index.html`: 2 attempts walk, 8 fall) were made with `--film 150`.
 
 ### Walked the full 20 s, three ducks side by side
 

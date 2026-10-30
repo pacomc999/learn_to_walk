@@ -18,7 +18,8 @@ import numpy as np
 
 from duck.duck_env import EVALUATION_TARGET_SPEED, DuckWalkEnv
 from duck.model import DUCK_XML_PATH
-from duck.video import add_caption
+from duck.video import FilmCard, add_caption
+from duck.video import film_page as video_film_page
 
 # The rocks: stone balls (about granite) thrown at 4 m/s from 0.8 m to the side
 ROCK_DENSITY = 2500.0      # kg per cubic metre
@@ -184,55 +185,13 @@ def film_round(policy, name: str, grams: int, folder: Path, attempts: int = ATTE
     return page
 
 
-# One film on the page, with its attempt number and how it ended
-def _film_card(number: int, attempt: RockAttempt) -> str:
-    kind = "fall" if attempt.fell else "walk"
-    return (f'    <figure class="card {kind}">\n'
-            f'      <video src="attempt_{number}.mp4" muted autoplay loop playsinline controls></video>\n'
-            f'      <figcaption><b>Attempt {number}</b><span>{outcome_words(attempt)}</span></figcaption>\n'
-            f'    </figure>')
-
-
-# A page that plays every film of a round side by side, light and dark
+# A page that plays every film of a round side by side
 def film_page(name: str, grams: int, outcomes: list[RockAttempt]) -> str:
     walked = sum(not attempt.fell for attempt in outcomes)
-    cards = "\n".join(_film_card(number, attempt) for number, attempt in enumerate(outcomes, start=1))
-    return f"""<!doctype html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>{name} Rocks</title>
-<style>
-  /* Colours, with a dark version */
-  :root {{ --bg: #f4f3ef; --card: #fcfcfb; --ink: #0b0b0b; --soft: #52514e; --walk: #0c7a0c; --fall: #b5452f; }}
-  @media (prefers-color-scheme: dark) {{
-    :root {{ --bg: #121211; --card: #1a1a19; --ink: #f0efec; --soft: #c3c2b7; --walk: #3fc53f; --fall: #e07a63; }}
-  }}
-  /* Page and the grid of films */
-  body {{ margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.45 system-ui, "Segoe UI", sans-serif; }}
-  main {{ max-width: 1400px; margin: 0 auto; padding: 24px 16px 40px; }}
-  h1 {{ font-size: 24px; margin: 0 0 4px; }}
-  .sub {{ color: var(--soft); margin: 0 0 20px; }}
-  .grid {{ display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 16px; }}
-  .card {{ margin: 0; background: var(--card); border-radius: 12px; padding: 10px; }}
-  .card video {{ width: 100%; border-radius: 8px; display: block; aspect-ratio: 4 / 3; background: #000; }}
-  figcaption {{ display: flex; justify-content: space-between; padding: 8px 4px 2px; }}
-  .walk span {{ color: var(--walk); font-weight: 600; }}
-  .fall span {{ color: var(--fall); font-weight: 600; }}
-</style>
-</head>
-<body>
-<main>
-  <h1>{name} against {grams} g rocks</h1>
-  <p class="sub">Flat floor, asked to walk at {EVALUATION_TARGET_SPEED} m/s. A {grams} g stone ball
-  ({rock_radius(grams / 1000) * 100:.1f} cm) is thrown at its body every {THROW_EVERY:g} s from a random side
-  at {THROW_SPEED:g} m/s. {walked} of {len(outcomes)} attempts walk the full 20 s.
-  Falling films stop {SECONDS_AFTER_FALL:g} s after the fall.</p>
-  <section class="grid">
-{cards}
-  </section>
-</main>
-</body>
-</html>
-"""
+    intro = (f"Flat floor, asked to walk at {EVALUATION_TARGET_SPEED} m/s. A {grams} g stone ball "
+             f"({rock_radius(grams / 1000) * 200:.1f} cm across) is thrown at its body every {THROW_EVERY:g} s from a "
+             f"random side at {THROW_SPEED:g} m/s. {walked} of {len(outcomes)} attempts walk the full 20 s. "
+             f"Falling films stop {SECONDS_AFTER_FALL:g} s after the fall.")
+    cards = [FilmCard(f"attempt_{number}.mp4", f"Attempt {number}", outcome_words(attempt), attempt.fell)
+             for number, attempt in enumerate(outcomes, start=1)]
+    return video_film_page(f"{name} against {grams} g rocks", intro, [(None, None, cards)])

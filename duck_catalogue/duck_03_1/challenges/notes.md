@@ -1,4 +1,4 @@
-First run on 2026-10-30, for Duck 2.1, Duck 3 and Duck 3.1 with the same command, so the three can be compared. The films of the 150 g rocks round (`rocks/films/index.html`: 2 attempts walk, 8 fall) were made with `--film 150`.
+First run on 2026-10-30, for Duck 2.1, Duck 3 and Duck 3.1 with the same command, so the three can be compared. The films of the 150 g rocks round (`rocks/films/round_150g/index.html`: 2 attempts walk, 8 fall) were made with `--film 150`.
 
 ### Walked the full 20 s, three ducks side by side
 

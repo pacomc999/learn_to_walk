@@ -57,3 +57,12 @@ A stone ball thrown at the body every 2 s from a random side at 4 m/s, on the fl
 | 175 | 0 | 10 | 3.9 | 0.38 | 12.8 | 5.1 | 15 |
 | 200 | 0 | 10 | 2.8 | 0.38 | 13.2 | 5.3 | 10 |
 | 400 | 0 | 10 | 2.5 | 0.37 | 14.2 | 6.7 | 10 |
+
+## Films
+
+Not kept in git; make them again with `--films` (and `--film GRAMS` for a rock round). `index.html` plays every challenge's films on one page.
+
+- `speed/films/index.html`: attempt 1 of every value
+- `backpack/films/index.html`: attempt 1 of every value
+- `stones/films/index.html`: attempt 1 of every value
+- `rocks/films/index.html`: attempt 1 of every value

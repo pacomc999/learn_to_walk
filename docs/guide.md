@@ -141,7 +141,7 @@ Challenges put a duck's kept brain in situations it never trained for. They are 
 
 Each challenge saves a table, for example `duck_catalogue/duck_03_1/challenges/speed/results.csv`: for each value, how many attempts walked the full 20 seconds, how long it stayed up on average, its actual speed and its energy per metre. The same command always gives the same numbers, so ducks can be compared. `challenges/README.md` is rewritten from all of a duck's tables after every run; remarks written by hand go in `challenges/notes.md` and are copied into it.
 
-Add `--film 150` to the rocks challenge to also film every attempt with 150 g rocks, with a page that plays them side by side (`challenges/rocks/films/index.html`, not kept in git). Change the number of attempts with `--attempts`.
+Add `--films` to also film attempt 1 of every value of the challenges you run, kept in each challenge's own folder with its own page (`challenges/speed/films/index.html`), and one page for the duck that plays every challenge's films in sections (`challenges/index.html`). Films are not kept in git. Add `--film 150` to the rocks challenge to also film all 10 attempts with 150 g rocks (`challenges/rocks/films/round_150g/`), with a page that plays them side by side (`challenges/rocks/films/index.html`, not kept in git). Change the number of attempts with `--attempts`.
 
 ### The joints
 
