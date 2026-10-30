@@ -50,9 +50,9 @@ def test_keep_brain_fills_the_duck_folder(tmp_path, small_run):
     kept = list_snapshots(duck_dir / "brain")
     assert [snap.steps for snap in kept] == [snapshot.steps]
     results = json.loads((duck_dir / "results.json").read_text())
-    assert results["steps"] == snapshot.steps and 0 <= results["exam_falls"] <= 12
+    assert results["steps"] == snapshot.steps and 0 <= results["exam_falls"] <= 24 and "exam_rough_score" in results
     assert (duck_dir / "duck_01.gif").stat().st_size > 0
-    assert "Exam (12 fixed attempts" in (duck_dir / "card.md").read_text()
+    assert "fixed attempts" in (duck_dir / "card.md").read_text()
 
 
 # A brain that does not beat the kept one is not kept, unless forced
@@ -77,3 +77,54 @@ def test_index_lists_every_duck(tmp_path):
     index = write_index(ducks).read_text()
     assert index.index("[Duck 1]") < index.index("[Duck 2]")
     assert "none yet" in index
+
+
+# The recipe records the floor (every shape number) and the forward reward rule
+def test_recipe_records_floor_and_forward_rule():
+    recipe = catalogue.current_recipe()
+    assert recipe["floor"]["max_roughness"] == 0.01
+    assert recipe["floor"]["stone_size"] == 0.06 and recipe["floor"]["waves"] == 8
+    assert recipe["forward_reward"] == "3.0 x (target - |speed - target|)"
+
+
+# A recipe frozen before the floor existed says flat and keeps the old cap wording
+def test_old_recipe_card_lines_say_flat():
+    recipe = catalogue.current_recipe()
+    del recipe["floor"], recipe["forward_reward"]
+    text = "\n".join(catalogue._recipe_lines(recipe))
+    assert "- Floor: flat" in text
+    assert "per m/s up to the target speed" in text
+
+
+# A new recipe lists the floor numbers and the overshoot rule
+def test_new_recipe_card_lines_list_the_floor():
+    text = "\n".join(catalogue._recipe_lines(catalogue.current_recipe()))
+    assert "- Floor: random cobblestones up to 0.01 m" in text
+    assert "stones 0.06 m" in text and "gaps 0.07" in text
+    assert "3.0 x (target - |speed - target|)" in text
+
+
+OLD_RESULTS = {
+    "from_run": "runs/x", "steps": 1000, "measured": "2026-01-01 00:00",
+    "exam_score": 986.4, "exam_falls": 0, "walking_test": "10 of 10",
+    "gait_at_judging_speed": {"feet_in_air": 0.1, "one_foot_down": 0.8, "both_feet_down": 0.1,
+                              "joules_per_metre": 12.3, "speed": 0.46, "falls": 0},
+}
+
+
+# Results without rough keys render as before
+def test_old_results_render_as_before():
+    text = "\n".join(catalogue._results_lines(OLD_RESULTS, "x.gif"))
+    assert "- Exam (12 fixed attempts, no wobble): score 986, falls 0 of 12" in text
+    assert "rough" not in text.lower()
+
+
+# Results with rough keys show both parts, of 24, and the rough lines
+def test_new_results_show_both_floors():
+    results = {**OLD_RESULTS, "exam_flat_score": 900.0, "exam_rough_score": 500.0, "exam_score": 700.0,
+               "exam_falls": 3, "walking_test_rough": "7 of 10",
+               "gait_on_rough_floor": {**OLD_RESULTS["gait_at_judging_speed"], "speed": 0.3}}
+    text = "\n".join(catalogue._results_lines(results, "x.gif"))
+    assert "score 700, falls 3 of 24" in text
+    assert "flat 900" in text and "rough 500" in text
+    assert "7 of 10" in text and "rough floor" in text.lower()

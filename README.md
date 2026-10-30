@@ -8,6 +8,8 @@ A small neural network is the duck's brain. It learns by trial and error (reinfo
 
 The brain is left/right symmetric (the "NET" method of Abdolhosseini and others, 2019). Mirroring the world, swapping the left and right legs and flipping the sideways signs, gives a mirrored duck, and the brain is built so it always answers a mirrored situation with the mirrored command. The duck therefore only has to learn to walk once, not once for each leg, and the senses that belong together (a left foot and a right foot, say) share their scaling. The mirror table lives in `duck/mirror.py` and the brain in `duck/symmetric_policy.py`. Runs started before this change keep their plain brain and plain sense scaling when resumed; everything (watching, judging, the video, the dashboard) still works on them.
 
+The floor can be rough. From Duck 3 on, every attempt in training gets a freshly drawn cobblestone floor: rolling bumps with square stones on top, a random roughness from 0 to 1 cm high. A roughness of exactly 0 keeps the old flat plane, so older ducks and tools behave as before. The floor code lives in `duck/floor.py`.
+
 Everything runs on a CPU only Windows laptop.
 
 ## Setup
@@ -46,11 +48,15 @@ To keep training past 30 million steps, resume with a bigger `--steps` value. Th
 
 `.venv/Scripts/python -m duck.train --run runs/duck_v1 --steps 50000000 --resume`
 
+Start a new run from another run's or duck's brain instead of from zero (a new run folder is needed):
+
+`.venv/Scripts/python -m duck.train --run runs/duck_03/from_duck_02_1 --steps 4000000 --start-from ducks/duck_02_1/brain`
+
 Continue with more curiosity (more random experimenting):
 
 `.venv/Scripts/python -m duck.train --run runs/duck_v1 --steps 30000000 --resume --ent-coef 0.01`
 
-Training also gives the duck a noise-free exam every 250,000 steps (and at the start and end): the same 12 attempts each time, with the brain's best moves and no random wobble. Each result is added to `exam.csv` in the run folder, and whenever a brain beats the best exam score so far it is saved in the run's `best` folder. That folder works like a run folder, so you can judge or watch the best brain with `runs/duck_v1/best`. Change how often with `--exam-every`. If 8 exams in a row (2 million steps, about 35 minutes) bring no new best score, training stops by itself, because the duck has stopped improving. The best brain is then waiting in the `best` folder. Change the limit with `--patience`, or turn it off with `--patience 0`.
+Training also gives the duck a noise-free exam every 250,000 steps (and at the start and end): the same 24 attempts each time, in two parts (12 on the flat floor and 12 on the rough floor at full 1 cm roughness; the score is the average of the two parts and the falls are added up), with the brain's best moves and no random wobble. Each result is added to `exam.csv` in the run folder (with extra columns for the flat and rough parts), and whenever a brain beats the best exam score so far it is saved in the run's `best` folder. That folder works like a run folder, so you can judge or watch the best brain with `runs/duck_v1/best`. Change how often with `--exam-every`. If 8 exams in a row (2 million steps, about 35 minutes) bring no new best score, training stops by itself, because the duck has stopped improving. The best brain is then waiting in the `best` folder. Change the limit with `--patience`, or turn it off with `--patience 0`.
 
 The step size adapts by itself: after each brain update, if the brain changed more than twice the target amount the learning rate is divided by 1.5, and if it changed less than half the target it is multiplied by 1.5. That keeps every update about the same size as the duck gets more precise. Without it, Duck 1's updates grew to 50 to 100 times the size PPO is designed for and the duck fell apart.
 
@@ -64,7 +70,7 @@ Or follow training live in the browser. In a second terminal, while training run
 
 `.venv/Scripts/python -m duck.dashboard runs/duck_v1 --steps 30000000`
 
-It opens a page at http://127.0.0.1:8765/ that refreshes itself every 15 seconds: steps trained, time left, distance per attempt, whether the score is still improving, score and distance charts (hover for exact values), and a film of the newest snapshot walking at 0.4 m/s, filmed again each time a new snapshot is saved. Under the film, the duck's brain is shown frame by frame in step with it: what it senses (feet, speed, body tilt), how its 2 x 256 brain cells fire, the command it sends to each of the 12 motors, and a sentence describing its strongest commands. Buttons slow the film to half or quarter speed, a click pauses it, and Hide brain tucks the brain panel away (the page remembers the choice). `--steps` should match the training command, so it can show the percentage and time left. Press Ctrl+C to stop it; training carries on.
+It opens a page at http://127.0.0.1:8765/ that refreshes itself every 15 seconds: steps trained, time left, distance per attempt, whether the score is still improving, score and distance charts (hover for exact values), and a film of the best brain so far walking at 0.4 m/s on the rough cobblestone floor (full 1 cm roughness, the first rough exam layout), captioned with the combined exam score and both parts, filmed again each time a new best brain is saved. Under the film, the duck's brain is shown frame by frame in step with it: what it senses (feet, speed, body tilt), how its 2 x 256 brain cells fire, the command it sends to each of the 12 motors, and a sentence describing its strongest commands. Buttons slow the film to half or quarter speed, a click pauses it, and Hide brain tucks the brain panel away (the page remembers the choice). `--steps` should match the training command, so it can show the percentage and time left. Press Ctrl+C to stop it; training carries on.
 
 Judge whether the duck really walks:
 
@@ -73,6 +79,8 @@ Judge whether the duck really walks:
 Watch the latest snapshot live in a window:
 
 `.venv/Scripts/python -m duck.view_snapshot runs/duck_v1`
+
+The judge, the live viewer and the video all use a flat floor unless you add `--roughness` with the cobblestone height in metres, for example `--roughness 0.01`.
 
 Make the video of all the snapshots:
 
@@ -145,7 +153,7 @@ If more curiosity does not help, the spec lists what to try next: fix a reward t
 
 ## How the duck is scored
 
-On every control step (50 per second) the duck gets 3 points per metre per second of forward speed, measured from how far it really moved during that step, but only up to the target speed for that attempt, plus 0.2 points for staying upright. It loses 1.5 points for every joule of work its motors do (force times joint speed), and 0.5 points per metre it has drifted from the straight line. Standing still for a whole 20 second attempt scores only about 200. The energy cost is there so the duck finds walking on its own: hopping lifts the whole body again and again and wastes energy, while stepping is cheap. Each training attempt asks for a random target speed between 0.2 and 0.7 metres per second, and the duck senses it. Going faster than asked earns nothing extra and only costs energy, so the duck has to find the cheapest gait for each speed by itself. Judging and videos ask for 0.4 m/s; the live viewer takes `--speed`, for example `--speed 0.6`. The duck senses 39 numbers, including how far it has drifted sideways and its target speed. Snapshots from before the target speed (38 numbers) no longer load.
+On every control step (50 per second) the duck gets 3 points per metre per second of forward speed, measured from how far it really moved during that step, at its best at the target speed for that attempt: the reward is 3 x (target - |speed - target|), so going faster than the target loses the same points per metre per second that going slower does (overshoot penalty), plus 0.2 points for staying upright. It loses 1.5 points for every joule of work its motors do (force times joint speed), and 0.5 points per metre it has drifted from the straight line. Standing still for a whole 20 second attempt scores only about 200. The energy cost is there so the duck finds walking on its own: hopping lifts the whole body again and again and wastes energy, while stepping is cheap. Each training attempt asks for a random target speed between 0.2 and 0.7 metres per second, and the duck senses it. Going faster than asked loses points and costs energy, so the duck has to find the cheapest gait for each speed by itself. Judging and videos ask for 0.4 m/s; the live viewer takes `--speed`, for example `--speed 0.6`. The duck senses 39 numbers, including how far it has drifted sideways and its target speed. Snapshots from before the target speed (38 numbers) no longer load.
 
 ## What counts as walking
 

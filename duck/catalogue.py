@@ -29,7 +29,8 @@ from stable_baselines3.common.vec_env import DummyVecEnv, VecNormalize
 from duck.duck_env import (EVALUATION_TARGET_SPEED, FRAME_SKIP, MAX_EPISODE_SECONDS, START_NOISE,
                            START_STRIDE, TARGET_SPEED_RANGE, DuckWalkEnv)
 from duck.evaluate import evaluate_snapshot
-from duck.exam import take_exam
+from duck.exam import take_full_exam
+from duck.floor import FLOOR_SHAPE, MAX_ROUGHNESS
 from duck.policy import choose_snapshot_or_exit, load_policy
 from duck.rewards import RewardWeights
 from duck.snapshots import Snapshot, list_snapshots
@@ -71,6 +72,8 @@ def current_recipe() -> dict:
         "ppo": DEFAULT_PPO_SETTINGS,
         "step_size_rule": STEP_SIZE_RULE,
         "reward": asdict(RewardWeights()),
+        "forward_reward": f"{RewardWeights().forward} x (target - |speed - target|)",
+        "floor": {"max_roughness": MAX_ROUGHNESS, **FLOOR_SHAPE},
         "target_speed_range": list(TARGET_SPEED_RANGE),
         "attempt_seconds": MAX_EPISODE_SECONDS,
         "physics_steps_per_action": FRAME_SKIP,
@@ -115,20 +118,20 @@ def new_duck(duck_dir: Path, name: str) -> Path:
 
 # ---------- Measuring a brain ----------
 
-# The noise-free exam on a snapshot, with the sense scaling saved alongside it
+# The two part noise-free exam on a snapshot, with the sense scaling saved alongside it
 def _exam_snapshot(snapshot: Snapshot):
-    venv = DummyVecEnv([DuckWalkEnv])
+    venv = DummyVecEnv([lambda: DuckWalkEnv(roughness=0.0)])
     vec_normalize = VecNormalize.load(str(snapshot.norm_path), venv)
     vec_normalize.training = False
     model = PPO.load(str(snapshot.model_path), device="cpu")
-    result = take_exam(model, vec_normalize)
+    result = take_full_exam(model, vec_normalize)
     venv.close()
     return result
 
 
 # One attempt at the judging speed: time spent with 0, 1 or 2 feet down, energy and distance
-def _gait_attempt(policy, seed: int) -> dict:
-    env = DuckWalkEnv(target_speed=EVALUATION_TARGET_SPEED)
+def _gait_attempt(policy, seed: int, roughness: float) -> dict:
+    env = DuckWalkEnv(target_speed=EVALUATION_TARGET_SPEED, roughness=roughness)
     observation, _ = env.reset(seed=seed)
     feet_counts, energy, steps = [0, 0, 0], 0.0, 0
     while True:
@@ -143,10 +146,10 @@ def _gait_attempt(policy, seed: int) -> dict:
             "distance": info["forward_distance"], "seconds": steps * env.model.opt.timestep * FRAME_SKIP, "fell": fell}
 
 
-# Average foot use, energy per metre and speed over the gait attempts
-def _gait_summary(snapshot: Snapshot) -> dict:
+# Average foot use, energy per metre and speed over the gait attempts on a floor of this roughness
+def _gait_summary(snapshot: Snapshot, roughness: float = 0.0) -> dict:
     policy = load_policy(snapshot)
-    attempts = [_gait_attempt(policy, seed) for seed in GAIT_SEEDS]
+    attempts = [_gait_attempt(policy, seed, roughness) for seed in GAIT_SEEDS]
     feet = np.mean([a["feet"] for a in attempts], axis=0)
     distance = sum(a["distance"] for a in attempts)
     return {
@@ -162,15 +165,20 @@ def _gait_summary(snapshot: Snapshot) -> dict:
 # All measurements of one brain, plus where it came from
 def measure_brain(snapshot: Snapshot, run_dir: Path) -> dict:
     exam = _exam_snapshot(snapshot)
-    walking = evaluate_snapshot(snapshot)
+    walking = evaluate_snapshot(snapshot, roughness=0.0)
+    walking_rough = evaluate_snapshot(snapshot, roughness=MAX_ROUGHNESS)
     return {
         "from_run": run_dir.as_posix(),
         "steps": snapshot.steps,
         "measured": datetime.now().strftime("%Y-%m-%d %H:%M"),
         "exam_score": round(exam.score, 1),
         "exam_falls": exam.falls,
+        "exam_flat_score": round(exam.flat.score, 1),
+        "exam_rough_score": round(exam.rough.score, 1),
         "walking_test": f"{walking.successes} of {walking.attempts}",
-        "gait_at_judging_speed": _gait_summary(snapshot),
+        "walking_test_rough": f"{walking_rough.successes} of {walking_rough.attempts}",
+        "gait_at_judging_speed": _gait_summary(snapshot, 0.0),
+        "gait_on_rough_floor": _gait_summary(snapshot, MAX_ROUGHNESS),
     }
 
 
@@ -208,11 +216,16 @@ def keep_brain(duck_dir: Path, run_dir: Path, snapshot: Snapshot, force: bool = 
     _make_gif(duck_dir, snapshot, f"{story['name']}, exam score {results['exam_score']:.0f}")
     write_card(duck_dir)
     print(f"Kept as {story['name']}'s best brain: exam {results['exam_score']:.0f}, "
-          f"{results['exam_falls']} falls of 12.")
+          f"{results['exam_falls']} falls of {_exam_attempts(results)}.")
     return True
 
 
 # ---------- The card and the list page ----------
+
+# How many exam attempts a stored result covers: 24 with both parts, 12 for older results
+def _exam_attempts(results: dict) -> int:
+    return 24 if "exam_flat_score" in results else 12
+
 
 # The card's recipe lines
 def _recipe_lines(recipe: dict) -> list[str]:
@@ -221,14 +234,36 @@ def _recipe_lines(recipe: dict) -> list[str]:
     return [
         f"- Brain: {recipe['brain']}, actor layers {recipe['layers']['pi']}, judge layers {recipe['layers']['vf']}, "
         f"starting wobble log_std {recipe['start_log_std']}",
-        f"- Reward per step: forward {reward['forward']} per m/s up to the target speed, alive {reward['alive']}, "
+        f"- Reward per step: {_forward_wording(recipe)}, alive {reward['alive']}, "
         f"energy {reward['energy']} per joule, sideways {reward['sideways']} per metre",
         f"- Target speed: random from {low} to {high} m/s per attempt; attempts last {recipe['attempt_seconds']:.0f} s",
+        _floor_line(recipe),
         _start_line(recipe),
         f"- PPO: " + ", ".join(f"{key} {value}" for key, value in ppo.items()),
         _step_size_line(recipe),
         f"- Code version: {recipe['code_version']}",
     ]
+
+
+# The forward reward: the overshoot rule if the recipe has one, else the older cap rule
+def _forward_wording(recipe: dict) -> str:
+    rule = recipe.get("forward_reward")
+    if rule is None:
+        return f"forward {recipe['reward']['forward']} per m/s up to the target speed"
+    return f"forward {rule} (speed over the target loses points too)"
+
+
+# The floor: flat for older recipes, otherwise every number of the cobblestone shape
+def _floor_line(recipe: dict) -> str:
+    floor = recipe.get("floor")
+    if floor is None:
+        return "- Floor: flat"
+    low, high = floor["wavelength_range"]
+    stone_low, stone_high = floor["stone_height_range"]
+    return (f"- Floor: random cobblestones up to {floor['max_roughness']} m high, drawn at every reset with a random "
+            f"roughness in training: {floor['waves']} waves of {low} to {high} m wavelength, stones {floor['stone_size']} m wide "
+            f"with tops {stone_low} to {stone_high} of the tallest stone, gaps {floor['gap_share']} of the stone size on each side, "
+            f"bump weight {floor['bump_share']} (the stones get the rest)")
 
 
 # How each attempt starts: the random nudge, and the stride stance if the recipe has one
@@ -250,21 +285,38 @@ def _step_size_line(recipe: dict) -> str:
             f"and {rule['max_learning_rate']}); the PPO learning rate is only the starting value")
 
 
-# The card's lines about the kept brain
+# One gait line: speed, energy per metre and foot use
+def _gait_line(label: str, gait: dict) -> str:
+    return (f"- {label}: speed {gait['speed']} m/s, {gait['joules_per_metre']} J per metre, "
+            f"feet in the air {gait['feet_in_air']:.0%}, one foot down {gait['one_foot_down']:.0%}, "
+            f"both down {gait['both_feet_down']:.0%}")
+
+
+# The exam line: old results show one 12 attempt score, new ones the combined score and both parts
+def _exam_line(results: dict) -> str:
+    if "exam_flat_score" not in results:
+        return f"- Exam (12 fixed attempts, no wobble): score {results['exam_score']:.0f}, falls {results['exam_falls']} of 12"
+    return (f"- Exam (24 fixed attempts, 12 flat and 12 rough, no wobble): score {results['exam_score']:.0f}, "
+            f"falls {results['exam_falls']} of 24 (flat {results['exam_flat_score']:.0f}, rough {results['exam_rough_score']:.0f})")
+
+
+# The card's lines about the kept brain; the rough floor lines appear only when measured
 def _results_lines(results: dict, gif_name: str) -> list[str]:
     if not results:
         return ["No brain kept yet."]
-    gait = results["gait_at_judging_speed"]
-    return [
+    lines = [
         f"![{gif_name}]({gif_name})",
         "",
         f"- From `{results['from_run']}` at {results['steps']:,} steps (measured {results['measured']})",
-        f"- Exam (12 fixed attempts, no wobble): score {results['exam_score']:.0f}, falls {results['exam_falls']} of 12",
+        _exam_line(results),
         f"- Walking test: {results['walking_test']} attempts walked",
-        f"- At {EVALUATION_TARGET_SPEED} m/s: speed {gait['speed']} m/s, {gait['joules_per_metre']} J per metre, "
-        f"feet in the air {gait['feet_in_air']:.0%}, one foot down {gait['one_foot_down']:.0%}, "
-        f"both down {gait['both_feet_down']:.0%}",
     ]
+    if "walking_test_rough" in results:
+        lines.append(f"- Walking test on the rough floor: {results['walking_test_rough']} attempts walked")
+    lines.append(_gait_line(f"At {EVALUATION_TARGET_SPEED} m/s", results["gait_at_judging_speed"]))
+    if "gait_on_rough_floor" in results:
+        lines.append(_gait_line(f"At {EVALUATION_TARGET_SPEED} m/s on the rough floor", results["gait_on_rough_floor"]))
+    return lines
 
 
 # The card's training history, one line per run
@@ -296,7 +348,7 @@ def write_card(duck_dir: Path) -> Path:
 def _index_line(duck_dir: Path) -> str:
     story = _read_json(duck_dir / STORY_NAME)
     results = _read_json(duck_dir / RESULTS_NAME)
-    score = f"{results['exam_score']:.0f} ({results['exam_falls']} falls of 12)" if results else "none yet"
+    score = f"{results['exam_score']:.0f} ({results['exam_falls']} falls of {_exam_attempts(results)})" if results else "none yet"
     return f"| [{story['name']}]({duck_dir.name}/{CARD_NAME}) | {story['started'][:10]} | {story['summary']} | {score} |"
 
 
