@@ -88,7 +88,7 @@ Francisco chose to make both changes in one duck and to start from Duck 2.1's be
 2. **Every floor shape number goes in the recipe and on the card**, not only `MAX_ROUGHNESS`: 8 waves, wavelengths 0.2 to 0.5 m, 6 cm stones, stone heights 0.35 to 1.0, gaps 7%, half bumps and half stones. Honesty about numbers is the point of the anti goal.
 3. **Duck 3 starts its own records.** The exam at step 0 (Duck 2.1's brain, new floor, new reward) is Duck 3's first entry and can be its first best brain; the patience count starts there. Duck 3 has its own empty `brain/` folder, so `keep` compares only with Duck 3's own kept brain. Duck 2.1's kept brain is never touched.
 4. **The catalogue's walking test and gait summary run on both floors**: flat as now, and rough at full roughness on fixed seeds. The card shows both.
-5. **Viewing tools default to flat** (`evaluate.py`, `view_snapshot.py`, `video.py`) with a `--roughness` option in metres; the dashboard films the best brain on the rough floor at full roughness, on the first rough exam layout, because that is what Duck 3 is learning.
+5. **Viewing tools default to flat** (`evaluate.py`, `view_snapshot.py`, `video.py`) with a `--roughness` option in metres; the dashboard films the best brain on the rough floor at full roughness, on the first rough exam layout, because that is what Duck 3 is learning. (Note 2026-10-30: built as a fixed rough layout from seed 1000; it differs from the exam's first layout because the film fixes the speed.)
 
 ## Left to the builder
 

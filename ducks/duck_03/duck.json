@@ -1,0 +1,77 @@
+{
+  "name": "Duck 3",
+  "started": "2026-10-30 03:12",
+  "summary": "Duck 2.1's brain on a rough cobblestone floor, with an overshoot penalty",
+  "what_changed": "Three changes from Duck 2.1. The floor: square cobblestones (6 cm) laid on rolling bumps, with a new layout every attempt and a random roughness from flat to 1 cm. The reward: going faster than the asked speed now loses forward points the same way as going slower. The exam: a flat part and a rough part of 12 attempts each, averaged; the average picks the best brain.",
+  "why": "Duck 2.1 walks on flat ground about as well as the exam can tell (986, ceiling about 980 to 1,000), so the next goal is walking on uneven ground. The overshoot penalty comes from the literature review: Duck 2.1 still walked about 7.5 m per exam attempt where the asked speeds give 6.3 m. Francisco chose to make both changes in one duck and to start from Duck 2.1's best brain, accepting that the two effects cannot be told apart.",
+  "starts_from": "Duck 2.1's best brain (ducks/duck_02_1/brain, 4.0M steps, exam 986)",
+  "runs": [
+    {
+      "folder": "runs/duck_03/from_duck_02_1",
+      "dates": "",
+      "steps": "0 to 4.0M",
+      "outcome": "running"
+    }
+  ],
+  "notes": "Duck 2.1's best brain scored 986 under the old forward rule. Under Duck 3's exam and reward the same brain scores 732 (flat 798, rough 667, 3 falls of 24): the flat drop is entirely the overshoot penalty, because Duck 2.1 walks faster than asked. Scores before and after the reward change cannot be compared. A started run inherits the source brain's wobble (std about 0.099), its adapted step size (about 0.0000117) and its PPO settings, so the starting wobble and learning rate in the recipe below do not apply to this run.",
+  "recipe": {
+    "brain": "SymmetricPolicy",
+    "layers": {
+      "pi": [
+        256,
+        256
+      ],
+      "vf": [
+        256,
+        256
+      ]
+    },
+    "start_log_std": -1.0,
+    "ppo": {
+      "n_steps": 1024,
+      "batch_size": 256,
+      "n_epochs": 10,
+      "learning_rate": 0.0003,
+      "gamma": 0.99,
+      "gae_lambda": 0.95,
+      "clip_range": 0.2
+    },
+    "step_size_rule": {
+      "target_change": 0.01,
+      "factor": 1.5,
+      "min_learning_rate": 1e-05,
+      "max_learning_rate": 0.01
+    },
+    "reward": {
+      "forward": 3.0,
+      "alive": 0.2,
+      "energy": 1.5,
+      "sideways": 0.5
+    },
+    "forward_reward": "3.0 x (target - |speed - target|)",
+    "floor": {
+      "max_roughness": 0.01,
+      "waves": 8,
+      "wavelength_range": [
+        0.2,
+        0.5
+      ],
+      "stone_size": 0.06,
+      "stone_height_range": [
+        0.35,
+        1.0
+      ],
+      "gap_share": 0.07,
+      "bump_share": 0.5
+    },
+    "target_speed_range": [
+      0.2,
+      0.7
+    ],
+    "attempt_seconds": 20.0,
+    "physics_steps_per_action": 4,
+    "start_noise": 0.02,
+    "start_stride": 0.04,
+    "code_version": "953f4c0"
+  }
+}

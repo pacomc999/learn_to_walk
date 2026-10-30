@@ -159,8 +159,9 @@ def _save_json(data: dict, path: Path) -> None:
     replace_with_retry(temp_path, path)
 
 
-# Film a snapshot walking at the judging speed on the roughest floor, from the first rough exam
-# layout, and keep its brain activity for every frame.
+# Film a snapshot walking at the judging speed on the roughest floor, on a fixed rough layout
+# built from seed 1000. It is not the exam's first rough layout, because the film fixes the
+# speed at 0.4 and so draws no target speed before the floor. Keep its brain activity for every frame.
 # After a fall the brain is no longer in control, so those frames have no reading
 def make_snapshot_clip(run_dir: Path, snapshot: Snapshot) -> None:
     brain = load_brain(snapshot)

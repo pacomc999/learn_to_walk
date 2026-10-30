@@ -63,3 +63,25 @@ def test_one_layout_is_fast():
     start = time.perf_counter()
     floor_heights(np.random.default_rng(4), MAX_ROUGHNESS)
     assert time.perf_counter() - start < 0.2
+
+
+# A roughness outside 0 to MAX_ROUGHNESS is refused with a plain message
+def test_floor_heights_refuse_a_roughness_out_of_range():
+    for roughness in (-0.001, MAX_ROUGHNESS * 2):
+        with pytest.raises(ValueError, match="Roughness must be from 0"):
+            floor_heights(np.random.default_rng(0), roughness)
+    assert floor_heights(np.random.default_rng(0), MAX_ROUGHNESS).max() == pytest.approx(MAX_ROUGHNESS)
+
+
+# The command line type accepts values in range and turns the rest into an argparse error
+def test_roughness_argument_for_the_command_line():
+    import argparse
+    from duck.floor import roughness_argument
+    assert roughness_argument("0.005") == 0.005
+    for text in ("-1", "0.5", "abc"):
+        with pytest.raises(argparse.ArgumentTypeError):
+            roughness_argument(text)
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--roughness", type=roughness_argument)
+    with pytest.raises(SystemExit):
+        parser.parse_args(["--roughness", "0.5"])

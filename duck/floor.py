@@ -1,4 +1,6 @@
 """A random cobblestone floor: height maps and the MuJoCo height field model."""
+import argparse
+
 import mujoco
 import numpy as np
 
@@ -18,6 +20,8 @@ FLOOR_SHAPE = {
 }
 
 # Where the floor lies and how finely it is sampled, in metres
+# The rough floor ends at x 16 m and |y| 1 m (the fastest asked speed, 0.7 m/s for 20 s, is 14 m).
+# The flat plane (roughness 0 in the exam's flat part) has no edge.
 FLOOR_X_MIN, FLOOR_X_MAX = -2.0, 16.0
 FLOOR_Y_MIN, FLOOR_Y_MAX = -1.0, 1.0
 CELL_SIZE = 0.005
@@ -68,8 +72,24 @@ def _square_stones(rng: np.random.Generator) -> np.ndarray:
     return stones
 
 
+# Check a roughness in metres: from 0 up to MAX_ROUGHNESS, otherwise ValueError
+def check_roughness(roughness: float) -> float:
+    if roughness < 0 or roughness > MAX_ROUGHNESS:
+        raise ValueError(f"Roughness must be from 0 to {MAX_ROUGHNESS} metres, not {roughness}.")
+    return roughness
+
+
+# For argparse: read a roughness from the command line and reject values outside the range
+def roughness_argument(text: str) -> float:
+    try:
+        return check_roughness(float(text))
+    except ValueError as error:
+        raise argparse.ArgumentTypeError(str(error)) from None
+
+
 # Floor heights in metres, lowest point 0 and highest point exactly the roughness
 def floor_heights(rng: np.random.Generator, roughness: float) -> np.ndarray:
+    check_roughness(roughness)
     if roughness == 0:
         return np.zeros((FLOOR_ROWS, FLOOR_COLS))
     bumps = _scale_to_unit(_rolling_bumps(rng))

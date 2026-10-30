@@ -227,13 +227,26 @@ def _exam_attempts(results: dict) -> int:
     return 24 if "exam_flat_score" in results else 12
 
 
+# The extra recipe line for a duck started from another brain
+STARTED_FROM_BRAIN_LINE = ("- Started from another brain: it keeps that brain's wobble, step size and PPO settings, "
+                           "so the starting values above apply only to runs from zero")
+
+
+# True when the story says the duck started from a brain (old ducks say "zero" or start with "zero")
+def _started_from_brain(story: dict) -> bool:
+    return not story["starts_from"].lower().startswith("zero")
+
+
 # The card's recipe lines
-def _recipe_lines(recipe: dict) -> list[str]:
+def _recipe_lines(recipe: dict, started_from_brain: bool = False) -> list[str]:
     reward, ppo = recipe["reward"], recipe["ppo"]
     low, high = recipe["target_speed_range"]
+    # Runs started from another brain keep that brain's settings, so say so on the card
+    started_line = [STARTED_FROM_BRAIN_LINE] if started_from_brain else []
     return [
         f"- Brain: {recipe['brain']}, actor layers {recipe['layers']['pi']}, judge layers {recipe['layers']['vf']}, "
         f"starting wobble log_std {recipe['start_log_std']}",
+        *started_line,
         f"- Reward per step: {_forward_wording(recipe)}, alive {reward['alive']}, "
         f"energy {reward['energy']} per joule, sideways {reward['sideways']} per metre",
         f"- Target speed: random from {low} to {high} m/s per attempt; attempts last {recipe['attempt_seconds']:.0f} s",
@@ -334,7 +347,7 @@ def write_card(duck_dir: Path) -> Path:
         f"# {story['name']}", "", f"**{story['summary']}**" if story["summary"] else "", "",
         f"Started {story['started']}. Starts from: {story['starts_from']}.", "",
         "## What changed and why", "", story["what_changed"] or "(to write)", "", story["why"] or "", "",
-        "## Recipe", "", *_recipe_lines(story["recipe"]), "",
+        "## Recipe", "", *_recipe_lines(story["recipe"], _started_from_brain(story)), "",
         "## Training history", "", *_run_lines(story["runs"]), "",
         "## Best brain", "", *_results_lines(results, f"{duck_dir.name}.gif"), "",
         "## Notes", "", story["notes"] or "(none)", "",

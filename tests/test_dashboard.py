@@ -154,7 +154,7 @@ def test_status_has_no_parts_for_an_old_exam(tmp_path):
     assert (exam["attempts"], exam["flat_score"], exam["rough_score"]) == (12, None, None)
 
 
-# The dashboard films on the rough floor, on the first exam layout
+# The dashboard films on the rough floor, on a fixed layout from seed 1000
 def test_dashboard_film_uses_the_rough_floor(tmp_path, monkeypatch):
     import duck.dashboard
     from duck.exam import EXAM_FIRST_SEED

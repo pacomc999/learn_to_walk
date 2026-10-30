@@ -14,6 +14,7 @@ import numpy as np
 from PIL import Image, ImageDraw, ImageFont
 
 from duck.duck_env import EVALUATION_TARGET_SPEED, DuckWalkEnv
+from duck.floor import roughness_argument
 from duck.policy import load_policy
 from duck.snapshots import choose_for_video, list_snapshots
 
@@ -132,7 +133,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Make a video of the duck learning to walk.")
     parser.add_argument("run_dir", type=Path, help="run folder, for example runs/duck_v1")
     parser.add_argument("--seconds", type=float, default=6.0, help="seconds per snapshot clip (default 6)")
-    parser.add_argument("--roughness", type=float, default=0.0, help="height of the cobblestones in metres (default 0, a flat floor)")
+    parser.add_argument("--roughness", type=roughness_argument, default=0.0, help="height of the cobblestones in metres (default 0, a flat floor)")
     arguments = parser.parse_args()
     try:
         make_video(arguments.run_dir, seconds_per_clip=arguments.seconds, roughness=arguments.roughness)

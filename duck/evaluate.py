@@ -9,6 +9,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from duck.duck_env import EVALUATION_TARGET_SPEED, DuckWalkEnv
+from duck.floor import roughness_argument
 from duck.policy import choose_snapshot_or_exit, load_policy
 from duck.snapshots import Snapshot
 
@@ -69,7 +70,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Judge a snapshot of the duck.")
     parser.add_argument("run_dir", type=Path, help="run folder, for example runs/duck_v1")
     parser.add_argument("--snapshot", type=int, default=None, help="step count of the snapshot (default: latest)")
-    parser.add_argument("--roughness", type=float, default=0.0, help="height of the cobblestones in metres (default 0, a flat floor)")
+    parser.add_argument("--roughness", type=roughness_argument, default=0.0, help="height of the cobblestones in metres (default 0, a flat floor)")
     arguments = parser.parse_args()
     snapshot = choose_snapshot_or_exit(arguments.run_dir, arguments.snapshot)
     print(result_message(evaluate_snapshot(snapshot, roughness=arguments.roughness)))

@@ -13,6 +13,7 @@ from pathlib import Path
 import mujoco.viewer
 
 from duck.duck_env import EVALUATION_TARGET_SPEED, DuckWalkEnv
+from duck.floor import roughness_argument
 from duck.policy import choose_snapshot_or_exit, load_policy
 
 # Real time seconds that one control step should take (the control step is 0.02 s)
@@ -37,7 +38,7 @@ def main() -> None:
     parser.add_argument("run_dir", type=Path, help="run folder, for example runs/duck_v1")
     parser.add_argument("--snapshot", type=int, default=None, help="step count of the snapshot (default: latest)")
     parser.add_argument("--speed", type=float, default=EVALUATION_TARGET_SPEED, help="speed to ask for, in metres per second")
-    parser.add_argument("--roughness", type=float, default=0.0, help="height of the cobblestones in metres (default 0, a flat floor)")
+    parser.add_argument("--roughness", type=roughness_argument, default=0.0, help="height of the cobblestones in metres (default 0, a flat floor)")
     arguments = parser.parse_args()
     snapshot = choose_snapshot_or_exit(arguments.run_dir, arguments.snapshot)
     policy = load_policy(snapshot)

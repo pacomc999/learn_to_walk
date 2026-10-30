@@ -128,3 +128,16 @@ def test_new_results_show_both_floors():
     assert "score 700, falls 3 of 24" in text
     assert "flat 900" in text and "rough 500" in text
     assert "7 of 10" in text and "rough floor" in text.lower()
+
+
+# A duck started from another brain gets the extra recipe line, a duck from zero does not
+def test_started_run_card_has_the_extra_line():
+    recipe = catalogue.current_recipe()
+    old_story = {"starts_from": "zero (same seed and untrained brain as Duck 1)"}
+    new_story = {"starts_from": "Duck 2.1's best brain (ducks/duck_02_1/brain, 4.0M steps, exam 986)"}
+    old_text = "\n".join(catalogue._recipe_lines(recipe, catalogue._started_from_brain(old_story)))
+    new_text = "\n".join(catalogue._recipe_lines(recipe, catalogue._started_from_brain(new_story)))
+    assert catalogue.STARTED_FROM_BRAIN_LINE not in old_text
+    assert catalogue.STARTED_FROM_BRAIN_LINE in new_text
+    lines = new_text.split("\n")
+    assert lines[1] == catalogue.STARTED_FROM_BRAIN_LINE and lines[0].startswith("- Brain:")

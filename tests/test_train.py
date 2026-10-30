@@ -1,3 +1,5 @@
+import pickle
+import numpy as np
 import pytest
 import torch
 from stable_baselines3 import PPO
@@ -160,6 +162,12 @@ def test_start_from_another_runs_brain(tmp_path):
     for name, weights in started.policy.state_dict().items():
         assert torch.equal(weights, original.policy.state_dict()[name]), name
     assert started.learning_rate == pytest.approx(original.learning_rate)
+    assert torch.equal(started.policy.log_std, original.policy.log_std)
+    # The sense scaling statistics (the VecNormalize mean) are kept too
+    with open(list_snapshots(target)[0].norm_path, "rb") as started_file, open(source_newest.norm_path, "rb") as source_file:
+        started_mean = pickle.load(started_file).obs_rms.mean
+        source_mean = pickle.load(source_file).obs_rms.mean
+    assert np.array_equal(started_mean, source_mean) and np.abs(source_mean).sum() > 0
 
     model = train(target, total_steps=256, snapshot_every=256, resume=True, **FAST)  # carries on from 0
     assert 256 <= model.num_timesteps <= 1024  # counted from 0, not from the source steps
