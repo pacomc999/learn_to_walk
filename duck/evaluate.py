@@ -71,9 +71,13 @@ def main() -> None:
     parser.add_argument("run_dir", type=Path, help="run folder, for example runs/duck_v1")
     parser.add_argument("--snapshot", type=int, default=None, help="step count of the snapshot (default: latest)")
     parser.add_argument("--roughness", type=roughness_argument, default=0.0, help="height of the cobblestones in metres (default 0, a flat floor)")
+    parser.add_argument("--seed", type=int, default=0, help="seed of the first attempt; the others count up from it (default 0)")
+    parser.add_argument("--attempts", type=int, default=10, help="number of attempts (default 10)")
     arguments = parser.parse_args()
     snapshot = choose_snapshot_or_exit(arguments.run_dir, arguments.snapshot)
-    print(result_message(evaluate_snapshot(snapshot, roughness=arguments.roughness)))
+    result = evaluate_snapshot(snapshot, attempts=arguments.attempts, seed=arguments.seed,
+                               roughness=arguments.roughness)
+    print(result_message(result))
 
 
 if __name__ == "__main__":

@@ -48,6 +48,8 @@ The exam score is the average of the two parts; the falls are added up, out of 2
 
 The walking test (`duck.evaluate`) asks for 0.4 m/s in 10 attempts of 20 seconds. The duck walks if at least 8 attempts finish without falling, at an average speed of at least 0.2 m/s, and within 0.5 m of the straight line.
 
+The attempts use seeds 0 to 9 by default, the same floors and starts every time, so a brain always gets the same result. To try new ones, pass `--seed` (the first seed; the others count up from it) and `--attempts` (more than 10 also works; the duck then needs 8 in 10 of them). For example, Duck 3.1 on 30 new layouts of 3 cm stones: `.venv/Scripts/python -m duck.evaluate duck_catalogue/duck_03_1/brain --roughness 0.03 --seed 200 --attempts 30`.
+
 ## Making a new duck
 
 A duck is a training recipe (the rules, the brain and the settings), not a single brain. A new duck starts only when the recipe changes; training longer is the same duck. The catalogue in `duck_catalogue/` holds every duck: its story, its frozen recipe, its best brain and its card. `duck_catalogue/README.md` lists them all.
