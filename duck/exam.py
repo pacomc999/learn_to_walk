@@ -2,7 +2,9 @@
 
 The training score includes the brain's random experimenting and a random target
 speed per attempt, so it jumps around a lot. The exam removes that noise: the same
-12 starts and target speeds every time, and the brain's best action without wobble.
+12 starts every time, asked speeds climbing evenly across the training range
+(from Duck 3.2's second run; before, each attempt's seed drew a random speed),
+and the brain's best action without wobble.
 It has two parts, a flat floor and a rough floor, and the average of the two is the score.
 The rough part climbs: its 12 attempts are spread evenly from 1/12 of TRAINING_ROUGHNESS up to all of it.
 When training is flat (TRAINING_ROUGHNESS 0) there is no rough part and the score is the flat part's.
@@ -15,10 +17,10 @@ from pathlib import Path
 
 import numpy as np
 
-from duck.duck_env import DuckWalkEnv
+from duck.duck_env import TARGET_SPEED_RANGE, DuckWalkEnv
 from duck.floor import TRAINING_ROUGHNESS
 
-# The same attempts every exam: seeds 1000 to 1011, each with its own random target speed
+# The same attempts every exam: seeds 1000 to 1011 (each its own start), asked speeds from exam_speeds
 EXAM_ATTEMPTS = 12
 EXAM_FIRST_SEED = 1000
 
@@ -71,10 +73,19 @@ def rough_exam_heights(attempts: int = EXAM_ATTEMPTS) -> list[float]:
     return [TRAINING_ROUGHNESS * (i + 1) / attempts for i in range(attempts)]
 
 
+# The asked speed of each exam attempt: evenly spread from the slowest to the fastest training speed
+# (at 0.2 to 1.5 m/s: 0.20, 0.32, ... 1.50), so the exam covers the same speeds as training
+def exam_speeds(attempts: int = EXAM_ATTEMPTS) -> list[float]:
+    low, high = TARGET_SPEED_RANGE
+    if attempts == 1:
+        return [low]
+    return [low + (high - low) * i / (attempts - 1) for i in range(attempts)]
+
+
 # One attempt on its own floor height. Each attempt keeps its seed, so its target speed
 # and stone layout are the same at every height; only the stones' height changes
-def _exam_attempt_on(model, vec_normalize, seed: int, roughness: float) -> tuple[float, bool, float]:
-    env = DuckWalkEnv(roughness=roughness)
+def _exam_attempt_on(model, vec_normalize, seed: int, roughness: float, speed: float) -> tuple[float, bool, float]:
+    env = DuckWalkEnv(roughness=roughness, target_speed=speed)
     result = _exam_attempt(model, vec_normalize, env, seed)
     env.close()
     return result
@@ -85,7 +96,8 @@ def _exam_attempt_on(model, vec_normalize, seed: int, roughness: float) -> tuple
 def take_exam(model, vec_normalize, attempts: int = EXAM_ATTEMPTS,
               roughness: float | list[float] = 0.0) -> ExamResult:
     heights = roughness if isinstance(roughness, list) else [roughness] * attempts
-    results = [_exam_attempt_on(model, vec_normalize, EXAM_FIRST_SEED + i, height)
+    speeds = exam_speeds(attempts)
+    results = [_exam_attempt_on(model, vec_normalize, EXAM_FIRST_SEED + i, height, speeds[i])
                for i, height in enumerate(heights[:attempts])]
     scores, falls, distances = zip(*results)
     return ExamResult(float(np.mean(scores)), int(sum(falls)), float(np.mean(distances)))

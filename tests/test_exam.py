@@ -170,6 +170,26 @@ def test_take_exam_uses_one_height_per_attempt(tmp_path, monkeypatch):
     import duck.exam
     seen = []
     monkeypatch.setattr(duck.exam, "_exam_attempt_on",
-                        lambda model, vec_normalize, seed, roughness: seen.append((seed, roughness)) or (1.0, False, 0.5))
+                        lambda model, vec_normalize, seed, roughness, speed: seen.append((seed, roughness)) or (1.0, False, 0.5))
     take_exam(None, None, roughness=[0.01, 0.02, 0.03], attempts=3)
     assert seen == [(1000, 0.01), (1001, 0.02), (1002, 0.03)]
+
+
+# The exam's asked speeds climb evenly from the slowest to the fastest training speed
+def test_exam_speeds_cover_the_training_range():
+    from duck.duck_env import TARGET_SPEED_RANGE
+    from duck.exam import exam_speeds
+    speeds = exam_speeds()
+    assert len(speeds) == 12
+    assert speeds[0] == pytest.approx(TARGET_SPEED_RANGE[0]) and speeds[-1] == pytest.approx(TARGET_SPEED_RANGE[1])
+    assert all(slow < fast for slow, fast in zip(speeds, speeds[1:]))
+
+
+# Each exam attempt asks for its own climbing speed
+def test_take_exam_asks_the_climbing_speeds(monkeypatch):
+    import duck.exam
+    seen = []
+    monkeypatch.setattr(duck.exam, "_exam_attempt_on",
+                        lambda model, vec_normalize, seed, roughness, speed: seen.append(speed) or (1.0, False, 0.5))
+    take_exam(None, None, attempts=12)
+    assert seen == pytest.approx(duck.exam.exam_speeds())

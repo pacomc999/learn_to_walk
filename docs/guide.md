@@ -37,7 +37,7 @@ An attempt ends after 20 seconds, or earlier if the duck falls (its body drops b
 
 ### The exam
 
-Training scores jump around because of the wobble and the random speeds, so training also gives the brain a fixed, noise-free exam: at the start, every 250,000 steps and at the end. It has two parts of 12 attempts each, always the same attempts (seeds 1000 to 1011, each with its own asked speed):
+Training scores jump around because of the wobble and the random speeds, so training also gives the brain a fixed, noise-free exam: at the start, every 250,000 steps and at the end. It has two parts of 12 attempts each, always the same attempts (seeds 1000 to 1011, each its own start). The asked speeds climb evenly across the training range: at 0.2 to 1.5 m/s they are 0.20, 0.32, 0.44 and so on up to 1.50, so the exam covers the same speeds as training. Before Duck 3.2's second run, each attempt's seed drew a random speed instead, which happened to ask for nothing above 1.0 m/s:
 
 - **Flat:** 12 attempts on the flat floor.
 - **Rough:** the same 12 attempts on cobblestones, climbing evenly up to the most height (at 3 cm: 0.25 cm, 0.5 cm, and so on up to 3 cm). Duck 3's exam used the full 1 cm for all 12. When training is flat (Duck 3.2) there is no rough part: the exam is the 12 flat attempts.
