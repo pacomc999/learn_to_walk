@@ -24,11 +24,18 @@ Duck 2.1 walks on flat ground about as well as the exam can tell (986, ceiling a
 
 ## Training history
 
-- `runs/duck_03/from_duck_02_1` (, 0 to 4.0M): running
+- `runs/duck_03/from_duck_02_1` (2026-10-30 03:13 to 04:43, 0 to 4.0M): Started at 732 (flat 798, rough 667, 3 falls of 24) with Duck 2.1's brain. Climbed to 877 by 0.5M, then jumped to 948 with 0 falls at 1.5M when the flat score rose from about 825 to 957 (it learned to slow to the asked speed). Held between 891 and 936 with 1 or 2 falls, then reached its best, 966 with 1 fall (flat 939, rough 992), at 3.5M; 965 at 3.75M and 929 at 4.0M. The rough part rose steadily all run (667 to 994). About 765 steps per second, slower than Duck 2.1 because of the height field floor
 
 ## Best brain
 
-No brain kept yet.
+![duck_03.gif](duck_03.gif)
+
+- From `runs/duck_03/from_duck_02_1/best` at 3,506,176 steps (measured 2026-10-30 04:44)
+- Exam (24 fixed attempts, 12 flat and 12 rough, no wobble): score 966, falls 1 of 24 (flat 939, rough 992)
+- Walking test: 10 of 10 attempts walked
+- Walking test on the rough floor: 10 of 10 attempts walked
+- At 0.4 m/s: speed 0.4 m/s, 9.8 J per metre, feet in the air 0%, one foot down 96%, both down 4%
+- At 0.4 m/s on the rough floor: speed 0.4 m/s, 10.4 J per metre, feet in the air 0%, one foot down 97%, both down 2%
 
 ## Notes
 
