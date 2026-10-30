@@ -16,7 +16,7 @@ Duck 2.1 walks on flat ground about as well as the exam can tell (986, ceiling a
 - Started from another brain: it keeps that brain's wobble, step size and PPO settings, so the starting values above apply only to runs from zero
 - Reward per step: forward 3.0 x (target - |speed - target|) (speed over the target loses points too), alive 0.2, energy 1.5 per joule, sideways 0.5 per metre
 - Target speed: random from 0.2 to 0.7 m/s per attempt; attempts last 20 s
-- Floor: random cobblestones up to 0.01 m high, drawn at every reset with a random roughness in training: 8 waves of 0.2 to 0.5 m wavelength, stones 0.06 m wide with tops 0.35 to 1.0 of the tallest stone, gaps 0.07 of the stone size on each side, bump weight 0.5 (the stones get the rest)
+- Floor: random cobblestones up to 0.01 m high, drawn at every reset with a random roughness in training: 8 waves of 0.2 to 0.5 m wavelength, stones 0.06 m wide with tops 0.35 to 1.0 of the tallest stone, gaps 0.07 of the stone size on each side, bump weight 0.5 (the stones get the rest). The exam's rough part uses the full height for all 12 attempts
 - Start: standing pose, each joint nudged randomly by up to 0.02 rad, then a stride stance: a coin flip picks the leading leg, one hip moves 0.04 rad forward and the other 0.04 rad back
 - PPO: n_steps 1024, batch_size 256, n_epochs 10, learning_rate 0.0003, gamma 0.99, gae_lambda 0.95, clip_range 0.2
 - Step size: adaptive, aiming for a change of 0.01 per update (divided or multiplied by 1.5, kept between 1e-05 and 0.01); the PPO learning rate is only the starting value
@@ -33,9 +33,9 @@ Film: [duck_03.mp4](duck_03.mp4), 16 s of the best brain at 0.4 m/s. It is not k
 - From `runs/duck_03/from_duck_02_1/best` at 3,506,176 steps (measured 2026-10-30 04:44)
 - Exam (24 fixed attempts, 12 flat and 12 rough, no wobble): score 966, falls 1 of 24 (flat 939, rough 992)
 - Walking test: 10 of 10 attempts walked
-- Walking test on the rough floor: 10 of 10 attempts walked
+- Walking test on the rough floor (1 cm stones): 10 of 10 attempts walked
 - At 0.4 m/s: speed 0.4 m/s, 9.8 J per metre, feet in the air 0%, one foot down 96%, both down 4%
-- At 0.4 m/s on the rough floor: speed 0.4 m/s, 10.4 J per metre, feet in the air 0%, one foot down 97%, both down 2%
+- At 0.4 m/s on the rough floor (1 cm stones): speed 0.4 m/s, 10.4 J per metre, feet in the air 0%, one foot down 97%, both down 2%
 
 ## Notes
 
