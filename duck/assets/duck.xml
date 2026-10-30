@@ -53,8 +53,9 @@
     <body name="torso" pos="0 0 0.25">
       <freejoint name="root"/>
       <!-- Camera that follows the duck from its right side, so it walks left to right on screen.
-           0.9 m away and low, so the feet on the stones are easy to see -->
-      <camera name="follow" mode="trackcom" pos="0 -0.9 0.15" xyaxes="1 0 0 0 0.1 1"/>
+           1.0 m away: close enough to see the feet on the stones, with room for a raised head
+           at the top and the caption below the feet -->
+      <camera name="follow" mode="trackcom" pos="0 -1.0 0.1" xyaxes="1 0 0 0 0.1 1"/>
 
       <!-- Long body, tilted slightly forward -->
       <geom name="body" type="ellipsoid" size="0.1875 0.106 0.094" euler="0 0.12 0" mass="0.8"/>

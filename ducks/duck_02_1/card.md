@@ -27,7 +27,7 @@ Duck 2 without its wobble fell in the first second in 34 of 60 starts. A check s
 
 ## Best brain
 
-![duck_02_1.gif](duck_02_1.gif)
+Film: [duck_02_1.mp4](duck_02_1.mp4), 16 s of the best brain at 0.4 m/s. It is not kept in git; make it with `python -m duck.catalogue film ducks/duck_02_1`.
 
 - From `runs/duck_02_1/from_zero/best` at 4,005,888 steps (measured 2026-10-30 00:19)
 - Exam (12 fixed attempts, no wobble): score 986, falls 0 of 12

@@ -92,7 +92,7 @@ To judge or watch an older snapshot, add `--snapshot` and its step count, for ex
 
 ## The duck catalogue
 
-Every training recipe is a duck, with a card in `ducks/` (see `ducks/README.md` for the list). A card says what changed from the previous duck and why, the exact rules and settings, every training run, and how its best brain does, with a GIF that has the duck's name on it. A new duck starts only when the recipe changes, not when training goes on longer.
+Every training recipe is a duck, with a card in `ducks/` (see `ducks/README.md` for the list). A card says what changed from the previous duck and why, the exact rules and settings, every training run, and how its best brain does. Next to the card is a 16 s film of the best brain with the duck's name on it (`ducks/duck_03/duck_03.mp4`, 1280 x 960). Films are not kept in git; make one again with `.venv/Scripts/python -m duck.catalogue film ducks/duck_03`. A new duck starts only when the recipe changes, not when training goes on longer.
 
 Start a new duck with the current recipe, then fill in its story in `ducks/duck_02/duck.json`:
 

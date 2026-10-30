@@ -28,7 +28,7 @@ Duck 2.1 walks on flat ground about as well as the exam can tell (986, ceiling a
 
 ## Best brain
 
-![duck_03.gif](duck_03.gif)
+Film: [duck_03.mp4](duck_03.mp4), 16 s of the best brain at 0.4 m/s. It is not kept in git; make it with `python -m duck.catalogue film ducks/duck_03`.
 
 - From `runs/duck_03/from_duck_02_1/best` at 3,506,176 steps (measured 2026-10-30 04:44)
 - Exam (24 fixed attempts, 12 flat and 12 rough, no wobble): score 966, falls 1 of 24 (flat 939, rough 992)

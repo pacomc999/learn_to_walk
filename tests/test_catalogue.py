@@ -3,16 +3,16 @@ import json
 import pytest
 
 from duck import catalogue
-from duck.catalogue import keep_brain, new_duck, write_index
+from duck.catalogue import film_duck, keep_brain, new_duck, write_index
 from duck.snapshots import list_snapshots
 from duck.train import DEFAULT_PPO_SETTINGS, train
 from tests.test_train import FAST
 
 
-# Short GIFs and few gait attempts keep these tests quick
+# Short films and few gait attempts keep these tests quick
 @pytest.fixture(autouse=True)
 def quick_measurements(monkeypatch):
-    monkeypatch.setattr(catalogue, "GIF_SECONDS", 0.4)
+    monkeypatch.setattr(catalogue, "FILM_SECONDS", 0.4)
     monkeypatch.setattr(catalogue, "GAIT_SEEDS", (0,))
 
 
@@ -42,7 +42,7 @@ def test_new_duck_refuses_a_used_folder(tmp_path):
         new_duck(tmp_path / "duck_01", "Duck 1 again")
 
 
-# Keeping a brain copies it, measures it, makes a GIF and fills the card
+# Keeping a brain copies it, measures it, makes a film and fills the card
 def test_keep_brain_fills_the_duck_folder(tmp_path, small_run):
     duck_dir = new_duck(tmp_path / "ducks" / "duck_01", "Duck 1")
     snapshot = list_snapshots(small_run)[-1]
@@ -51,7 +51,8 @@ def test_keep_brain_fills_the_duck_folder(tmp_path, small_run):
     assert [snap.steps for snap in kept] == [snapshot.steps]
     results = json.loads((duck_dir / "results.json").read_text())
     assert results["steps"] == snapshot.steps and 0 <= results["exam_falls"] <= 24 and "exam_rough_score" in results
-    assert (duck_dir / "duck_01.gif").stat().st_size > 0
+    assert (duck_dir / "duck_01.mp4").stat().st_size > 0
+    assert "catalogue film ducks/duck_01" in (duck_dir / "card.md").read_text()
     assert "fixed attempts" in (duck_dir / "card.md").read_text()
 
 
@@ -114,7 +115,7 @@ OLD_RESULTS = {
 
 # Results without rough keys render as before
 def test_old_results_render_as_before():
-    text = "\n".join(catalogue._results_lines(OLD_RESULTS, "x.gif"))
+    text = "\n".join(catalogue._results_lines(OLD_RESULTS, "duck_x"))
     assert "- Exam (12 fixed attempts, no wobble): score 986, falls 0 of 12" in text
     assert "rough" not in text.lower()
 
@@ -124,7 +125,7 @@ def test_new_results_show_both_floors():
     results = {**OLD_RESULTS, "exam_flat_score": 900.0, "exam_rough_score": 500.0, "exam_score": 700.0,
                "exam_falls": 3, "walking_test_rough": "7 of 10",
                "gait_on_rough_floor": {**OLD_RESULTS["gait_at_judging_speed"], "speed": 0.3}}
-    text = "\n".join(catalogue._results_lines(results, "x.gif"))
+    text = "\n".join(catalogue._results_lines(results, "duck_x"))
     assert "score 700, falls 3 of 24" in text
     assert "flat 900" in text and "rough 500" in text
     assert "7 of 10" in text and "rough floor" in text.lower()
@@ -141,3 +142,13 @@ def test_started_run_card_has_the_extra_line():
     assert catalogue.STARTED_FROM_BRAIN_LINE in new_text
     lines = new_text.split("\n")
     assert lines[1] == catalogue.STARTED_FROM_BRAIN_LINE and lines[0].startswith("- Brain:")
+
+
+# The film command makes a lost film again from the kept brain, and says so when there is no brain
+def test_film_duck_makes_the_film_again(tmp_path, small_run):
+    duck_dir = new_duck(tmp_path / "ducks" / "duck_01", "Duck 1")
+    assert film_duck(duck_dir) is None
+    keep_brain(duck_dir, small_run, list_snapshots(small_run)[-1])
+    (duck_dir / "duck_01.mp4").unlink()
+    assert film_duck(duck_dir) == duck_dir / "duck_01.mp4"
+    assert (duck_dir / "duck_01.mp4").stat().st_size > 0

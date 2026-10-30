@@ -29,7 +29,7 @@ The best plain brain (night run 1, 4M steps: exam 905, no falls) hopped with the
 
 ## Best brain
 
-![duck_01.gif](duck_01.gif)
+Film: [duck_01.mp4](duck_01.mp4), 16 s of the best brain at 0.4 m/s. It is not kept in git; make it with `python -m duck.catalogue film ducks/duck_01`.
 
 - From `runs/pilot_symmetric` at 1,605,632 steps (measured 2026-10-29 16:36)
 - Exam (12 fixed attempts, no wobble): score 484, falls 7 of 12

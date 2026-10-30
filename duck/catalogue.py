@@ -5,12 +5,15 @@ starts only when the recipe changes. Each folder in ducks/ holds:
 - duck.json: the story (what changed and why, where it starts, its runs) and the
   recipe, frozen from the code when the duck was created
 - brain/snapshots/: the recipe's best brain so far (one snapshot)
-- results.json and <folder>.gif: the best brain's measurements and a captioned GIF
+- results.json: the best brain's measurements
+- <folder>.mp4: a captioned film of the best brain, not kept in git (the brain and the
+  code are, so the film can always be made again with the film command)
 - card.md: the readable card, written from the files above
 
 Run from the project root, for example:
     python -m duck.catalogue new ducks/duck_02 --name "Duck 2"
     python -m duck.catalogue keep ducks/duck_02 runs/duck_02/main --snapshot 2007040
+    python -m duck.catalogue film ducks/duck_02
     python -m duck.catalogue cards
 """
 import argparse
@@ -46,10 +49,9 @@ INDEX_NAME = "README.md"
 # Gait measurements: three attempts at the judging speed, seeds 0, 1 and 2
 GAIT_SEEDS = (0, 1, 2)
 
-# The GIF: the first 16 seconds of attempt 0, small enough to send by phone
-GIF_SECONDS = 16.0
-GIF_FPS = 15
-GIF_SIZE = (320, 240)
+# The film: the first 16 seconds of attempt 0 at the full film size (about 5 MB, not kept in git)
+FILM_SECONDS = 16.0
+FILM_FPS = 15
 
 
 # ---------- The recipe, frozen from the code ----------
@@ -194,13 +196,29 @@ def _copy_brain(duck_dir: Path, snapshot: Snapshot) -> None:
     shutil.copy2(snapshot.norm_path, brain_dir / snapshot.norm_path.name)
 
 
-# A GIF of the kept brain with the duck's name and exam score written on every frame
-def _make_gif(duck_dir: Path, snapshot: Snapshot, caption: str) -> Path:
-    frames = record_clip(load_policy(snapshot), seconds=GIF_SECONDS, fps=GIF_FPS,
-                         width=GIF_SIZE[0], height=GIF_SIZE[1], seed=0)
-    gif_path = duck_dir / f"{duck_dir.name}.gif"
-    imageio.mimsave(gif_path, [add_caption(frame, caption) for frame in frames], duration=1000 / GIF_FPS, loop=0)
-    return gif_path
+# A film of the kept brain with the duck's name and exam score written on every frame
+def _make_film(duck_dir: Path, snapshot: Snapshot, caption: str) -> Path:
+    frames = record_clip(load_policy(snapshot), seconds=FILM_SECONDS, fps=FILM_FPS, seed=0)
+    film_path = duck_dir / f"{duck_dir.name}.mp4"
+    imageio.mimsave(film_path, [add_caption(frame, caption) for frame in frames], fps=FILM_FPS, macro_block_size=1)
+    return film_path
+
+
+# The caption on a duck's film
+def _film_caption(story: dict, results: dict) -> str:
+    return f"{story['name']}, exam score {results['exam_score']:.0f}"
+
+
+# Make the film of a duck's kept brain again, for example after a fresh clone of the repository
+def film_duck(duck_dir: Path) -> Path | None:
+    kept = list_snapshots(duck_dir / "brain")
+    if not kept:
+        print(f"{duck_dir} has no kept brain to film.")
+        return None
+    story = _read_json(duck_dir / STORY_NAME)
+    film_path = _make_film(duck_dir, kept[-1], _film_caption(story, _read_json(duck_dir / RESULTS_NAME)))
+    print(f"Film saved as {film_path}")
+    return film_path
 
 
 # Measure a snapshot and keep it as the duck's brain if its exam beats the kept one (or if forced)
@@ -213,7 +231,7 @@ def keep_brain(duck_dir: Path, run_dir: Path, snapshot: Snapshot, force: bool = 
         return False
     _copy_brain(duck_dir, snapshot)
     _write_json(duck_dir / RESULTS_NAME, results)
-    _make_gif(duck_dir, snapshot, f"{story['name']}, exam score {results['exam_score']:.0f}")
+    _make_film(duck_dir, snapshot, _film_caption(story, results))
     write_card(duck_dir)
     print(f"Kept as {story['name']}'s best brain: exam {results['exam_score']:.0f}, "
           f"{results['exam_falls']} falls of {_exam_attempts(results)}.")
@@ -314,11 +332,13 @@ def _exam_line(results: dict) -> str:
 
 
 # The card's lines about the kept brain; the rough floor lines appear only when measured
-def _results_lines(results: dict, gif_name: str) -> list[str]:
+def _results_lines(results: dict, folder_name: str) -> list[str]:
     if not results:
         return ["No brain kept yet."]
+    film_name = f"{folder_name}.mp4"
     lines = [
-        f"![{gif_name}]({gif_name})",
+        f"Film: [{film_name}]({film_name}), {FILM_SECONDS:.0f} s of the best brain at {EVALUATION_TARGET_SPEED} m/s. "
+        f"It is not kept in git; make it with `python -m duck.catalogue film ducks/{folder_name}`.",
         "",
         f"- From `{results['from_run']}` at {results['steps']:,} steps (measured {results['measured']})",
         _exam_line(results),
@@ -349,7 +369,7 @@ def write_card(duck_dir: Path) -> Path:
         "## What changed and why", "", story["what_changed"] or "(to write)", "", story["why"] or "", "",
         "## Recipe", "", *_recipe_lines(story["recipe"], _started_from_brain(story)), "",
         "## Training history", "", *_run_lines(story["runs"]), "",
-        "## Best brain", "", *_results_lines(results, f"{duck_dir.name}.gif"), "",
+        "## Best brain", "", *_results_lines(results, duck_dir.name), "",
         "## Notes", "", story["notes"] or "(none)", "",
     ]
     card_path = duck_dir / CARD_NAME
@@ -397,6 +417,8 @@ def main() -> None:
     keep.add_argument("run_dir", type=Path)
     keep.add_argument("--snapshot", type=int, default=None, help="step count (default: latest)")
     keep.add_argument("--force", action="store_true", help="keep it even if the exam is not better")
+    film = commands.add_parser("film", help="make the film of the duck's kept brain again")
+    film.add_argument("duck_dir", type=Path)
     commands.add_parser("cards", help="rewrite all cards and the list page")
     args = parser.parse_args()
 
@@ -405,6 +427,8 @@ def main() -> None:
     elif args.command == "keep":
         snapshot = choose_snapshot_or_exit(args.run_dir, args.snapshot)
         keep_brain(args.duck_dir, args.run_dir, snapshot, force=args.force)
+    elif args.command == "film":
+        film_duck(args.duck_dir)
     rewrite_all_cards(args.duck_dir.parent if hasattr(args, "duck_dir") else CATALOGUE_DIR)
 
 
