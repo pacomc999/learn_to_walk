@@ -92,7 +92,7 @@ footer { color: var(--muted); font-size: 0.8rem; }
   <section class="panel" aria-labelledby="list-title">
     <h2 id="list-title">Every exam (fixed attempts, no wobble)</h2>
     <div class="table-wrap"><table>
-      <thead><tr><th>Steps</th><th>Score</th><th>Flat</th><th>Rough</th><th>Falls</th><th id="cmp-head">Duck 1</th></tr></thead>
+      <thead><tr><th>Steps</th><th>Score</th><th id="part1-head">Flat</th><th id="part2-head">Rough</th><th>Falls</th><th id="cmp-head">Duck 1</th></tr></thead>
       <tbody id="rows"><tr><td colspan="6" class="empty">No exams yet.</td></tr></tbody>
     </table></div>
   </section>
@@ -170,13 +170,19 @@ function renderRows(s) {
   const exams = s.exams || [];
   const cmp = (s.compare && s.compare.exams) || [];
   $("cmp-head").textContent = (s.compare && s.compare.name) || "";
+  // The two part headings: Lower and Taller (stone exam) or Flat and Rough (older exams)
+  const names = s.part_names || ["Flat", "Rough"];
+  $("part1-head").textContent = names[0];
+  $("part2-head").textContent = names[1];
   if (!exams.length) return;
   const bestScore = Math.max(...exams.map(e => e.score));
   $("rows").innerHTML = exams.slice().reverse().map(e => {
     const other = nearestScore(cmp, e.steps);
     const cls = e.score === bestScore ? ' class="best"' : "";
+    // Part scores: a "parts" list in new documents, "flat" and "rough" in older ones
+    const partOf = (e, i) => e.parts ? e.parts[i] : [e.flat, e.rough][i];
     const partCell = (v) => `<td>${v === null || v === undefined ? "" : Math.round(v)}</td>`;
-    return `<tr><td>${millions(e.steps)}</td><td${cls}>${Math.round(e.score)}</td>${partCell(e.flat)}${partCell(e.rough)}` +
+    return `<tr><td>${millions(e.steps)}</td><td${cls}>${Math.round(e.score)}</td>${partCell(partOf(e, 0))}${partCell(partOf(e, 1))}` +
       `<td>${e.falls} of ${e.attempts || 12}</td>` +
       `<td>${other ? Math.round(other.score) : ""}</td></tr>`;
   }).join("");

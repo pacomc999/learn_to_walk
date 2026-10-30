@@ -76,7 +76,7 @@ def current_recipe() -> dict:
         "reward": asdict(RewardWeights()),
         "forward_reward": f"{RewardWeights().forward} x (target - |speed - target|)",
         "floor": {"max_roughness": TRAINING_ROUGHNESS, **FLOOR_SHAPE,
-                  "rough_exam": "climbing" if TRAINING_ROUGHNESS else "none"},
+                  "rough_exam": "spread" if TRAINING_ROUGHNESS else "none"},
         "target_speed_range": list(TARGET_SPEED_RANGE),
         "attempt_seconds": MAX_EPISODE_SECONDS,
         "physics_steps_per_action": FRAME_SKIP,
@@ -178,11 +178,12 @@ def measure_brain(snapshot: Snapshot, run_dir: Path) -> dict:
         "walking_test": f"{walking.successes} of {walking.attempts}",
         "gait_at_judging_speed": _gait_summary(snapshot, 0.0),
     }
-    if exam.rough is not None:  # training on stones: the rough exam part, walking test and gait too
+    if TRAINING_ROUGHNESS > 0:  # training on stones: the exam's halves, walking test and gait on stones too
         walking_rough = evaluate_snapshot(snapshot, roughness=TRAINING_ROUGHNESS)
         results.update({
-            "exam_flat_score": round(exam.flat.score, 1),
-            "exam_rough_score": round(exam.rough.score, 1),
+            "exam_attempts": exam.attempts,
+            "exam_lower_score": round(exam.parts["lower"].score, 1),
+            "exam_taller_score": round(exam.parts["taller"].score, 1),
             "walking_test_rough": f"{walking_rough.successes} of {walking_rough.attempts}",
             "gait_on_rough_floor": _gait_summary(snapshot, TRAINING_ROUGHNESS),
             "rough_floor_height": TRAINING_ROUGHNESS,
@@ -247,8 +248,10 @@ def keep_brain(duck_dir: Path, run_dir: Path, snapshot: Snapshot, force: bool = 
 
 # ---------- The card and the list page ----------
 
-# How many exam attempts a stored result covers: 24 with both parts, 12 for older results
+# How many exam attempts a stored result covers: as stored, else 24 with both old parts, 12 for older results
 def _exam_attempts(results: dict) -> int:
+    if "exam_attempts" in results:
+        return results["exam_attempts"]
     return 24 if "exam_flat_score" in results else 12
 
 
@@ -308,6 +311,9 @@ def _floor_line(recipe: dict) -> str:
 
 # How the exam's rough part chose its floor heights. Recipes from before Duck 3.1 used the full height
 def _rough_exam_words(floor: dict) -> str:
+    if floor.get("rough_exam") == "spread":
+        return (". The exam matches training: 24 attempts with floor heights spread evenly from flat up to the full "
+                "height, scored in a lower and a taller half")
     if floor.get("rough_exam") == "climbing":
         return ". The exam's rough part climbs: its 12 attempts are spread evenly up to the full height"
     return ". The exam's rough part uses the full height for all 12 attempts"
@@ -339,8 +345,15 @@ def _gait_line(label: str, gait: dict) -> str:
             f"both down {gait['both_feet_down']:.0%}")
 
 
-# The exam line: old results show one 12 attempt score, new ones the combined score and both parts
+# The exam line: old results show one 12 attempt score, newer ones the combined score and both parts
+# (flat and rough before Duck 3.1's second run, lower and taller stones from it)
 def _exam_line(results: dict) -> str:
+    if "exam_lower_score" in results:
+        attempts = _exam_attempts(results)
+        tallest = results["rough_floor_height"] * 100
+        return (f"- Exam ({attempts} fixed attempts, floor heights spread from flat to {tallest:g} cm, no wobble): "
+                f"score {results['exam_score']:.0f}, falls {results['exam_falls']} of {attempts} "
+                f"(lower stones {results['exam_lower_score']:.0f}, taller stones {results['exam_taller_score']:.0f})")
     if "exam_flat_score" not in results:
         return f"- Exam (12 fixed attempts, no wobble): score {results['exam_score']:.0f}, falls {results['exam_falls']} of 12"
     return (f"- Exam (24 fixed attempts, 12 flat and 12 rough, no wobble): score {results['exam_score']:.0f}, "

@@ -51,7 +51,7 @@ def test_keep_brain_fills_the_duck_folder(tmp_path, small_run):
     assert [snap.steps for snap in kept] == [snapshot.steps]
     results = json.loads((duck_dir / "results.json").read_text())
     assert results["steps"] == snapshot.steps and 0 <= results["exam_falls"] <= 24
-    assert ("exam_rough_score" in results) == (catalogue.TRAINING_ROUGHNESS > 0)  # flat training: no rough part
+    assert ("exam_lower_score" in results) == (catalogue.TRAINING_ROUGHNESS > 0)  # flat training: no stone halves
     assert (duck_dir / "duck_01.mp4").stat().st_size > 0
     assert "catalogue film duck_catalogue/duck_01" in (duck_dir / "card.md").read_text()
     assert "fixed attempts" in (duck_dir / "card.md").read_text()
@@ -85,7 +85,7 @@ def test_index_lists_every_duck(tmp_path):
 def test_recipe_records_floor_and_forward_rule(monkeypatch):
     monkeypatch.setattr(catalogue, "TRAINING_ROUGHNESS", 0.03)
     recipe = catalogue.current_recipe()
-    assert recipe["floor"]["max_roughness"] == 0.03 and recipe["floor"]["rough_exam"] == "climbing"
+    assert recipe["floor"]["max_roughness"] == 0.03 and recipe["floor"]["rough_exam"] == "spread"
     assert recipe["floor"]["stone_size"] == 0.06 and recipe["floor"]["waves"] == 8
     assert recipe["forward_reward"] == "3.0 x (target - |speed - target|)"
 
@@ -104,7 +104,7 @@ def test_new_recipe_card_lines_list_the_floor(monkeypatch):
     monkeypatch.setattr(catalogue, "TRAINING_ROUGHNESS", 0.03)
     text = "\n".join(catalogue._recipe_lines(catalogue.current_recipe()))
     assert "- Floor: random cobblestones up to 0.03 m" in text
-    assert "rough part climbs" in text
+    assert "spread evenly from flat up to the full height" in text
     assert "stones 0.06 m" in text and "gaps 0.07" in text
     assert "3.0 x (target - |speed - target|)" in text
 
@@ -142,6 +142,15 @@ def test_new_results_show_both_floors():
     assert "score 700, falls 3 of 24" in text
     assert "flat 900" in text and "rough 500" in text
     assert "7 of 10" in text and "rough floor (1 cm stones)" in text.lower()
+
+
+# Results of the stone exam show the lower and taller halves, the attempt count and the tallest stones
+def test_stone_exam_results_show_both_halves():
+    results = {**OLD_RESULTS, "exam_attempts": 24, "exam_lower_score": 990.0, "exam_taller_score": 870.0,
+               "exam_score": 930.0, "exam_falls": 2, "rough_floor_height": 0.04}
+    line = catalogue._exam_line(results)
+    assert line == ("- Exam (24 fixed attempts, floor heights spread from flat to 4 cm, no wobble): "
+                    "score 930, falls 2 of 24 (lower stones 990, taller stones 870)")
 
 
 # A duck started from another brain gets the extra recipe line, a duck from zero does not

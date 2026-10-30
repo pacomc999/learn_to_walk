@@ -3,18 +3,18 @@ from datetime import datetime
 import pytest
 
 from duck.exam import (EXAM_LOG_HEADER, ExamResult, FullExamResult, append_exam, best_exam_score, exam_at,
-                       read_exams, rough_exam_heights, take_exam, take_full_exam)
+                       parts_in_words, read_exams, stone_exam_heights, stone_exam_speeds, take_exam, take_full_exam)
 from duck.floor import MAX_ROUGHNESS
 from duck.train import build_vec_env, train
 from tests.test_train import FAST
 
 
-# A full exam result whose two parts have the given scores
-def full_result(flat_score: float, rough_score: float, falls: int = 0) -> FullExamResult:
-    flat = ExamResult(score=flat_score, falls=falls, distance=1.0)
-    rough = ExamResult(score=rough_score, falls=falls, distance=2.0)
-    return FullExamResult(score=(flat_score + rough_score) / 2, falls=2 * falls, distance=1.5,
-                          attempts=24, flat=flat, rough=rough)
+# A stone exam result whose two halves have the given scores
+def full_result(lower_score: float, taller_score: float, falls: int = 0) -> FullExamResult:
+    lower = ExamResult(score=lower_score, falls=falls, distance=1.0)
+    taller = ExamResult(score=taller_score, falls=falls, distance=2.0)
+    return FullExamResult(score=(lower_score + taller_score) / 2, falls=2 * falls, distance=1.5,
+                          attempts=24, parts={"lower": lower, "taller": taller})
 
 
 # The exam is noise-free, so the same brain gets the same result twice
@@ -55,7 +55,8 @@ def test_exam_at_a_step_count(tmp_path):
     with (tmp_path / "exam.csv").open("a") as log_file:
         log_file.write("broken,row\n")
     assert exam_at(tmp_path, 100) == {"steps": 100, "score": 50.0, "falls": 6, "attempts": 24,
-                                      "flat_score": 50.0, "rough_score": 50.0}
+                                      "flat_score": None, "rough_score": None,
+                                      "lower_score": 50.0, "taller_score": 50.0}
     assert exam_at(tmp_path, 200) is None
 
 
@@ -100,21 +101,36 @@ def test_patience_zero_never_stops(tmp_path, flat_exam):
     assert model.num_timesteps >= 2048
 
 
-# Training on stones: the full exam is the plain average of the flat part and the rough part
-def test_full_exam_averages_the_two_parts(tmp_path, monkeypatch):
+# Training on stones: the full exam is the plain average of the lower half and the taller half
+def test_full_exam_averages_the_two_halves(tmp_path, monkeypatch):
     import duck.exam
     monkeypatch.setattr(duck.exam, "TRAINING_ROUGHNESS", MAX_ROUGHNESS)
     model = train(tmp_path, total_steps=0, **FAST)
     vec_normalize = build_vec_env(1, seed=0, use_subprocess=False)
     result = take_full_exam(model, vec_normalize)
     vec_normalize.close()
-    assert result.score == pytest.approx((result.flat.score + result.rough.score) / 2)
-    assert result.distance == pytest.approx((result.flat.distance + result.rough.distance) / 2)
-    assert result.falls == result.flat.falls + result.rough.falls
+    lower, taller = result.parts["lower"], result.parts["taller"]
+    assert result.score == pytest.approx((lower.score + taller.score) / 2)
+    assert result.distance == pytest.approx((lower.distance + taller.distance) / 2)
+    assert result.falls == lower.falls + taller.falls
     assert result.attempts == 24
 
 
-# Training on the flat floor: the exam is only the flat part, 12 attempts, and logs empty rough columns
+# The stone exam's 24 attempts: seeds 1000 to 1023, heights from flat to the most,
+# the first 12 in the lower half and the last 12 in the taller half
+def test_stone_exam_attempts(monkeypatch):
+    import duck.exam
+    monkeypatch.setattr(duck.exam, "TRAINING_ROUGHNESS", MAX_ROUGHNESS)
+    seen = []
+    monkeypatch.setattr(duck.exam, "_exam_attempt_on",
+                        lambda model, vec_normalize, seed, roughness, speed: seen.append((seed, roughness)) or (1.0, False, 0.5))
+    result = take_full_exam(None, None)
+    assert [seed for seed, _ in seen] == list(range(1000, 1024))
+    assert [height for _, height in seen] == pytest.approx(stone_exam_heights())
+    assert set(result.parts) == {"lower", "taller"}
+
+
+# Training on the flat floor: the exam is only the flat part, 12 attempts, and logs empty stone columns
 def test_flat_training_gives_a_flat_exam(tmp_path, monkeypatch):
     import duck.exam
     monkeypatch.setattr(duck.exam, "TRAINING_ROUGHNESS", 0.0)
@@ -122,10 +138,10 @@ def test_flat_training_gives_a_flat_exam(tmp_path, monkeypatch):
     vec_normalize = build_vec_env(1, seed=0, use_subprocess=False)
     result = take_full_exam(model, vec_normalize)
     vec_normalize.close()
-    assert result.rough is None and result.attempts == 12 and result.score == result.flat.score
+    assert set(result.parts) == {"flat"} and result.attempts == 12 and result.score == result.parts["flat"].score
     append_exam(tmp_path / "log", 100, result, datetime.now())
     row = read_exams(tmp_path / "log")[0]
-    assert row["attempts"] == 12 and row["rough_score"] is None and row["flat_score"] == pytest.approx(result.score)
+    assert row["attempts"] == 12 and row["lower_score"] is None and row["flat_score"] == pytest.approx(result.score)
 
 
 # The rough part uses the same floors every time, so the same brain scores the same
@@ -144,25 +160,50 @@ def test_exam_rows_keep_an_old_log_readable(tmp_path):
     append_exam(tmp_path, 100, full_result(50.0, 50.0), datetime.now())
     rows = read_exams(tmp_path)
     assert [r["score"] for r in rows] == [10.0, 50.0] and rows[1]["attempts"] == 12
-    assert rows[1]["flat_score"] is None and rows[1]["rough_score"] is None
+    assert rows[1]["lower_score"] is None and rows[1]["taller_score"] is None
     assert len((tmp_path / "exam.csv").read_text().splitlines()[-1].split(",")) == 5
 
 
-# A new log has all columns, including both part scores
-def test_new_log_has_both_parts(tmp_path):
+# A log from before the stone exam (flat and rough columns) keeps its columns and is still read
+def test_flat_and_rough_log_stays_readable(tmp_path):
+    (tmp_path / "exam.csv").write_text(
+        "time,timesteps,score,falls,distance,attempts,flat_score,flat_falls,rough_score,rough_falls\n"
+        "2026-10-30T00:00:00,0,900.0,1,9.0,24,950.0,0,850.0,1\n")
     append_exam(tmp_path, 100, full_result(40.0, 60.0), datetime.now())
     rows = read_exams(tmp_path)
-    assert rows[0]["flat_score"] == 40.0 and rows[0]["rough_score"] == 60.0 and rows[0]["attempts"] == 24
+    assert rows[0]["flat_score"] == 950.0 and rows[0]["rough_score"] == 850.0
+    assert rows[1]["score"] == 50.0 and rows[1]["flat_score"] is None
 
 
-# The rough part climbs evenly: 12 heights from a twelfth of the most up to the most, each one higher
-def test_rough_exam_heights_climb_to_the_most(monkeypatch):
+# A new log has all columns, including both half scores
+def test_new_log_has_both_halves(tmp_path):
+    append_exam(tmp_path, 100, full_result(40.0, 60.0), datetime.now())
+    rows = read_exams(tmp_path)
+    assert rows[0]["lower_score"] == 40.0 and rows[0]["taller_score"] == 60.0 and rows[0]["attempts"] == 24
+
+
+# The stone exam's heights spread evenly: 24 heights from flat up to the most, each one higher
+def test_stone_exam_heights_spread_from_flat_to_the_most(monkeypatch):
     import duck.exam
     monkeypatch.setattr(duck.exam, "TRAINING_ROUGHNESS", MAX_ROUGHNESS)
-    heights = rough_exam_heights()
-    assert len(heights) == 12
-    assert heights[0] == pytest.approx(MAX_ROUGHNESS / 12) and heights[-1] == pytest.approx(MAX_ROUGHNESS)
+    heights = stone_exam_heights()
+    assert len(heights) == 24
+    assert heights[0] == 0.0 and heights[-1] == pytest.approx(MAX_ROUGHNESS)
     assert all(low < high for low, high in zip(heights, heights[1:]))
+
+
+# Each half of the stone exam asks for all 12 exam speeds once, mixed, not slow to fast
+def test_stone_exam_speeds_give_each_half_every_speed():
+    from duck.exam import exam_speeds
+    speeds = stone_exam_speeds()
+    assert len(speeds) == 24
+    assert sorted(speeds[:12]) == pytest.approx(exam_speeds()) and sorted(speeds[12:]) == pytest.approx(exam_speeds())
+    assert speeds[:12] != sorted(speeds[:12])
+
+
+# The part scores in words, in the exam's own order
+def test_parts_in_words():
+    assert parts_in_words(full_result(990.4, 870.0)) == "lower 990, taller 870"
 
 
 # With one height per attempt, each attempt gets its own floor height

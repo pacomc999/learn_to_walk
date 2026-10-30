@@ -45,8 +45,8 @@ START_NOISE = 0.02
 START_STRIDE = 2 * START_NOISE
 
 # Each training attempt asks for a random speed in this range, in metres per second.
-# 0.2 to 0.7 up to Duck 3.1; Duck 3.2 goes up to 1.5 to learn to run
-TARGET_SPEED_RANGE = (0.2, 1.5)
+# 0.2 to 0.7 for the walking ducks (Duck 3.1 too); Duck 3.2 goes up to 1.5 to learn to run
+TARGET_SPEED_RANGE = (0.2, 0.7)
 
 # The speed asked for when judging the duck and making videos
 EVALUATION_TARGET_SPEED = 0.4

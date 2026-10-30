@@ -22,11 +22,11 @@ The brain is left/right symmetric (the "NET" method of Abdolhosseini and others,
 
 ### The floor
 
-From Duck 3 on, every training attempt gets a freshly drawn cobblestone floor: rolling bumps with square 6 cm stones on top, at a random height from flat up to the most (1 cm for Duck 3, 3 cm for Duck 3.1). A height of exactly 0 is the old flat floor. Duck 3.2, which learns to run, trains on the flat floor again: `TRAINING_ROUGHNESS` in `duck/floor.py` sets the tallest stones training uses, and 0 means flat. The cobblestones stay available for later ducks and for the tests. The floor code is in `duck/floor.py`.
+From Duck 3 on, every training attempt gets a freshly drawn cobblestone floor: rolling bumps with square 6 cm stones on top, at a random height from flat up to the most (1 cm for Duck 3, 3 cm for Duck 3.1's first run and 4 cm for its second). A height of exactly 0 is the old flat floor. Duck 3.2, which learns to run, trained on the flat floor: `TRAINING_ROUGHNESS` in `duck/floor.py` sets the tallest stones training uses, and 0 means flat. `MAX_ROUGHNESS` is the tallest floor the model holds (4 cm); stone heights are a share of it, so raising it keeps lower floors the same to a few billionths of a metre. On tall stones even that can change single attempts: after the raise from 3 cm, Duck 3.1's 3 cm walking test gives 6 of 10 instead of 7. The cobblestones stay available for later ducks and for the tests. The floor code is in `duck/floor.py`.
 
 ### How it is scored
 
-Every attempt asks for a random walking speed: from 0.2 to 0.7 m/s up to Duck 3.1, and from 0.2 to 1.5 m/s from Duck 3.2 on, which learns to run (`TARGET_SPEED_RANGE` in `duck/duck_env.py`). On each of the 50 steps per second the duck earns:
+Every attempt asks for a random walking speed: from 0.2 to 0.7 m/s for the walking ducks (Duck 3.1 included), and from 0.2 to 1.5 m/s for Duck 3.2, which learns to run (`TARGET_SPEED_RANGE` in `duck/duck_env.py`). On each of the 50 steps per second the duck earns:
 
 - **Forward:** 3 points per m/s of forward speed, at most at the asked speed. Going faster loses points the same way as going slower: the reward is 3 x (target - |speed - target|).
 - **Staying up:** 0.2 points.
@@ -37,10 +37,11 @@ An attempt ends after 20 seconds, or earlier if the duck falls (its body drops b
 
 ### The exam
 
-Training scores jump around because of the wobble and the random speeds, so training also gives the brain a fixed, noise-free exam: at the start, every 250,000 steps and at the end. It has two parts of 12 attempts each, always the same attempts (seeds 1000 to 1011, each its own start). The asked speeds are spread evenly across the training range: at 0.2 to 1.5 m/s they are 0.20, 0.32, 0.44 and so on up to 1.50, so the exam covers the same speeds as training. Before Duck 3.2's second run, each attempt's seed drew a random speed instead, which happened to ask for nothing above 1.0 m/s:
+Training scores jump around because of the wobble and the random speeds, so training also gives the brain a fixed, noise-free exam: at the start, every 250,000 steps and at the end. It always uses the same attempts (seeds from 1000, each its own start), and the asked speeds are 12 speeds spread evenly across the training range (at 0.2 to 0.7 m/s: 0.20, 0.25 and so on up to 0.70), so the exam covers the same speeds as training. Before Duck 3.2's second run, each attempt's seed drew a random speed instead. The exam matches the training floor:
 
-- **Flat:** 12 attempts on the flat floor.
-- **Rough:** the same 12 attempts on cobblestones, climbing evenly up to the most height (at 3 cm: 0.25 cm, 0.5 cm, and so on up to 3 cm). Duck 3's exam used the full 1 cm for all 12. When training is flat (Duck 3.2) there is no rough part: the exam is the 12 flat attempts.
+- **Training on stones (from Duck 3.1's second run):** 24 attempts (seeds 1000 to 1023) with floor heights spread evenly from flat up to the most (at 4 cm: 0, 0.17 cm, 0.35 cm and so on up to 4 cm). It is reported in two halves of 12: the **lower** stones (flat to about 1.9 cm) and the **taller** stones (about 2.1 to 4 cm), and the score is the average of all 24. Each half asks for all 12 speeds once, in a mixed order, so the tallest stones do not always get the fastest speed.
+- **Training on the flat floor (Duck 3.2):** 12 attempts on the flat floor.
+- **Older exams** (Duck 3 and Duck 3.1's first run) had a **flat** part of 12 attempts and a **rough** part of the same 12 attempts on stones climbing up to the most height (Duck 3 used the full 1 cm for all 12). Their logs keep those columns, so scores from different exams cannot be compared.
 
 The exam score is the average of the two parts; the falls are added up, out of 24. The best possible score is about 1,150, which would need walking at exactly the asked speed with no energy at all. A realistic best for this duck is around 1,045.
 
@@ -61,7 +62,7 @@ A duck is a training recipe (the rules, the brain and the settings), not a singl
 
 3. **Write its story** in `duck_catalogue/duck_04/duck.json`: the summary, what changed, why, and where it starts from.
 4. **Train it**, from zero or from another duck's brain (see Training). Runs of a duck go in `runs/duck_04/<run name>/`, with the training output saved as `train.log` inside the run folder.
-5. **Follow it** on the dashboard (see Watching and judging).
+5. **Follow it** on the dashboard, which training opens by itself (see Watching and judging).
 6. **Keep its best brain**: this measures the brain (exam, walking test and gait on both floors), copies it into the catalogue only if its exam beats the kept one, makes its film and rewrites the cards:
 
    `.venv/Scripts/python -m duck.catalogue keep duck_catalogue/duck_04 runs/duck_04/from_duck_03_1/best`
@@ -95,7 +96,7 @@ Good to know:
 - **Saved brains** land in `<run>/snapshots/` once every million steps (change with `--snapshot-every`), and the best brain by exam in `<run>/best/`, replacing the previous best. `<run>/best` works like a run folder in every tool. Step counts land on rollout boundaries, for example 1,007,616 instead of 1,000,000.
 - **Training stops by itself** after 8 exams in a row (2 million steps) without a new best. Change that with `--patience`, or turn it off with `--patience 0`. Change how often the exam runs with `--exam-every`.
 - **The step size adapts by itself**: after each brain update, if the brain changed more than twice the target amount the learning rate is divided by 1.5, and if it changed less than half the target it is multiplied by 1.5. Without this, Duck 1's updates grew to 50 to 100 times the size PPO is designed for and the duck fell apart.
-- **The logs** in the run folder: `exam.csv` (every exam, with the flat and rough parts), `progress.csv` (training score and distance), `training_stats.csv` (PPO's own numbers after each update: how far the brain moved, the wobble, the step size), `train.log` (what training printed).
+- **The logs** in the run folder: `exam.csv` (every exam, with its two parts: lower and taller stones, or flat and rough in older runs), `progress.csv` (training score and distance), `training_stats.csv` (PPO's own numbers after each update: how far the brain moved, the wobble, the step size), `train.log` (what training printed).
 - **Speed:** with 8 duck worlds side by side, about 1,000 steps per second on the flat floor (Duck 2.1) and about 650 to 750 on the cobblestones, which cost about twice the physics. 4 million steps take about 1.5 to 2 hours.
 
 ### When the score stops improving
@@ -109,11 +110,11 @@ The stall clock counts real time, so after resuming a run that was stopped for a
 
 ## Watching and judging
 
-Follow training live in the browser. In a second terminal, while training runs (`--steps` should match the training command):
+Follow training live in the browser. The training command starts the dashboard by itself, as its own process, for its run folder and step count (add `--no-dashboard` to skip it). If a dashboard is already running it is left alone, and it may still show an older run: close it (or stop its process) and start the right one by hand. The dashboard's messages go to `runs/dashboard.log`. To start it by hand, for example for a finished run (`--steps` should match the training command):
 
 `.venv/Scripts/python -m duck.dashboard runs/duck_04/from_zero --steps 4000000`
 
-It opens http://127.0.0.1:8765/ and refreshes itself: steps trained, time left, distance per attempt, whether the score is still improving, score and distance charts, and a 20 second film of the best brain so far on the roughest floor, with its exam score. Buttons slow the film down; a click pauses it. Stopping the dashboard does not affect training.
+It opens http://127.0.0.1:8765/ and refreshes itself: steps trained, time left, distance per attempt, whether the score is still improving, score and distance charts, and a 20 second film of the best brain so far on the roughest floor, with its exam score. Buttons slow the film down; a click pauses it. Stopping the dashboard does not affect training, and it keeps running after training ends, so you can still look at the final results.
 
 The other tools take a run folder; the walking test, the live viewer and the video also take `<run>/best` or a duck's `brain` folder:
 

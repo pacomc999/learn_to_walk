@@ -7,13 +7,15 @@ import numpy as np
 from duck.model import DUCK_XML_PATH
 
 # Highest point the floor model can reach, in metres (also the height field elevation), used by the rough
-# tests and films. Duck 3.1's 3 cm, since Duck 3 walked on 2 cm but fell on every 3 cm attempt
-MAX_ROUGHNESS = 0.03
+# tests and films. 3 cm for Duck 3.1's first run, 4 cm from its second run (from_duck_03_1).
+# Floor heights are a share of this, so raising it keeps lower floors the same to a few billionths of a metre
+# (number rounding). That still flips single attempts on tall stones: Duck 3.1's 3 cm walking test went from 7 to 6 of 10
+MAX_ROUGHNESS = 0.04
 
-# The tallest stones training draws, in metres: each attempt picks a height from 0 up to this, and the exam's
-# rough part climbs up to it. 0 trains on the old flat plane and leaves out the rough part of the exam.
-# Duck 3 used 0.01, Duck 3.1 0.03, Duck 3.2 (learning to run) 0.0
-TRAINING_ROUGHNESS = 0.0
+# The tallest stones training draws, in metres: each attempt picks a height from 0 up to this, and the exam
+# spreads its attempts from flat up to it. 0 trains on the old flat plane and gives a flat only exam.
+# Duck 3 used 0.01, Duck 3.1 0.03 then 0.04 (second run), Duck 3.2 (learning to run) 0.0
+TRAINING_ROUGHNESS = 0.04
 
 # The shape of the floor: rolling bumps with square cobblestones on top
 FLOOR_SHAPE = {

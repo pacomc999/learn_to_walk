@@ -1,4 +1,6 @@
 import pickle
+from pathlib import Path
+
 import numpy as np
 import pytest
 import torch
@@ -210,3 +212,30 @@ def test_start_from_an_empty_folder_is_refused(tmp_path):
     with pytest.raises(FileNotFoundError, match="No complete snapshot"):
         train(target, total_steps=0, start_from=empty, **FAST)
     assert list_snapshots(target) == []
+
+
+# The dashboard check sees a listening port, and training starts no second dashboard when one is running
+def test_start_dashboard_skips_a_running_one(monkeypatch, capsys):
+    import socket
+    import duck.train
+    with socket.socket() as listener:
+        listener.bind(("127.0.0.1", 0))
+        listener.listen()
+        port = listener.getsockname()[1]
+        assert duck.train.dashboard_running(port)
+    started = []
+    monkeypatch.setattr(duck.train, "dashboard_running", lambda: True)
+    monkeypatch.setattr(duck.train.subprocess, "Popen", lambda *args, **kwargs: started.append(args))
+    duck.train.start_dashboard(Path("runs/x"), 1000)
+    assert started == [] and "already running" in capsys.readouterr().out
+
+
+# With no dashboard running, training starts one for its own run folder and step count
+def test_start_dashboard_starts_one(monkeypatch, tmp_path):
+    import duck.train
+    started = []
+    monkeypatch.setattr(duck.train, "dashboard_running", lambda: False)
+    monkeypatch.setattr(duck.train, "DASHBOARD_LOG", tmp_path / "dashboard.log")
+    monkeypatch.setattr(duck.train.subprocess, "Popen", lambda command, **kwargs: started.append(command))
+    duck.train.start_dashboard(Path("runs/x"), 1000)
+    assert started[0][1:] == ["-m", "duck.dashboard", str(Path("runs/x")), "--steps", "1000"]

@@ -12,6 +12,9 @@ Start a new run from another run's brain (a run folder, its best/ folder or a du
 """
 import argparse
 import ctypes
+import socket
+import subprocess
+import sys
 import time
 from contextlib import contextmanager
 from datetime import datetime
@@ -24,8 +27,9 @@ from stable_baselines3.common.callbacks import BaseCallback
 from stable_baselines3.common.monitor import Monitor
 from stable_baselines3.common.vec_env import DummyVecEnv, SubprocVecEnv, VecEnv, VecNormalize
 
+from duck.dashboard import DEFAULT_PORT
 from duck.duck_env import OBSERVATION_SIZE, DuckWalkEnv
-from duck.exam import append_exam, best_exam_score, best_folder, take_full_exam
+from duck.exam import append_exam, best_exam_score, best_folder, parts_in_words, take_full_exam
 from duck.mirror import MirroredRunningMeanStd
 from duck.progress import append_progress
 from duck.snapshots import (Snapshot, latest_snapshot, list_snapshots, remove_other_snapshots, save_snapshot,
@@ -79,6 +83,9 @@ NO_IMPROVEMENT_MESSAGE = ("No new best exam score for {exams} exams in a row. St
 
 # Threads for the brain update in the main process, leaving cores for the env workers
 MAIN_PROCESS_THREADS = 2
+
+# Where the dashboard started by training writes its messages
+DASHBOARD_LOG = Path("runs/dashboard.log")
 
 # Windows flags that keep the laptop from sleeping while training runs
 KEEP_AWAKE_FLAGS = 0x80000000 | 0x00000001  # ES_CONTINUOUS | ES_SYSTEM_REQUIRED
@@ -292,7 +299,7 @@ class ExamCallback(BaseCallback):
         result = take_full_exam(self.model, self.vec_normalize)
         append_exam(self.run_dir, steps, result, datetime.now())
         message = (f"Exam at {steps:,} steps: score {result.score:.0f}, falls {result.falls} of {result.attempts} "
-                   + (f"(flat {result.flat.score:.0f}, rough {result.rough.score:.0f})." if result.rough else "(flat floor)."))
+                   f"({parts_in_words(result)}).")
         if self.best_score is None or result.score > self.best_score:
             self.best_score = result.score
             self.exams_without_best = 0
@@ -435,6 +442,29 @@ def train(run_dir: Path, total_steps: int, snapshot_every: int = 1_000_000, n_en
 
 
 # Read the command line options and start training
+# ---------- The live dashboard ----------
+
+# Whether something already answers on the dashboard's port (an earlier dashboard still running)
+def dashboard_running(port: int = DEFAULT_PORT) -> bool:
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as probe:
+        probe.settimeout(0.5)
+        return probe.connect_ex(("127.0.0.1", port)) == 0
+
+
+# Start the dashboard for this run as its own process, so it stays open after training ends.
+# Its messages go to runs/dashboard.log. An already running dashboard is left alone
+def start_dashboard(run_dir: Path, total_steps: int) -> None:
+    address = f"http://127.0.0.1:{DEFAULT_PORT}/"
+    if dashboard_running():
+        print(f"A dashboard is already running at {address} (it may be showing another run).", flush=True)
+        return
+    DASHBOARD_LOG.parent.mkdir(parents=True, exist_ok=True)
+    log_file = DASHBOARD_LOG.open("a")
+    subprocess.Popen([sys.executable, "-m", "duck.dashboard", str(run_dir), "--steps", str(total_steps)],
+                     stdout=log_file, stderr=subprocess.STDOUT)
+    print(f"Dashboard starting at {address}", flush=True)
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Teach the duck to walk with PPO.")
     parser.add_argument("--run", type=Path, required=True, help="run folder, for example runs/duck_v1")
@@ -448,8 +478,11 @@ def main() -> None:
     parser.add_argument("--exam-every", type=int, default=DEFAULT_EXAM_EVERY, help="steps between noise-free exams")
     parser.add_argument("--patience", type=int, default=DEFAULT_PATIENCE,
                         help="stop after this many exams without a new best (0: never)")
+    parser.add_argument("--no-dashboard", action="store_true", help="do not open the live dashboard")
     args = parser.parse_args()
 
+    if not args.no_dashboard:
+        start_dashboard(args.run, args.steps)
     torch.set_num_threads(MAIN_PROCESS_THREADS)
     try:
         train(args.run, args.steps, snapshot_every=args.snapshot_every, n_envs=args.envs,

@@ -308,11 +308,13 @@ function clipCaption(status) {
   let floorText = "";
   if (exam) {
     const score = Math.round(exam.score).toLocaleString("en");
-    const hasParts = exam.flat_score !== null && exam.flat_score !== undefined &&
-                     exam.rough_score !== null && exam.rough_score !== undefined;
+    // The two part scores: lower and taller stones (stone exam), or flat and rough (older exams)
+    const has = (value) => value !== null && value !== undefined;
+    const partNames = has(exam.lower_score) ? ["lower", "taller"] : ["flat", "rough"];
+    const hasParts = partNames.every((name) => has(exam[name + "_score"]));
     const parts = hasParts
-      ? " (flat " + Math.round(exam.flat_score).toLocaleString("en") +
-        ", rough " + Math.round(exam.rough_score).toLocaleString("en") + ")"
+      ? " (" + partNames.map((name) =>
+          name + " " + Math.round(exam[name + "_score"]).toLocaleString("en")).join(", ") + ")"
       : "";
     const falls = exam.falls === 1 ? " fall of " : " falls of ";
     examText = ", exam score " + score + parts + ", " + exam.falls + falls + exam.attempts;
