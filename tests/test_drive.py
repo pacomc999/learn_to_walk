@@ -2,7 +2,7 @@
 import numpy as np
 import pytest
 
-from duck.drive import Driver
+from duck.drive import Driver, newest_brain
 
 
 # Hold every motor at the standing pose
@@ -35,3 +35,16 @@ def test_no_twenty_second_end():
     for _ in range(1100):  # 22 s
         driver.step()
     assert driver.env.data.time > 20.0
+
+
+# With no folder given, the newest saved brain is driven, from the runs or the catalogue
+def test_newest_brain(tmp_path):
+    import os
+    assert newest_brain(tmp_path) is None
+    for folder, age in (("runs/duck_09/a/best", 100), ("duck_catalogue/duck_09/brain", 50)):
+        snapshots = tmp_path / folder / "snapshots"
+        snapshots.mkdir(parents=True)
+        for name in ("snapshot_000000001000.zip", "snapshot_000000001000_norm.pkl"):
+            (snapshots / name).write_text("x")
+            os.utime(snapshots / name, (age, age))
+    assert newest_brain(tmp_path) == tmp_path / "runs/duck_09/a/best"

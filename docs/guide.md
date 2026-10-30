@@ -120,7 +120,7 @@ The other tools take a run folder; the walking test, the live viewer and the vid
 | Training chart and the stall check | `.venv/Scripts/python -m duck.progress runs/duck_04/from_zero` |
 | The walking test | `.venv/Scripts/python -m duck.evaluate runs/duck_04/from_zero/best` |
 | Watch live in a window | `.venv/Scripts/python -m duck.view_snapshot runs/duck_04/from_zero/best` |
-| Drive a brain live: a speed slider and a Reset button | `.venv/Scripts/python -m duck.drive runs/duck_04/from_zero/best` |
+| Drive a brain live: a speed slider and a Reset button. Without a folder it takes the newest brain; double-clicking `Drive the duck.bat` in the project folder does the same | `.venv/Scripts/python -m duck.drive runs/duck_04/from_zero/best` |
 | A film of the whole run, brain by brain | `.venv/Scripts/python -m duck.video runs/duck_04/from_zero` (saved as `evolution.mp4` in the run folder) |
 
 They use the newest brain in the folder; add `--snapshot` with a step count for another one, for example `--snapshot 1007616`. They use the flat floor unless you add `--roughness` with the stone height in metres, for example `--roughness 0.03`. The live viewer also takes `--speed`, for example `--speed 0.6`.

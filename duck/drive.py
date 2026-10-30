@@ -1,12 +1,14 @@
 """Drive a duck: watch a brain walk live and change the speed it is asked for with a slider.
 
-Run from the project root, for example:
+Double-click "Drive the duck.bat" in the project folder, or run from the project root, for example:
+    python -m duck.drive
     python -m duck.drive runs/duck_03_2/from_duck_03_1/best
     python -m duck.drive duck_catalogue/duck_03_1/brain --speed 0.4
 Two windows open: the MuJoCo viewer, whose camera follows the duck, and a small control window
 with the speed slider, the Reset button and what the duck is doing. The duck walks on the flat
 floor for as long as you like (no 20 s limit). After a fall it lies still until you press Reset.
-Close either window to stop.
+Close either window to stop. With no folder given it drives the newest brain: the most recently
+saved best brain of any run, or kept brain in the catalogue.
 """
 import argparse
 import time
@@ -20,6 +22,7 @@ import numpy as np
 
 from duck.duck_env import EVALUATION_TARGET_SPEED, DuckWalkEnv
 from duck.policy import choose_snapshot_or_exit, load_policy
+from duck.snapshots import latest_snapshot
 
 # The slider's range, in metres per second (training asked for 0.2 to 1.5 from Duck 3.2 on)
 SLIDER_RANGE = (0.1, 2.0)
@@ -74,6 +77,14 @@ class Driver:
         return f"Walking for {seconds:.1f} s at {self.actual_speed():.2f} m/s (asked {self.env.target_speed:.2f})"
 
 
+# The folder of the newest brain worth driving: the most recently saved best brain of any run,
+# or kept brain in the catalogue; None if there is none
+def newest_brain(project: Path = Path(".")) -> Path | None:
+    folders = list(project.glob("runs/duck_*/*/best")) + list(project.glob("duck_catalogue/*/brain"))
+    saved = [(latest_snapshot(folder).model_path.stat().st_mtime, folder) for folder in folders if latest_snapshot(folder)]
+    return max(saved)[1] if saved else None
+
+
 # ---------- The windows ----------
 
 # The control window: the speed slider, the Reset button and the status line
@@ -121,11 +132,16 @@ def drive(driver: Driver) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Watch a brain walk live and change its speed with a slider.")
-    parser.add_argument("brain_dir", type=Path, help="a folder with snapshots, for example runs/duck_03_2/from_duck_03_1/best")
+    parser.add_argument("brain_dir", type=Path, nargs="?", default=None,
+                        help="a folder with snapshots, for example runs/duck_03_2/from_duck_03_1/best (default: the newest brain)")
     parser.add_argument("--speed", type=float, default=EVALUATION_TARGET_SPEED, help="starting speed in m/s")
     arguments = parser.parse_args()
-    snapshot = choose_snapshot_or_exit(arguments.brain_dir, None)
-    print(f"Driving the brain from {snapshot.steps:,} steps. Close a window to stop.")
+    brain_dir = arguments.brain_dir or newest_brain()
+    if brain_dir is None:
+        print("No brain found in runs/ or duck_catalogue/.")
+        return
+    snapshot = choose_snapshot_or_exit(brain_dir, None)
+    print(f"Driving the brain in {brain_dir} from {snapshot.steps:,} steps. Close a window to stop.")
     driver = Driver(load_policy(snapshot), arguments.speed)
     drive(driver)
     driver.env.close()

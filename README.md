@@ -25,6 +25,7 @@ Commands run in PowerShell or Git Bash from the project folder.
 | Train it, starting from another duck's brain | `.venv/Scripts/python -m duck.train --run runs/duck_04/from_duck_03_1 --steps 4000000 --start-from duck_catalogue/duck_03_1/brain` |
 | Follow training in the browser | `.venv/Scripts/python -m duck.dashboard runs/duck_04/from_duck_03_1 --steps 4000000` |
 | Keep its best brain in the catalogue | `.venv/Scripts/python -m duck.catalogue keep duck_catalogue/duck_04 runs/duck_04/from_duck_03_1/best` |
+| Drive the newest brain live with a speed slider (or double-click `Drive the duck.bat`) | `.venv/Scripts/python -m duck.drive` |
 | Watch a brain walk in a window | `.venv/Scripts/python -m duck.view_snapshot duck_catalogue/duck_03_1/brain --roughness 0.03` |
 
 `docs/guide.md` explains all of it: how the duck learns and is scored, the exam, making and training a duck, the viewing tools, the rock test and keeping the project tidy.
