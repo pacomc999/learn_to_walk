@@ -22,11 +22,11 @@ The brain is left/right symmetric (the "NET" method of Abdolhosseini and others,
 
 ### The floor
 
-From Duck 3 on, every training attempt gets a freshly drawn cobblestone floor: rolling bumps with square 6 cm stones on top, at a random height from flat up to the most (1 cm for Duck 3, 3 cm for Duck 3.1's first run and 4 cm for its second). A height of exactly 0 is the old flat floor. Duck 3.2, which learns to run, trained on the flat floor: `TRAINING_ROUGHNESS` in `duck/floor.py` sets the tallest stones training uses, and 0 means flat. `MAX_ROUGHNESS` is the tallest floor the model holds (4 cm); stone heights are a share of it, so raising it keeps lower floors the same to a few billionths of a metre. On tall stones even that can change single attempts: after the raise from 3 cm, Duck 3.1's 3 cm walking test gives 6 of 10 instead of 7. The cobblestones stay available for later ducks and for the tests. The floor code is in `duck/floor.py`.
+From Duck 3 on, every training attempt gets a freshly drawn cobblestone floor: rolling bumps with square 6 cm stones on top, at a random height from flat up to the most (1 cm for Duck 3, 3 cm for Duck 3.1's first run and 4 cm for its second). A height of exactly 0 is the old flat floor. Duck 3.2, which learns to run, trained on the flat floor. How tall the stones get is part of the duck's world (see Worlds and bodies), and 0 means flat. `MAX_ROUGHNESS` is the tallest floor the model holds (4 cm); stone heights are a share of it, so raising it keeps lower floors the same to a few billionths of a metre. On tall stones even that can change single attempts: after the raise from 3 cm, Duck 3.1's 3 cm walking test gives 6 of 10 instead of 7. The cobblestones stay available for later ducks and for the tests. The floor code is in `duck/floor.py`.
 
 ### How it is scored
 
-Every attempt asks for a random walking speed: from 0.2 to 0.7 m/s for the walking ducks (Duck 3.1 included), and from 0.2 to 1.5 m/s for Duck 3.2, which learns to run (`TARGET_SPEED_RANGE` in `duck/duck_env.py`). On each of the 50 steps per second the duck earns:
+Every attempt asks for a random walking speed from the world's speed range: 0.2 to 0.7 m/s for the walking ducks (Duck 3.1 included), and 0.2 to 1.5 m/s for Duck 3.2, which learns to run. On each of the 50 steps per second the duck earns (the weights below are today's worlds'; a world can change them):
 
 - **Forward:** 3 points per m/s of forward speed, at most at the asked speed. Going faster loses points the same way as going slower: the reward is 3 x (target - |speed - target|).
 - **Staying up:** 0.2 points.
@@ -37,10 +37,11 @@ An attempt ends after 20 seconds, or earlier if the duck falls (its body drops b
 
 ### The exam
 
-Training scores jump around because of the wobble and the random speeds, so training also gives the brain a fixed, noise-free exam: at the start, every 250,000 steps and at the end. It always uses the same attempts (seeds from 1000, each its own start), and the asked speeds are 12 speeds spread evenly across the training range (at 0.2 to 0.7 m/s: 0.20, 0.25 and so on up to 0.70), so the exam covers the same speeds as training. Before Duck 3.2's second run, each attempt's seed drew a random speed instead. The exam matches the training floor:
+Training scores jump around because of the wobble and the random speeds, so training also gives the brain a fixed, noise-free exam: at the start, every 250,000 steps and at the end. It always uses the same attempts (seeds from 1000, each its own start), and the asked speeds are 12 speeds spread evenly across the training range (at 0.2 to 0.7 m/s: 0.20, 0.25 and so on up to 0.70), so the exam covers the same speeds as training. Before Duck 3.2's second run, each attempt's seed drew a random speed instead. The exam follows the duck's world, so it always matches training:
 
-- **Training on stones (from Duck 3.1's second run):** 24 attempts (seeds 1000 to 1023) with floor heights spread evenly from flat up to the most (at 4 cm: 0, 0.17 cm, 0.35 cm and so on up to 4 cm). It is reported in two halves of 12: the **lower** stones (flat to about 1.9 cm) and the **taller** stones (about 2.1 to 4 cm), and the score is the average of all 24. Each half asks for all 12 speeds once, in a mixed order, so the tallest stones do not always get the fastest speed.
-- **Training on the flat floor (Duck 3.2):** 12 attempts on the flat floor.
+- **A world with stones (from Duck 3.1's second run):** 24 attempts (seeds 1000 to 1023) with floor heights spread evenly from flat up to the most (at 4 cm: 0, 0.17 cm, 0.35 cm and so on up to 4 cm). It is reported in two halves of 12: the **lower** stones (flat to about 1.9 cm) and the **taller** stones (about 2.1 to 4 cm), and the score is the average of all 24. Each half asks for all 12 speeds once, in a mixed order, so the tallest stones do not always get the fastest speed.
+- **A flat world (Duck 3.2):** 12 attempts on the flat floor.
+- **Extras:** a world's rocks or backpack are on in every exam attempt, each attempt's seed fixing where the rocks come from.
 - **Older exams** (Duck 3 and Duck 3.1's first run) had a **flat** part of 12 attempts and a **rough** part of the same 12 attempts on stones climbing up to the most height (Duck 3 used the full 1 cm for all 12). Their logs keep those columns, so scores from different exams cannot be compared.
 
 The exam score is the average of the two parts; the falls are added up, out of 24. The best possible score is about 1,150, which would need walking at exactly the asked speed with no energy at all. A realistic best for this duck is around 1,045.
@@ -51,19 +52,44 @@ The walking test (`duck.evaluate`) asks for 0.4 m/s in 10 attempts of 20 seconds
 
 The attempts use seeds 0 to 9 by default, the same floors and starts every time, so a brain always gets the same result. To try new ones, pass `--seed` (the first seed; the others count up from it) and `--attempts` (more than 10 also works; the duck then needs 8 in 10 of them). For example, Duck 3.1 on 30 new layouts of 3 cm stones: `.venv/Scripts/python -m duck.evaluate duck_catalogue/duck_03_1/brain --roughness 0.03 --seed 200 --attempts 30`.
 
+## Worlds and bodies
+
+A duck is three things: its **brain**, its **body** and the **world** it learns in. Brains live in the catalogue; worlds and bodies are small files, so trying a new combination never means editing code.
+
+- **A world** (`worlds/<name>.json`) is everything around the duck and everything asked of him: the floor (how tall the stones get, 0 for flat), the speeds asked for, the reward weights, and extras that happen to him. The extras so far are `rocks` (a stone ball thrown at him: its mass in kg, how often and how fast) and `backpack` (a box on his back: its mass in kg). The exam follows the world. Today's worlds: `flat_walking`, `stones_up_to_1cm`, `stones_up_to_3cm`, `stones_up_to_4cm` and `flat_running`.
+- **A body** (`bodies/<name>.json`) is the duck himself, written as changes from the standard duck in `duck/assets/duck.xml`: motor strength (`motor_force_limits`) and stiffness (`motor_stiffness`) by group (`neck`, `hips`, `knees`, `ankles`, `toes`) or motor name, part masses (`part_masses`, by part such as `torso` or `left_thigh`) and the feet's grip (`foot_friction`). `standard` changes nothing. A body changes numbers only, so every brain fits every body.
+
+Two examples:
+
+```json
+{"name": "stones_up_to_2cm_with_rocks", "description": "Cobblestones up to 2 cm and a 100 g rock every 2 s",
+ "floor": {"tallest_stones": 0.02}, "target_speed_range": [0.2, 0.7],
+ "reward": {"forward": 3.0, "alive": 0.2, "energy": 1.5, "sideways": 0.5},
+ "extras": {"rocks": {"mass": 0.1}}, "notes": ""}
+```
+
+```json
+{"name": "strong_legs", "description": "Hip and knee motors twice as strong",
+ "motor_force_limits": {"hips": 8, "knees": 8}, "notes": ""}
+```
+
+A duck names its world and body and keeps **frozen copies** of both in its `duck.json`, and every run keeps its own in `run_settings.json`. Those copies are what training and the tools use, so editing a world or body file later never changes an old duck or a running run. To change a duck's world, make a new duck (or a new run with a note, as Duck 3.1's second run did).
+
+Every tool uses the folder's own world and body; `--world NAME` and `--body NAME` try others, for example Duck 3.1's brain in a stronger body: `.venv/Scripts/python -m duck.evaluate duck_catalogue/duck_03_1/brain --roughness 0.03 --body strong_legs`. A run from before worlds has no settings, so the tools ask for `--world`.
+
 ## Making a new duck
 
 A duck is a training recipe (the rules, the brain and the settings), not a single brain. A new duck starts only when the recipe changes; training longer is the same duck. The catalogue in `duck_catalogue/` holds every duck: its story, its frozen recipe, its best brain and its card. `duck_catalogue/README.md` lists them all.
 
-1. **Change the recipe in the code** and commit it (the recipe records the code version).
-2. **Start the duck** in the catalogue, which freezes the current recipe:
+1. **Pick or make its world and body** (Claude can write the files), and change the code only if the brain or the training settings change; commit it (the recipe records the code version).
+2. **Start the duck** in the catalogue, which freezes the current recipe and copies of its world and body (the body defaults to `standard`):
 
-   `.venv/Scripts/python -m duck.catalogue new duck_catalogue/duck_04 --name "Duck 4"`
+   `.venv/Scripts/python -m duck.catalogue new duck_catalogue/duck_04 --name "Duck 4" --world stones_up_to_4cm --body strong_legs`
 
 3. **Write its story** in `duck_catalogue/duck_04/duck.json`: the summary, what changed, why, and where it starts from.
 4. **Train it**, from zero or from another duck's brain (see Training). Runs of a duck go in `runs/duck_04/<run name>/`, with the training output saved as `train.log` inside the run folder.
 5. **Follow it** on the dashboard, which training opens by itself (see Watching and judging).
-6. **Keep its best brain**: this measures the brain (exam, walking test and gait on both floors), copies it into the catalogue only if its exam beats the kept one, makes its film and rewrites the cards:
+6. **Keep its best brain**: this measures the brain in the run's world and body (exam, walking test and gait on both floors), copies it into the catalogue only if its exam beats the kept one, makes its film and rewrites the cards. If the kept brain was examined in another world, it takes this world's exam first, so the comparison is fair:
 
    `.venv/Scripts/python -m duck.catalogue keep duck_catalogue/duck_04 runs/duck_04/from_duck_03_1/best`
 
@@ -79,13 +105,15 @@ Each kept duck has a 16 second film next to its card (`duck_catalogue/duck_03/du
 
 Train a new run from zero for 4 million steps:
 
-`.venv/Scripts/python -m duck.train --run runs/duck_04/from_zero --steps 4000000`
+`.venv/Scripts/python -m duck.train --duck duck_catalogue/duck_04 --run runs/duck_04/from_zero --steps 4000000`
 
-Train a new run starting from another duck's kept brain (its brain and sense scaling; the new run counts its steps from 0):
+A new run needs `--duck`: it trains in that duck's world and body and saves them as `run_settings.json` in the run folder. Train a new run starting from another duck's kept brain (its brain and sense scaling; the new run counts its steps from 0):
 
-`.venv/Scripts/python -m duck.train --run runs/duck_04/from_duck_03_1 --steps 4000000 --start-from duck_catalogue/duck_03_1/brain`
+`.venv/Scripts/python -m duck.train --duck duck_catalogue/duck_04 --run runs/duck_04/from_duck_03_1 --steps 4000000 --start-from duck_catalogue/duck_03_1/brain`
 
-Continue a stopped run. The number of steps is the total for the whole run, so a bigger number trains on past the first goal:
+A brain from another body fits too (every brain fits every body); add `"brain_from_body": "<name>"` to the run in `duck.json` and the card says so.
+
+Continue a stopped run (it keeps its own world and body, so `--duck` is not needed). The number of steps is the total for the whole run, so a bigger number trains on past the first goal:
 
 `.venv/Scripts/python -m duck.train --run runs/duck_04/from_zero --steps 6000000 --resume`
 
@@ -114,7 +142,7 @@ Follow training live in the browser. The training command starts the dashboard b
 
 `.venv/Scripts/python -m duck.dashboard runs/duck_04/from_zero --steps 4000000`
 
-It opens http://127.0.0.1:8765/ and refreshes itself: steps trained, time left, distance per attempt, whether the score is still improving, score and distance charts, and a 20 second film of the best brain so far on the roughest floor, with its exam score. Buttons slow the film down; a click pauses it. Stopping the dashboard does not affect training, and it keeps running after training ends, so you can still look at the final results.
+It opens http://127.0.0.1:8765/ and refreshes itself: steps trained, time left, distance per attempt, whether the score is still improving, score and distance charts, and a 20 second film of the best brain so far in the run's world and body, on its tallest stones, with its exam score. Buttons slow the film down; a click pauses it. Stopping the dashboard does not affect training, and it keeps running after training ends, so you can still look at the final results.
 
 The other tools take a run folder; the walking test, the live viewer and the video also take `<run>/best` or a duck's `brain` folder:
 
@@ -126,13 +154,13 @@ The other tools take a run folder; the walking test, the live viewer and the vid
 | Drive a brain live: a speed slider and a Reset button. Without a folder it takes the newest brain; double-clicking `duck_catalogue/duck_03_2/Drive Duck 3.2.bat` drives Duck 3.2, the runner | `.venv/Scripts/python -m duck.drive runs/duck_04/from_zero/best` |
 | A film of the whole run, brain by brain | `.venv/Scripts/python -m duck.video runs/duck_04/from_zero` (saved as `evolution.mp4` in the run folder) |
 
-They use the newest brain in the folder; add `--snapshot` with a step count for another one, for example `--snapshot 1007616`. They use the flat floor unless you add `--roughness` with the stone height in metres, for example `--roughness 0.03`. The live viewer also takes `--speed`, for example `--speed 0.6`.
+They use the newest brain in the folder; add `--snapshot` with a step count for another one, for example `--snapshot 1007616`. They use the folder's own world and body (`--world` and `--body` try others; the drive tool always walks on the flat floor and takes only `--body`), and the flat floor unless you add `--roughness` with the stone height in metres, for example `--roughness 0.03`. The live viewer also takes `--speed`, for example `--speed 0.6`.
 
 ## Testing a kept duck
 
 ### Challenges
 
-Challenges put a duck's kept brain in situations it never trained for. They are tests, not training: the brain does not change. Run one or more for a duck:
+Challenges put a duck's kept brain in situations it never trained for. They are tests, not training: the brain does not change. The duck keeps its own body, and each challenge changes his world (its energy weight turns energy points into joules). Run one or more for a duck:
 
 `.venv/Scripts/python -m duck.challenges duck_catalogue/duck_03_1 speed backpack perilous_road rocks`
 
@@ -157,8 +185,9 @@ Add `--films` to also film attempt 1 of every value of the challenges you run, k
 |---|---|---|
 | `duck/` | The code: the duck's world, training, exam, tools | Yes |
 | `tests/` | One test file per code file; run them all with `.venv/Scripts/python -m pytest` (about 25 minutes) | Yes |
-| `duck_catalogue/` | One folder per duck: `duck.json` (story and recipe), `brain/` (its best brain), `results.json`, `card.md`, its film, and `challenges/` with the results of the challenges it took | Yes, except the films |
-| `runs/duck_NN/<run>/` | Each duck's training runs: saved brains, `best/`, logs | No |
+| `worlds/`, `bodies/` | The world and body files (see Worlds and bodies) | Yes |
+| `duck_catalogue/` | One folder per duck: `duck.json` (story, recipe, world and body), `brain/` (its best brain), `results.json`, `card.md`, its film, and `challenges/` with the results of the challenges it took | Yes, except the films |
+| `runs/duck_NN/<run>/` | Each duck's training runs: saved brains, `best/`, logs, `run_settings.json` | No |
 | `runs/early_experiments/` | The runs from the first day, before the catalogue; its `README.md` explains each one | Only the README |
 | `docs/designs/`, `docs/plans/` | The design notes and build plans | Yes |
 
