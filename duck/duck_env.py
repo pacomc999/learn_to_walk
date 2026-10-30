@@ -51,6 +51,11 @@ OBSERVATION_SIZE = 39
 # The torso is lifted above the highest floor point within this distance of the start, in metres
 START_CLEARANCE_RADIUS = 0.15
 
+# Size of the pictures in films, in pixels (the most duck.xml makes room for).
+# Measured: a 16 s film takes about the same time as at 448 x 336, since the physics is the slow part
+FILM_WIDTH = 1280
+FILM_HEIGHT = 960
+
 # Observation values are kept within this limit (a finite bound, not infinity)
 OBSERVATION_LIMIT = 1e6
 
@@ -63,8 +68,8 @@ class DuckWalkEnv(gymnasium.Env):
         render_mode: str | None = None,
         reward_weights: RewardWeights = RewardWeights(),
         target_speed: float | None = None,
-        width: int = 640,
-        height: int = 480,
+        width: int = FILM_WIDTH,
+        height: int = FILM_HEIGHT,
         roughness: float | None = None,
     ):
         self.render_mode = render_mode

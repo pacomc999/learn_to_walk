@@ -13,7 +13,7 @@ import imageio
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont
 
-from duck.duck_env import EVALUATION_TARGET_SPEED, DuckWalkEnv
+from duck.duck_env import EVALUATION_TARGET_SPEED, FILM_HEIGHT, FILM_WIDTH, DuckWalkEnv
 from duck.floor import roughness_argument
 from duck.policy import load_policy
 from duck.snapshots import choose_for_video, list_snapshots
@@ -78,8 +78,8 @@ def add_caption(frame: np.ndarray, text: str) -> np.ndarray:
 # After a fall the duck keeps being simulated with zero actions, so it stays on screen lying down.
 # on_frame, if given, is told the observation and whether the duck has fallen at every picture.
 # roughness is the height of the cobblestones in metres (0.0 is the flat floor)
-def record_clip(policy, seconds: float = 6.0, fps: int = 30, width: int = 640,
-                height: int = 480, seed: int = 0,
+def record_clip(policy, seconds: float = 6.0, fps: int = 30, width: int = FILM_WIDTH,
+                height: int = FILM_HEIGHT, seed: int = 0,
                 on_frame: Callable[[np.ndarray, bool], None] | None = None,
                 roughness: float = 0.0) -> list[np.ndarray]:
     frame_count = round(seconds * fps)

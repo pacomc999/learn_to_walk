@@ -19,6 +19,7 @@ from typing import Callable
 import imageio
 import numpy as np
 
+from duck.duck_env import FILM_HEIGHT, FILM_WIDTH
 from duck.exam import EXAM_FIRST_SEED, best_folder, exam_at
 from duck.floor import MAX_ROUGHNESS
 from duck.policy import BrainReading, load_brain, load_policy
@@ -35,13 +36,13 @@ CLIP_NAME = "dashboard_latest.mp4"
 BRAIN_NAME = "dashboard_latest_brain.json"
 CLIP_STEPS_NAME = "dashboard_latest_steps.txt"
 
-# Film size and length: a whole 20 s attempt, like the exam. Measured while training: about
-# 12 s to make (8.9 s for an 8 s film; most of it is loading and setup), under 1 MB of files.
+# Film size and length: a whole 20 s attempt, like the exam, at the full film size.
+# Measured on the rough floor: about 45 s to make, loading included, and about 6 MB.
 # Both sides are multiples of 16, which video files need
 CLIP_SECONDS = 20.0
 CLIP_FPS = 15
-CLIP_WIDTH = 448
-CLIP_HEIGHT = 336
+CLIP_WIDTH = FILM_WIDTH
+CLIP_HEIGHT = FILM_HEIGHT
 
 # Where things sit in the duck's 39 number observation
 QUATERNION = slice(2, 6)
