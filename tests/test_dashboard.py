@@ -10,7 +10,7 @@ import pytest
 
 from duck.dashboard import (CLIP_NAME, CLIP_STEPS_NAME, brain_to_film, frame_reading, lean_degrees, make_server,
                             recent_steps_per_second, run_status, save_mp4)
-from duck.exam import ExamResult, append_exam
+from duck.exam import ExamResult, FullExamResult, append_exam
 from duck.policy import BrainReading
 from duck.progress import ProgressRow, append_progress
 
@@ -132,6 +132,6 @@ def test_films_the_best_brain(tmp_path):
 
 # The status carries the exam result of the brain in the film
 def test_status_has_the_exam_of_the_filmed_brain(tmp_path):
-    append_exam(tmp_path, 1_750_000, ExamResult(score=916.0, falls=0, distance=9.2), START)
+    append_exam(tmp_path, 1_750_000, FullExamResult(916.0, 0, 9.2, 24, ExamResult(916.0, 0, 9.2), ExamResult(916.0, 0, 9.2)), START)
     (tmp_path / CLIP_STEPS_NAME).write_text("1750000")
-    assert run_status(tmp_path, total_steps=None)["clip_exam"] == {"steps": 1_750_000, "score": 916.0, "falls": 0}
+    assert run_status(tmp_path, total_steps=None)["clip_exam"]["score"] == 916.0

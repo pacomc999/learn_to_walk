@@ -23,7 +23,7 @@ from stable_baselines3.common.monitor import Monitor
 from stable_baselines3.common.vec_env import DummyVecEnv, SubprocVecEnv, VecEnv, VecNormalize
 
 from duck.duck_env import OBSERVATION_SIZE, DuckWalkEnv
-from duck.exam import append_exam, best_exam_score, best_folder, take_exam
+from duck.exam import append_exam, best_exam_score, best_folder, take_full_exam
 from duck.mirror import MirroredRunningMeanStd
 from duck.progress import append_progress
 from duck.snapshots import (Snapshot, latest_snapshot, list_snapshots, save_snapshot,
@@ -287,9 +287,10 @@ class ExamCallback(BaseCallback):
         if steps == self.last_exam_steps:
             return
         self.last_exam_steps = steps
-        result = take_exam(self.model, self.vec_normalize)
+        result = take_full_exam(self.model, self.vec_normalize)
         append_exam(self.run_dir, steps, result, datetime.now())
-        message = f"Exam at {steps:,} steps: score {result.score:.0f}, falls {result.falls} of 12."
+        message = (f"Exam at {steps:,} steps: score {result.score:.0f}, falls {result.falls} of {result.attempts} "
+                   f"(flat {result.flat.score:.0f}, rough {result.rough.score:.0f}).")
         if self.best_score is None or result.score > self.best_score:
             self.best_score = result.score
             self.exams_without_best = 0
