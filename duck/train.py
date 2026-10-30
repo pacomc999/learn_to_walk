@@ -12,6 +12,7 @@ Start a new run from another run's brain (a run folder, its best/ folder or a du
 """
 import argparse
 import ctypes
+import functools
 import socket
 import subprocess
 import sys
@@ -28,10 +29,13 @@ from stable_baselines3.common.monitor import Monitor
 from stable_baselines3.common.vec_env import DummyVecEnv, SubprocVecEnv, VecEnv, VecNormalize
 
 from duck.dashboard import DEFAULT_PORT
+from duck.bodies import Body
 from duck.duck_env import OBSERVATION_SIZE, DuckWalkEnv
+from duck.worlds import World
 from duck.exam import append_exam, best_exam_score, best_folder, parts_in_words, take_full_exam
 from duck.mirror import MirroredRunningMeanStd
 from duck.progress import append_progress
+from duck.run_settings import RunSettings
 from duck.snapshots import (Snapshot, latest_snapshot, list_snapshots, remove_other_snapshots, save_snapshot,
                             set_aside_broken_snapshot, snapshot_paths)
 from duck.symmetric_policy import SymmetricPolicy
@@ -97,15 +101,15 @@ USED_RUN_FOLDER_MESSAGE = (
 )
 
 
-# One duck world with a Monitor that records each attempt's score, length and forward distance.
-# It lives at module level so Windows can start it in a new process (spawn).
-def make_duck_env() -> Monitor:
-    return Monitor(DuckWalkEnv(), info_keywords=("forward_distance",))
+# One duck (a body) in a world, with a Monitor that records each attempt's score, length and forward
+# distance. It lives at module level so Windows can start it in a new process (spawn)
+def make_duck_env(world: World, body: Body) -> Monitor:
+    return Monitor(DuckWalkEnv(world=world, body=body), info_keywords=("forward_distance",))
 
 
 # Several duck worlds side by side, each in its own process or all in this one
-def _build_raw_vec_env(n_envs: int, seed: int, use_subprocess: bool) -> VecEnv:
-    env_factories = [make_duck_env] * n_envs
+def _build_raw_vec_env(n_envs: int, seed: int, use_subprocess: bool, world: World, body: Body) -> VecEnv:
+    env_factories = [functools.partial(make_duck_env, world, body)] * n_envs
     if use_subprocess:
         venv = SubprocVecEnv(env_factories, start_method="spawn")
     else:
@@ -115,8 +119,8 @@ def _build_raw_vec_env(n_envs: int, seed: int, use_subprocess: bool) -> VecEnv:
 
 
 # The duck worlds wrapped so observations and rewards are scaled to friendly sizes
-def build_vec_env(n_envs: int, seed: int, use_subprocess: bool = True) -> VecNormalize:
-    venv = _build_raw_vec_env(n_envs, seed, use_subprocess)
+def build_vec_env(n_envs: int, seed: int, world: World, body: Body, use_subprocess: bool = True) -> VecNormalize:
+    venv = _build_raw_vec_env(n_envs, seed, use_subprocess, world, body)
     vec_normalize = VecNormalize(venv, norm_obs=True, norm_reward=True)
     # Scale mirrored senses together so left and right keep the same scaling
     vec_normalize.obs_rms = MirroredRunningMeanStd(shape=(OBSERVATION_SIZE,))
@@ -255,10 +259,12 @@ class TrainingStatsCallback(BaseCallback):
 # Each result goes to the exam log, and a brain that beats the best score so far is kept in <run>/best/.
 # After `patience` exams in a row without a new best, training stops (patience 0: never)
 class ExamCallback(BaseCallback):
-    def __init__(self, run_dir: Path, vec_normalize: VecNormalize, exam_every: int,
+    def __init__(self, run_dir: Path, vec_normalize: VecNormalize, exam_every: int, world: World, body: Body,
                  patience: int = DEFAULT_PATIENCE):
         super().__init__()
         self.run_dir = run_dir
+        self.world = world
+        self.body = body
         self.vec_normalize = vec_normalize
         self.exam_every = exam_every
         self.patience = patience
@@ -296,7 +302,7 @@ class ExamCallback(BaseCallback):
         if steps == self.last_exam_steps:
             return
         self.last_exam_steps = steps
-        result = take_full_exam(self.model, self.vec_normalize)
+        result = take_full_exam(self.model, self.vec_normalize, self.world, self.body)
         append_exam(self.run_dir, steps, result, datetime.now())
         message = (f"Exam at {steps:,} steps: score {result.score:.0f}, falls {result.falls} of {result.attempts} "
                    f"({parts_in_words(result)}).")
@@ -334,10 +340,10 @@ def _refuse_used_run_folder(run_dir: Path) -> None:
 
 
 # A brand new untrained brain, saved as the step 0 snapshot
-def _new_model(run_dir: Path, n_envs: int, use_subprocess: bool,
-               ent_coef: float | None, ppo_overrides: dict | None) -> tuple[PPO, VecNormalize]:
+def _new_model(run_dir: Path, n_envs: int, use_subprocess: bool, ent_coef: float | None,
+               ppo_overrides: dict | None, world: World, body: Body) -> tuple[PPO, VecNormalize]:
     _refuse_used_run_folder(run_dir)
-    vec_normalize = build_vec_env(n_envs, seed=0, use_subprocess=use_subprocess)
+    vec_normalize = build_vec_env(n_envs, seed=0, world=world, body=body, use_subprocess=use_subprocess)
     settings = {**DEFAULT_PPO_SETTINGS, **(ppo_overrides or {})}
     if ent_coef is not None:
         settings["ent_coef"] = ent_coef
@@ -359,12 +365,14 @@ def _load_snapshot(snap: Snapshot, venv: VecEnv) -> tuple[PPO, VecNormalize]:
 # The brain and statistics from the newest snapshot that loads, ready to keep learning.
 # A broken snapshot (for example a damaged file) is set aside with a warning,
 # and the one before it is tried instead
-def load_latest_snapshot(run_dir: Path, n_envs: int, use_subprocess: bool) -> tuple[PPO, VecNormalize]:
+def load_latest_snapshot(run_dir: Path, n_envs: int, use_subprocess: bool, world: World,
+                         body: Body) -> tuple[PPO, VecNormalize]:
     snapshots = list_snapshots(run_dir)
     if not snapshots:
         raise FileNotFoundError(f"No complete snapshot to resume from in {run_dir}")
     # A new seed per resume so the worlds do not replay the same starts
-    venv = _build_raw_vec_env(n_envs, seed=snapshots[-1].steps, use_subprocess=use_subprocess)
+    venv = _build_raw_vec_env(n_envs, seed=snapshots[-1].steps, use_subprocess=use_subprocess,
+                              world=world, body=body)
     for snap in reversed(snapshots):
         try:
             model, vec_normalize = _load_snapshot(snap, venv)
@@ -380,9 +388,9 @@ def load_latest_snapshot(run_dir: Path, n_envs: int, use_subprocess: bool) -> tu
 
 
 # The newest snapshot's brain, with a new curiosity value if one is given
-def _resumed_model(run_dir: Path, n_envs: int, use_subprocess: bool,
-                   ent_coef: float | None) -> tuple[PPO, VecNormalize]:
-    model, vec_normalize = load_latest_snapshot(run_dir, n_envs, use_subprocess)
+def _resumed_model(run_dir: Path, n_envs: int, use_subprocess: bool, ent_coef: float | None,
+                   world: World, body: Body) -> tuple[PPO, VecNormalize]:
+    model, vec_normalize = load_latest_snapshot(run_dir, n_envs, use_subprocess, world, body)
     if ent_coef is not None:
         model.ent_coef = ent_coef  # more curiosity from here on
     return model, vec_normalize
@@ -397,12 +405,12 @@ def _refuse_start_from_with_resume(start_from: Path | None, resume: bool) -> Non
 # A new run that begins with the newest complete brain in another folder, counting steps from 0.
 # The source folder is only read. The started brain is saved as this run's step 0 snapshot
 def _started_model(run_dir: Path, start_from: Path, n_envs: int, use_subprocess: bool,
-                   ent_coef: float | None) -> tuple[PPO, VecNormalize]:
+                   ent_coef: float | None, world: World, body: Body) -> tuple[PPO, VecNormalize]:
     _refuse_used_run_folder(run_dir)
     source = latest_snapshot(start_from)
     if source is None:
         raise FileNotFoundError(f"No complete snapshot to start from in {start_from}")
-    venv = _build_raw_vec_env(n_envs, seed=0, use_subprocess=use_subprocess)
+    venv = _build_raw_vec_env(n_envs, seed=0, use_subprocess=use_subprocess, world=world, body=body)
     model, vec_normalize = _load_snapshot(source, venv)
     model.num_timesteps = 0  # the new run counts from 0
     if ent_coef is not None:
@@ -412,19 +420,24 @@ def _started_model(run_dir: Path, start_from: Path, n_envs: int, use_subprocess:
     return model, vec_normalize
 
 
-# Train a new run or resume one until total_steps in total, saving snapshots and progress
-def train(run_dir: Path, total_steps: int, snapshot_every: int = 1_000_000, n_envs: int = 8,
-          ent_coef: float | None = None, resume: bool = False, use_subprocess: bool = True,
+# Train a new run or resume one until total_steps in total, saving snapshots and progress.
+# settings gives the world and body the run trains in
+def train(run_dir: Path, total_steps: int, settings: RunSettings | None = None, snapshot_every: int = 1_000_000,
+          n_envs: int = 8, ent_coef: float | None = None, resume: bool = False, use_subprocess: bool = True,
           ppo_overrides: dict | None = None, exam_every: int = DEFAULT_EXAM_EVERY,
           patience: int = DEFAULT_PATIENCE, start_from: Path | None = None) -> PPO:
     run_dir = Path(run_dir)
     _refuse_start_from_with_resume(start_from, resume)
+    if settings is None:
+        raise ValueError("A run needs its world and body: give --duck for a new run.")
+    world, body = settings.world, settings.body
     if start_from is not None:
-        model, vec_normalize = _started_model(run_dir, Path(start_from), n_envs, use_subprocess, ent_coef)
+        model, vec_normalize = _started_model(run_dir, Path(start_from), n_envs, use_subprocess, ent_coef,
+                                              world, body)
     elif resume:
-        model, vec_normalize = _resumed_model(run_dir, n_envs, use_subprocess, ent_coef)
+        model, vec_normalize = _resumed_model(run_dir, n_envs, use_subprocess, ent_coef, world, body)
     else:
-        model, vec_normalize = _new_model(run_dir, n_envs, use_subprocess, ent_coef, ppo_overrides)
+        model, vec_normalize = _new_model(run_dir, n_envs, use_subprocess, ent_coef, ppo_overrides, world, body)
 
     try:
         steps_left = total_steps - model.num_timesteps
@@ -433,7 +446,7 @@ def train(run_dir: Path, total_steps: int, snapshot_every: int = 1_000_000, n_en
         # The stats are logged before the step size changes, so each row shows the rate its update used
         callbacks = [SnapshotCallback(run_dir, vec_normalize, snapshot_every), ProgressCallback(run_dir),
                      TrainingStatsCallback(run_dir), AdaptiveStepSizeCallback(),
-                     ExamCallback(run_dir, vec_normalize, exam_every, patience)]
+                     ExamCallback(run_dir, vec_normalize, exam_every, world, body, patience)]
         with keep_awake():
             model.learn(total_timesteps=steps_left, callback=callbacks, reset_num_timesteps=False)
         return model
@@ -441,7 +454,6 @@ def train(run_dir: Path, total_steps: int, snapshot_every: int = 1_000_000, n_en
         vec_normalize.close()  # stop the worker processes
 
 
-# Read the command line options and start training
 # ---------- The live dashboard ----------
 
 # Whether something already answers on the dashboard's port (an earlier dashboard still running)
@@ -465,6 +477,7 @@ def start_dashboard(run_dir: Path, total_steps: int) -> None:
     print(f"Dashboard starting at {address}", flush=True)
 
 
+# Read the command line options and start training
 def main() -> None:
     parser = argparse.ArgumentParser(description="Teach the duck to walk with PPO.")
     parser.add_argument("--run", type=Path, required=True, help="run folder, for example runs/duck_v1")

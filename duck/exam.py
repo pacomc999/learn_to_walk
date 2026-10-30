@@ -5,10 +5,11 @@ speed per attempt, so it jumps around a lot. The exam removes that noise: the sa
 12 starts every time, asked speeds spread evenly across the training range
 (from Duck 3.2's second run; before, each attempt's seed drew a random speed),
 and the brain's best action without wobble.
-When training is flat (TRAINING_ROUGHNESS 0) the exam is 12 attempts on the flat floor.
-When training is on stones, the exam matches training: 24 attempts with floor heights spread evenly
-from flat up to TRAINING_ROUGHNESS (from Duck 3.1's second run). It is reported in two halves, the
+The exam follows the duck's world. In a flat world it is 12 attempts on the flat floor.
+In a world with stones it matches training: 24 attempts with floor heights spread evenly
+from flat up to the world's tallest stones (from Duck 3.1's second run). It is reported in two halves, the
 lower stones and the taller stones, and the score is the average of all 24.
+The world's extras (rocks, a backpack) are on in every attempt, each attempt's seed fixing them.
 Older logs have a flat part and a rough part instead (12 flat, 12 climbing rough), kept readable.
 Results go to <run>/exam.csv; the best brain so far is kept in <run>/best/.
 """
@@ -19,8 +20,9 @@ from pathlib import Path
 
 import numpy as np
 
-from duck.duck_env import TARGET_SPEED_RANGE, DuckWalkEnv
-from duck.floor import TRAINING_ROUGHNESS
+from duck.bodies import Body
+from duck.duck_env import DuckWalkEnv
+from duck.worlds import World
 
 # The same attempts every exam: seeds from 1000 (each its own start), asked speeds from exam_speeds.
 # A flat exam has 12 attempts, a stone exam 24 (seeds 1000 to 1023)
@@ -78,22 +80,22 @@ def _exam_attempt(model, vec_normalize, env: DuckWalkEnv, seed: int) -> tuple[fl
             return total, fell, info["forward_distance"]
 
 
-# The floor height of each stone exam attempt: evenly spread from flat up to TRAINING_ROUGHNESS, like
-# training, which picks any height from 0 to the most (at 4 cm: 0, 0.17 cm, 0.35 cm, ... 4 cm)
-def stone_exam_heights(attempts: int = STONE_EXAM_ATTEMPTS) -> list[float]:
-    return [TRAINING_ROUGHNESS * i / (attempts - 1) for i in range(attempts)]
+# The floor height of each stone exam attempt: evenly spread from flat up to the world's tallest stones,
+# like training, which picks any height from 0 to the most (at 4 cm: 0, 0.17 cm, 0.35 cm, ... 4 cm)
+def stone_exam_heights(world: World, attempts: int = STONE_EXAM_ATTEMPTS) -> list[float]:
+    return [world.tallest_stones * i / (attempts - 1) for i in range(attempts)]
 
 
 # The asked speed of each stone exam attempt: each half uses all 12 exam speeds, mixed (see SPEED_MIX_STEP)
-def stone_exam_speeds(attempts: int = STONE_EXAM_ATTEMPTS) -> list[float]:
-    speeds = exam_speeds(EXAM_ATTEMPTS)
+def stone_exam_speeds(world: World, attempts: int = STONE_EXAM_ATTEMPTS) -> list[float]:
+    speeds = exam_speeds(world, EXAM_ATTEMPTS)
     return [speeds[(i * SPEED_MIX_STEP) % EXAM_ATTEMPTS] for i in range(attempts)]
 
 
-# The asked speed of each exam attempt: evenly spread from the slowest to the fastest training speed
+# The asked speed of each exam attempt: evenly spread from the slowest to the fastest speed of the world
 # (at 0.2 to 1.5 m/s: 0.20, 0.32, ... 1.50), so the exam covers the same speeds as training
-def exam_speeds(attempts: int = EXAM_ATTEMPTS) -> list[float]:
-    low, high = TARGET_SPEED_RANGE
+def exam_speeds(world: World, attempts: int = EXAM_ATTEMPTS) -> list[float]:
+    low, high = world.target_speed_range
     if attempts == 1:
         return [low]
     return [low + (high - low) * i / (attempts - 1) for i in range(attempts)]
@@ -101,16 +103,18 @@ def exam_speeds(attempts: int = EXAM_ATTEMPTS) -> list[float]:
 
 # One attempt on its own floor height. Each attempt keeps its seed, so its target speed
 # and stone layout are the same at every height; only the stones' height changes
-def _exam_attempt_on(model, vec_normalize, seed: int, roughness: float, speed: float) -> tuple[float, bool, float]:
-    env = DuckWalkEnv(roughness=roughness, target_speed=speed)
+def _exam_attempt_on(model, vec_normalize, world: World, body: Body, seed: int, roughness: float,
+                     speed: float) -> tuple[float, bool, float]:
+    env = DuckWalkEnv(world=world, body=body, roughness=roughness, target_speed=speed)
     result = _exam_attempt(model, vec_normalize, env, seed)
     env.close()
     return result
 
 
 # A group of attempts, each with its own seed, floor height and asked speed, summed up as one part
-def _exam_part(model, vec_normalize, seeds: list[int], heights: list[float], speeds: list[float]) -> ExamResult:
-    results = [_exam_attempt_on(model, vec_normalize, seed, height, speed)
+def _exam_part(model, vec_normalize, world: World, body: Body, seeds: list[int], heights: list[float],
+               speeds: list[float]) -> ExamResult:
+    results = [_exam_attempt_on(model, vec_normalize, world, body, seed, height, speed)
                for seed, height, speed in zip(seeds, heights, speeds)]
     scores, falls, distances = zip(*results)
     return ExamResult(float(np.mean(scores)), int(sum(falls)), float(np.mean(distances)))
@@ -118,20 +122,20 @@ def _exam_part(model, vec_normalize, seeds: list[int], heights: list[float], spe
 
 # Give the brain one part of the exam, using the sense scaling it trains with (without changing it).
 # roughness is one floor height for every attempt, or a list with one height per attempt
-def take_exam(model, vec_normalize, attempts: int = EXAM_ATTEMPTS,
+def take_exam(model, vec_normalize, world: World, body: Body, attempts: int = EXAM_ATTEMPTS,
               roughness: float | list[float] = 0.0) -> ExamResult:
     heights = roughness if isinstance(roughness, list) else [roughness] * attempts
     seeds = [EXAM_FIRST_SEED + i for i in range(attempts)]
-    return _exam_part(model, vec_normalize, seeds, heights[:attempts], exam_speeds(attempts))
+    return _exam_part(model, vec_normalize, world, body, seeds, heights[:attempts], exam_speeds(world, attempts))
 
 
 # The stone exam: 24 attempts from flat to the tallest stones, scored in a lower and a taller half
-def _take_stone_exam(model, vec_normalize) -> FullExamResult:
+def _take_stone_exam(model, vec_normalize, world: World, body: Body) -> FullExamResult:
     seeds = [EXAM_FIRST_SEED + i for i in range(STONE_EXAM_ATTEMPTS)]
-    heights, speeds = stone_exam_heights(), stone_exam_speeds()
+    heights, speeds = stone_exam_heights(world), stone_exam_speeds(world)
     half = STONE_EXAM_ATTEMPTS // 2
-    lower = _exam_part(model, vec_normalize, seeds[:half], heights[:half], speeds[:half])
-    taller = _exam_part(model, vec_normalize, seeds[half:], heights[half:], speeds[half:])
+    lower = _exam_part(model, vec_normalize, world, body, seeds[:half], heights[:half], speeds[:half])
+    taller = _exam_part(model, vec_normalize, world, body, seeds[half:], heights[half:], speeds[half:])
     return FullExamResult(
         score=(lower.score + taller.score) / 2,  # both halves have 12 attempts: the average of all 24
         falls=lower.falls + taller.falls,
@@ -141,11 +145,11 @@ def _take_stone_exam(model, vec_normalize) -> FullExamResult:
     )
 
 
-# Give the brain the exam: flat when training is flat, otherwise the stone exam
-def take_full_exam(model, vec_normalize) -> FullExamResult:
-    if TRAINING_ROUGHNESS > 0.0:
-        return _take_stone_exam(model, vec_normalize)
-    flat = take_exam(model, vec_normalize, roughness=0.0)
+# Give the brain the exam of its world: flat when the world is flat, otherwise the stone exam
+def take_full_exam(model, vec_normalize, world: World, body: Body) -> FullExamResult:
+    if world.tallest_stones > 0.0:
+        return _take_stone_exam(model, vec_normalize, world, body)
+    flat = take_exam(model, vec_normalize, world, body, roughness=0.0)
     return FullExamResult(score=flat.score, falls=flat.falls, distance=flat.distance,
                           attempts=EXAM_ATTEMPTS, parts={"flat": flat})
 
