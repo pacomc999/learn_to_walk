@@ -243,3 +243,27 @@ def test_start_dashboard_starts_one(monkeypatch, tmp_path):
     monkeypatch.setattr(duck.train.subprocess, "Popen", lambda command, **kwargs: started.append(command))
     duck.train.start_dashboard(Path("runs/x"), 1000)
     assert started[0][1:] == ["-m", "duck.dashboard", str(Path("runs/x")), "--steps", "1000"]
+
+
+# A new run writes its world and body next to its snapshots
+def test_new_run_writes_its_settings(tmp_path):
+    from duck.run_settings import read_run_settings
+    train(tmp_path, total_steps=0, **FAST)
+    assert read_run_settings(tmp_path) == FLAT_SETTINGS
+
+
+# A resumed run keeps its own settings, whatever settings are passed
+def test_resume_keeps_its_own_settings(tmp_path):
+    from duck.run_settings import read_run_settings
+    train(tmp_path, total_steps=512, snapshot_every=512, exam_every=10_000, **FAST)
+    other = {**FAST, "settings": None}
+    train(tmp_path, total_steps=1024, snapshot_every=512, exam_every=10_000, resume=True, **other)
+    assert read_run_settings(tmp_path) == FLAT_SETTINGS
+
+
+# A resume of a run with no settings file stops with a plain message
+def test_resume_without_settings_is_refused(tmp_path):
+    train(tmp_path, total_steps=0, **FAST)
+    (tmp_path / "run_settings.json").unlink()
+    with pytest.raises(ValueError, match="world"):
+        train(tmp_path, total_steps=512, resume=True, **{**FAST, "settings": None})

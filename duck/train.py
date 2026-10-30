@@ -35,7 +35,7 @@ from duck.worlds import World
 from duck.exam import append_exam, best_exam_score, best_folder, parts_in_words, take_full_exam
 from duck.mirror import MirroredRunningMeanStd
 from duck.progress import append_progress
-from duck.run_settings import RunSettings
+from duck.run_settings import RunSettings, duck_settings, read_run_settings, write_run_settings
 from duck.snapshots import (Snapshot, latest_snapshot, list_snapshots, remove_other_snapshots, save_snapshot,
                             set_aside_broken_snapshot, snapshot_paths)
 from duck.symmetric_policy import SymmetricPolicy
@@ -420,16 +420,29 @@ def _started_model(run_dir: Path, start_from: Path, n_envs: int, use_subprocess:
     return model, vec_normalize
 
 
+# The world and body a run trains in: a resumed run's own settings file comes first, then the settings
+# given (written next to the run, so it keeps them). With neither, stop with a plain message
+def _run_settings(run_dir: Path, settings: RunSettings | None, resume: bool) -> RunSettings:
+    own = read_run_settings(run_dir) if resume else None
+    if own is not None:
+        return own
+    if settings is None:
+        raise ValueError("This run has no world and body yet. Start a new run with --duck DUCK_FOLDER.")
+    write_run_settings(run_dir, settings)
+    return settings
+
+
 # Train a new run or resume one until total_steps in total, saving snapshots and progress.
-# settings gives the world and body the run trains in
+# settings gives the world and body of a new run; a resumed run uses its own run_settings.json
 def train(run_dir: Path, total_steps: int, settings: RunSettings | None = None, snapshot_every: int = 1_000_000,
           n_envs: int = 8, ent_coef: float | None = None, resume: bool = False, use_subprocess: bool = True,
           ppo_overrides: dict | None = None, exam_every: int = DEFAULT_EXAM_EVERY,
           patience: int = DEFAULT_PATIENCE, start_from: Path | None = None) -> PPO:
     run_dir = Path(run_dir)
     _refuse_start_from_with_resume(start_from, resume)
-    if settings is None:
-        raise ValueError("A run needs its world and body: give --duck for a new run.")
+    if not resume:
+        _refuse_used_run_folder(run_dir)  # before writing anything into the folder
+    settings = _run_settings(run_dir, settings, resume)
     world, body = settings.world, settings.body
     if start_from is not None:
         model, vec_normalize = _started_model(run_dir, Path(start_from), n_envs, use_subprocess, ent_coef,
@@ -480,7 +493,9 @@ def start_dashboard(run_dir: Path, total_steps: int) -> None:
 # Read the command line options and start training
 def main() -> None:
     parser = argparse.ArgumentParser(description="Teach the duck to walk with PPO.")
-    parser.add_argument("--run", type=Path, required=True, help="run folder, for example runs/duck_v1")
+    parser.add_argument("--duck", type=Path, default=None,
+                        help="the duck this new run belongs to, for its world and body, for example duck_catalogue/duck_04")
+    parser.add_argument("--run", type=Path, required=True, help="run folder, for example runs/duck_04/from_zero")
     parser.add_argument("--steps", type=int, required=True, help="total training steps for the whole run")
     parser.add_argument("--resume", action="store_true", help="continue from the newest snapshot")
     parser.add_argument("--start-from", type=Path, default=None,
@@ -498,7 +513,10 @@ def main() -> None:
         start_dashboard(args.run, args.steps)
     torch.set_num_threads(MAIN_PROCESS_THREADS)
     try:
-        train(args.run, args.steps, snapshot_every=args.snapshot_every, n_envs=args.envs,
+        if args.duck is None and not args.resume:
+            raise ValueError("A new run needs --duck DUCK_FOLDER, so it knows its world and body.")
+        settings = duck_settings(args.duck) if args.duck else None
+        train(args.run, args.steps, settings=settings, snapshot_every=args.snapshot_every, n_envs=args.envs,
               ent_coef=args.ent_coef, resume=args.resume, exam_every=args.exam_every,
               patience=args.patience, start_from=args.start_from)
     except (FileExistsError, FileNotFoundError, ValueError) as error:
