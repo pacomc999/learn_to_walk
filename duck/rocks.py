@@ -5,18 +5,11 @@ so it pushes the duck by actually hitting it. The duck senses only its own joint
 rock never shows up in its 39 senses. The duck walks on the flat floor at 0.4 m/s, so the
 rocks are the only difficulty. Every 2 s a rock flies at its body from a random side.
 
-Results go to <duck folder>/rocks/results.csv. With --film, the attempts with one rock size
-are filmed to <duck folder>/rocks/films/ with a page that shows them all (films are not kept
-in git; the same command makes them again).
-
-Run from the project root, for example:
-    python -m duck.rocks duck_catalogue/duck_03_1
-    python -m duck.rocks duck_catalogue/duck_03_1 --film 150
+The test runs as the "rocks" challenge of duck/challenges.py, for example:
+    python -m duck.challenges duck_catalogue/duck_03_1 rocks --film 150
+This file holds the world with the rock and the films of one rock size.
 """
-import argparse
-import csv
-import json
-from dataclasses import asdict, dataclass
+from dataclasses import dataclass
 from pathlib import Path
 
 import imageio
@@ -25,7 +18,6 @@ import numpy as np
 
 from duck.duck_env import EVALUATION_TARGET_SPEED, DuckWalkEnv
 from duck.model import DUCK_XML_PATH
-from duck.policy import choose_snapshot_or_exit, load_policy
 from duck.video import add_caption
 
 # The rocks: stone balls (about granite) thrown at 4 m/s from 0.8 m to the side
@@ -43,16 +35,13 @@ ROCK_LIFETIME = 1.0
 # Where the rock waits between throws: off the walking line, behind the start
 PARKED_POSITION = (-1.5, 0.95, 0.05)
 
-# The default test: these rock sizes, 10 attempts of 20 s each
-ROCK_GRAMS = (25, 50, 100, 125, 150, 175, 200, 400)
+# Films: one per attempt, 10 attempts
 ATTEMPTS = 10
 
 # Films: 30 pictures a second, kept running 1.5 s after a fall
 FILM_FPS = 30
 SECONDS_AFTER_FALL = 1.5
 
-RESULTS_NAME = "results.csv"
-FILMS_FOLDER = "films"
 
 
 # ---------- The world with a rock ----------
@@ -146,9 +135,9 @@ class RockWorld(DuckWalkEnv):
         return result
 
 
-# ---------- Testing a brain ----------
+# ---------- Films ----------
 
-# How one attempt went
+# How one filmed attempt went
 @dataclass
 class RockAttempt:
     seconds: float
@@ -156,56 +145,6 @@ class RockAttempt:
     throws: int
     hits: int
 
-
-# How one rock size went over all attempts
-@dataclass
-class RockRound:
-    grams: int
-    radius_cm: float
-    walked: int
-    attempts: int
-    average_seconds: float
-    throws: int
-    hits: int
-
-
-# One 20 s attempt with rocks of this size; seed picks the duck's start and the sides of the throws
-def run_attempt(policy, grams: int, seed: int) -> RockAttempt:
-    env = RockWorld(grams / 1000, throw_seed=seed)
-    observation, _ = env.reset(seed=seed)
-    fell = finished = False
-    while not finished:
-        observation, _, fell, timed_out, _ = env.step(policy(observation))
-        finished = fell or timed_out
-    attempt = RockAttempt(round(env.data.time, 2), fell, env.throws, env.hits)
-    env.close()
-    return attempt
-
-
-# All attempts with one rock size, summed up
-def rock_round(policy, grams: int, attempts: int = ATTEMPTS) -> RockRound:
-    results = [run_attempt(policy, grams, seed) for seed in range(attempts)]
-    return RockRound(
-        grams=grams,
-        radius_cm=round(rock_radius(grams / 1000) * 100, 1),
-        walked=sum(not result.fell for result in results),
-        attempts=attempts,
-        average_seconds=round(float(np.mean([result.seconds for result in results])), 1),
-        throws=sum(result.throws for result in results),
-        hits=sum(result.hits for result in results),
-    )
-
-
-# Save the rounds as a CSV file, one row per rock size
-def write_results(rounds: list[RockRound], path: Path) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    with path.open("w", newline="") as results_file:
-        writer = csv.DictWriter(results_file, fieldnames=list(asdict(rounds[0])))
-        writer.writeheader()
-        writer.writerows(asdict(one_round) for one_round in rounds)
-
-
-# ---------- Films ----------
 
 # The pictures of one attempt, and how it went. Once the duck falls it lies still (no commands)
 def film_attempt(policy, grams: int, seed: int) -> tuple[list[np.ndarray], RockAttempt]:
@@ -297,38 +236,3 @@ def film_page(name: str, grams: int, outcomes: list[RockAttempt]) -> str:
 </body>
 </html>
 """
-
-
-# ---------- Command line ----------
-
-# The duck's name from its story, or the folder name
-def _duck_name(duck_dir: Path) -> str:
-    story_path = duck_dir / "duck.json"
-    if story_path.exists():
-        return json.loads(story_path.read_text(encoding="utf-8"))["name"]
-    return duck_dir.name
-
-
-def main() -> None:
-    parser = argparse.ArgumentParser(description="Throw rocks at a duck's kept brain and count the falls.")
-    parser.add_argument("duck_dir", type=Path, help="duck folder, for example duck_catalogue/duck_03_1")
-    parser.add_argument("--grams", type=int, nargs="+", default=list(ROCK_GRAMS), help="rock sizes to test")
-    parser.add_argument("--film", type=int, default=None, help="also film every attempt with rocks of this size")
-    arguments = parser.parse_args()
-
-    policy = load_policy(choose_snapshot_or_exit(arguments.duck_dir / "brain", None))
-    rounds = []
-    for grams in arguments.grams:
-        one_round = rock_round(policy, grams)
-        rounds.append(one_round)
-        print(f"{grams} g: {one_round.walked} of {one_round.attempts} walked, "
-              f"{one_round.hits} hits of {one_round.throws} throws", flush=True)
-    write_results(rounds, arguments.duck_dir / "rocks" / RESULTS_NAME)
-    if arguments.film is not None:
-        page = film_round(policy, _duck_name(arguments.duck_dir), arguments.film,
-                          arguments.duck_dir / "rocks" / FILMS_FOLDER)
-        print(f"Films and page saved in {page.parent}")
-
-
-if __name__ == "__main__":
-    main()

@@ -36,4 +36,4 @@ Film: [duck_02_1.mp4](duck_02_1.mp4), 16 s of the best brain at 0.4 m/s. It is n
 
 ## Notes
 
-Walks every start of the exam and 10 of 10 walking test attempts, at 12.3 J per metre (Duck 2: 15 to 18). The exam ceiling at its efficiency is about 980 to 1,000, so on flat ground it is close to the most our scoring can tell. It still walks a little faster than asked (7.5 m per exam attempt where the asked speeds give 6.3 m). Duck 3 starts from this brain. Rock test (2026-10-30): thrown stone balls on the flat floor; walks 9 of 10 with 100 g rocks, 4 of 10 with 150 g, none from 175 g. See rocks/results.csv and duck_catalogue/duck_03_1/rocks/README.md.
+Walks every start of the exam and 10 of 10 walking test attempts, at 12.3 J per metre (Duck 2: 15 to 18). The exam ceiling at its efficiency is about 980 to 1,000, so on flat ground it is close to the most our scoring can tell. It still walks a little faster than asked (7.5 m per exam attempt where the asked speeds give 6.3 m). Duck 3 starts from this brain. Challenges (rocks, speed, backpack, taller stones): see challenges/README.md.

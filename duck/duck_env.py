@@ -14,6 +14,7 @@ from duck.model import (
 from duck.floor import (
     MAX_ROUGHNESS,
     floor_heights,
+    floor_most,
     highest_floor_near,
     load_floor_model,
     set_floor,
@@ -144,7 +145,7 @@ class DuckWalkEnv(gymnasium.Env):
         self.roughness = self._pick_roughness()
         if self.fixed_roughness == 0.0:
             return
-        self.floor = floor_heights(self.np_random, self.roughness)
+        self.floor = floor_heights(self.np_random, self.roughness, most=floor_most(self.model))
         set_floor(self.model, self.floor)
         self._upload_floor_to_renderer()
         start_x, start_y = self.data.qpos[0], self.data.qpos[1]

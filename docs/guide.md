@@ -126,13 +126,22 @@ They use the newest brain in the folder; add `--snapshot` with a step count for 
 
 ## Testing a kept duck
 
-### Throwing rocks
+### Challenges
 
-A test of balance that is not part of training: stone balls are thrown at a duck's kept brain while it walks on the flat floor, one every 2 seconds from a random side at 4 m/s, 10 attempts of 20 seconds per rock size from 25 g to 400 g:
+Challenges put a duck's kept brain in situations it never trained for. They are tests, not training: the brain does not change. Run one or more for a duck:
 
-`.venv/Scripts/python -m duck.rocks duck_catalogue/duck_03_1`
+`.venv/Scripts/python -m duck.challenges duck_catalogue/duck_03_1 speed backpack stones rocks`
 
-The results go to `duck_catalogue/duck_03_1/rocks/results.csv`. Add `--film 150` to also film every attempt with 150 g rocks, with a page that plays them side by side (`rocks/films/index.html`, not kept in git). `duck_catalogue/duck_03_1/rocks/README.md` explains the first round and compares three ducks.
+| Challenge | What it asks |
+|---|---|
+| `speed` | Walk at one speed from 0.4 up to 1.5 m/s on the flat floor; training asked for 0.2 to 0.7 |
+| `backpack` | Carry a box of 100 to 800 g on its back, on the flat floor at 0.4 m/s |
+| `stones` | Walk on cobblestones of one height, from 1 up to 8 cm, at 0.4 m/s (30 attempts per height) |
+| `rocks` | Keep walking while a stone ball of 25 to 400 g is thrown at its body every 2 seconds |
+
+Each challenge saves a table, for example `duck_catalogue/duck_03_1/challenges/speed/results.csv`: for each value, how many attempts walked the full 20 seconds, how long it stayed up on average, its actual speed and its energy per metre. The same command always gives the same numbers, so ducks can be compared. `challenges/README.md` is rewritten from all of a duck's tables after every run; remarks written by hand go in `challenges/notes.md` and are copied into it.
+
+Add `--film 150` to the rocks challenge to also film every attempt with 150 g rocks, with a page that plays them side by side (`challenges/rocks/films/index.html`, not kept in git). Change the number of attempts with `--attempts`.
 
 ### The joints
 
@@ -144,7 +153,7 @@ The results go to `duck_catalogue/duck_03_1/rocks/results.csv`. Add `--film 150`
 |---|---|---|
 | `duck/` | The code: the duck's world, training, exam, tools | Yes |
 | `tests/` | One test file per code file; run them all with `.venv/Scripts/python -m pytest` (about 25 minutes) | Yes |
-| `duck_catalogue/` | One folder per duck: `duck.json` (story and recipe), `brain/` (its best brain), `results.json`, `card.md`, its film, and `rocks/` if it took the rock test | Yes, except the films |
+| `duck_catalogue/` | One folder per duck: `duck.json` (story and recipe), `brain/` (its best brain), `results.json`, `card.md`, its film, and `challenges/` with the results of the challenges it took | Yes, except the films |
 | `runs/duck_NN/<run>/` | Each duck's training runs: saved brains, `best/`, logs | No |
 | `runs/early_experiments/` | The runs from the first day, before the catalogue; its `README.md` explains each one | Only the README |
 | `docs/designs/`, `docs/plans/` | The design notes and build plans | Yes |
@@ -160,6 +169,7 @@ The brains still load and walk exactly the same; only a run that is still traini
 ## Ideas for later
 
 - **Falling less:** measure the real fall rate per stone height with many more attempts; give the brain a sense of the ground just ahead of its feet; or count a fall as a direct cost.
+- **More challenges:** slopes, a slippery floor, wind, tired motors, changing the asked speed during a walk.
 - **Pushes in training:** throw rocks during training so the duck learns to catch a shove, which none of the ducks met so far.
 - **Obstacles and steering:** going around things needs the duck to turn.
 - **Moving wings,** trained on top of the walking brain.

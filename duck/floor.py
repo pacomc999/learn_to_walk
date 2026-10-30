@@ -73,10 +73,10 @@ def _square_stones(rng: np.random.Generator) -> np.ndarray:
     return stones
 
 
-# Check a roughness in metres: from 0 up to MAX_ROUGHNESS, otherwise ValueError
-def check_roughness(roughness: float) -> float:
-    if roughness < 0 or roughness > MAX_ROUGHNESS:
-        raise ValueError(f"Roughness must be from 0 to {MAX_ROUGHNESS} metres, not {roughness}.")
+# Check a roughness in metres: from 0 up to the most (MAX_ROUGHNESS unless a test floor allows more)
+def check_roughness(roughness: float, most: float = MAX_ROUGHNESS) -> float:
+    if roughness < 0 or roughness > most:
+        raise ValueError(f"Roughness must be from 0 to {most} metres, not {roughness}.")
     return roughness
 
 
@@ -89,8 +89,8 @@ def roughness_argument(text: str) -> float:
 
 
 # Floor heights in metres, lowest point 0 and highest point exactly the roughness
-def floor_heights(rng: np.random.Generator, roughness: float) -> np.ndarray:
-    check_roughness(roughness)
+def floor_heights(rng: np.random.Generator, roughness: float, most: float = MAX_ROUGHNESS) -> np.ndarray:
+    check_roughness(roughness, most)
     if roughness == 0:
         return np.zeros((FLOOR_ROWS, FLOOR_COLS))
     bumps = _scale_to_unit(_rolling_bumps(rng))
@@ -101,13 +101,13 @@ def floor_heights(rng: np.random.Generator, roughness: float) -> np.ndarray:
 
 
 # The duck XML with the plane floor swapped for a height field geom named "floor"
-def _floor_xml() -> str:
+def _floor_xml(most: float = MAX_ROUGHNESS) -> str:
     xml = DUCK_XML_PATH.read_text()
     half_x = (FLOOR_X_MAX - FLOOR_X_MIN) / 2
     half_y = (FLOOR_Y_MAX - FLOOR_Y_MIN) / 2
     centre_x = (FLOOR_X_MAX + FLOOR_X_MIN) / 2
     hfield = (f'<hfield name="ground" nrow="{FLOOR_ROWS}" ncol="{FLOOR_COLS}" '
-              f'size="{half_x} {half_y} {MAX_ROUGHNESS} 0.05"/>')
+              f'size="{half_x} {half_y} {most} 0.05"/>')
     xml = xml.replace("<asset>", f"<asset>\n    {hfield}", 1)
     start = xml.index('<geom name="floor"')
     end = xml.index("/>", start) + 2
@@ -116,14 +116,19 @@ def _floor_xml() -> str:
     return xml[:start] + floor_geom + xml[end:]
 
 
-# The duck model with a flat height field floor, ready for set_floor
-def load_floor_model() -> mujoco.MjModel:
-    return mujoco.MjModel.from_xml_string(_floor_xml())
+# The duck model with a flat height field floor, ready for set_floor. A test floor can allow taller stones
+def load_floor_model(most: float = MAX_ROUGHNESS) -> mujoco.MjModel:
+    return mujoco.MjModel.from_xml_string(_floor_xml(most))
 
 
 # Write floor heights (metres) into the model's height field
 def set_floor(model: mujoco.MjModel, heights: np.ndarray) -> None:
-    model.hfield_data[:] = (heights / MAX_ROUGHNESS).ravel()
+    model.hfield_data[:] = (heights / floor_most(model)).ravel()
+
+
+# The tallest floor a height field model can hold, in metres (its elevation)
+def floor_most(model: mujoco.MjModel) -> float:
+    return float(model.hfield_size[0][2])
 
 
 # The (row, column) of the cell under a world point, kept inside the grid

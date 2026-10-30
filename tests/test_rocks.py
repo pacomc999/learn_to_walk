@@ -1,12 +1,9 @@
 """Tests for the rock test."""
-import csv
-
 import numpy as np
 import pytest
 
 from duck.duck_env import DuckWalkEnv, EVALUATION_TARGET_SPEED
-from duck.rocks import (FIRST_THROW, PARKED_POSITION, ROCK_LIFETIME, RockAttempt, RockRound, RockWorld,
-                        film_page, rock_radius, rock_round, write_results)
+from duck.rocks import FIRST_THROW, PARKED_POSITION, ROCK_LIFETIME, RockAttempt, RockWorld, film_page, rock_radius
 
 
 # Hold every motor at the standing pose
@@ -48,21 +45,6 @@ def test_a_throw_hits_and_the_rock_is_parked():
     wait_until(env, FIRST_THROW + ROCK_LIFETIME + 0.1)
     # Back at its waiting spot (it then settles onto the floor, so only x and y are checked)
     assert env.data.qpos[env.rock_qpos:env.rock_qpos + 2] == pytest.approx(PARKED_POSITION[:2], abs=0.01)
-
-
-# A round sums up its attempts
-def test_rock_round_sums_its_attempts():
-    one_round = rock_round(stand_still, grams=25, attempts=2)
-    assert one_round.attempts == 2 and 0 <= one_round.walked <= 2
-    assert one_round.hits <= one_round.throws and one_round.radius_cm == pytest.approx(1.3, abs=0.1)
-
-
-# The results file has one row per rock size with every number
-def test_write_results(tmp_path):
-    rounds = [RockRound(100, 2.1, 10, 10, 20.0, 90, 90), RockRound(200, 2.7, 0, 10, 6.2, 26, 26)]
-    write_results(rounds, tmp_path / "rocks" / "results.csv")
-    rows = list(csv.DictReader((tmp_path / "rocks" / "results.csv").open()))
-    assert [row["grams"] for row in rows] == ["100", "200"] and rows[1]["walked"] == "0"
 
 
 # The film page shows every attempt with how it ended
