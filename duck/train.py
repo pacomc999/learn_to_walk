@@ -509,13 +509,18 @@ def main() -> None:
     parser.add_argument("--no-dashboard", action="store_true", help="do not open the live dashboard")
     args = parser.parse_args()
 
-    if not args.no_dashboard:
-        start_dashboard(args.run, args.steps)
-    torch.set_num_threads(MAIN_PROCESS_THREADS)
+    # A new run needs its duck: check that before anything starts, the dashboard included
     try:
         if args.duck is None and not args.resume:
             raise ValueError("A new run needs --duck DUCK_FOLDER, so it knows its world and body.")
         settings = duck_settings(args.duck) if args.duck else None
+    except ValueError as error:
+        print(error)  # a plain message, no traceback
+        raise SystemExit(1)
+    if not args.no_dashboard:
+        start_dashboard(args.run, args.steps)
+    torch.set_num_threads(MAIN_PROCESS_THREADS)
+    try:
         train(args.run, args.steps, settings=settings, snapshot_every=args.snapshot_every, n_envs=args.envs,
               ent_coef=args.ent_coef, resume=args.resume, exam_every=args.exam_every,
               patience=args.patience, start_from=args.start_from)

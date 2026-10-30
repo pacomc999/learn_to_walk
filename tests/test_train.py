@@ -267,3 +267,15 @@ def test_resume_without_settings_is_refused(tmp_path):
     (tmp_path / "run_settings.json").unlink()
     with pytest.raises(ValueError, match="world"):
         train(tmp_path, total_steps=512, resume=True, **{**FAST, "settings": None})
+
+
+# A new run without --duck stops with a plain message before anything starts, the dashboard included
+def test_new_run_without_duck_starts_nothing(tmp_path, monkeypatch, capsys):
+    import sys
+    import duck.train
+    started = []
+    monkeypatch.setattr(duck.train, "start_dashboard", lambda run_dir, steps: started.append(run_dir))
+    monkeypatch.setattr(sys, "argv", ["train", "--run", str(tmp_path / "run"), "--steps", "0"])
+    with pytest.raises(SystemExit):
+        duck.train.main()
+    assert started == [] and "--duck" in capsys.readouterr().out
