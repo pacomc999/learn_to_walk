@@ -90,6 +90,10 @@ The video is saved as `evolution.mp4` inside the run folder.
 
 To judge or watch an older snapshot, add `--snapshot` and its step count, for example `--snapshot 1007616`.
 
+## The duck's joints
+
+Open `docs/duck_joints.html` in a browser to see the duck in 3D and drag its legs, feet, toes and neck. It shows how far each of the 12 joints can turn and how strong each motor is, with the numbers from `duck/assets/duck.xml`.
+
 ## Throwing rocks at a duck
 
 A test of balance that is not part of training: stone balls are thrown at a duck's kept brain while it walks on the flat floor, one every 2 s from a random side at 4 m/s, 10 attempts of 20 s per rock size from 25 g to 400 g:

@@ -1,0 +1,541 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<!-- The duck's joints in 3D. Its numbers were exported from duck/assets/duck.xml on 2026-10-30;
+     if the model's joints, limits or shapes change, this page needs a new export -->
+<title>Duck Joint Explorer</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600&family=Source+Sans+3:wght@400;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+* { box-sizing: border-box; }
+body { margin: 0; }
+/* Layout: the 3D duck on the left (sticky), the joint panel on the right; stacked on phones */
+:root {
+  --bg: #eef1f2;          /* cool grey page */
+  --scene: #e2e7ea;       /* behind the duck */
+  --panel: #ffffff;
+  --ink: #17212b;
+  --muted: #5b6670;
+  --line: #d6dce0;
+  --accent: #b86a12;      /* duck orange, for the selected joint */
+  --fan: #2f7fb8;         /* the reachable range */
+  --limit: #c2410c;       /* a joint at its limit */
+  --display: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --body: "Source Sans 3", "Segoe UI", system-ui, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #11161b; --scene: #0c1115; --panel: #182029; --ink: #e6ecf0; --muted: #9aa6b0; --line: #2a3540;
+    --accent: #f0a640; --fan: #5aa9e0; --limit: #fb7c3c; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #11161b; --scene: #0c1115; --panel: #182029; --ink: #e6ecf0; --muted: #9aa6b0; --line: #2a3540;
+  --accent: #f0a640; --fan: #5aa9e0; --limit: #fb7c3c; color-scheme: dark;
+}
+body { background: var(--bg); color: var(--ink); font: 16px/1.5 var(--body); }
+main {
+  max-width: 1280px; margin: 0 auto; display: grid; gap: 20px;
+  padding-block: 20px 40px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+header { display: grid; gap: 4px; }
+h1 { font: 600 clamp(1.7rem, 3vw, 2.3rem)/1.1 var(--display); margin: 0; text-wrap: balance; }
+.lede { color: var(--muted); margin: 0; max-width: 68ch; }
+.facts { display: flex; flex-wrap: wrap; gap: 6px 18px; font: 500 0.85rem var(--mono); color: var(--muted); margin-top: 6px; }
+.layout { display: grid; grid-template-columns: minmax(0, 1.45fr) minmax(300px, 1fr); gap: 20px; align-items: start; }
+@media (max-width: 860px) { .layout { grid-template-columns: 1fr; } }
+
+/* The 3D stage */
+.stage { position: sticky; top: calc(env(safe-area-inset-top, 0px) + 12px); display: grid; gap: 10px; min-width: 0; }
+@media (max-width: 860px) { .stage { position: static; } }
+.canvas-box { position: relative; height: min(68vh, 620px); min-height: 320px; border-radius: 14px; overflow: hidden; background: var(--scene); touch-action: none; }
+.canvas-box canvas { display: block; width: 100%; height: 100%; }
+.hint { position: absolute; left: 12px; bottom: 10px; right: 12px; font-size: 0.85rem; color: var(--muted); pointer-events: none; }
+.readout { position: absolute; left: 12px; top: 10px; font: 500 0.9rem var(--mono); color: var(--ink); background: color-mix(in srgb, var(--panel) 85%, transparent);
+  padding: 4px 10px; border-radius: 8px; pointer-events: none; }
+.controls { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+button, .toggle { font: 600 0.9rem var(--body); color: var(--ink); background: var(--panel); border: 1px solid var(--line); border-radius: 999px; padding: 6px 14px; cursor: pointer; }
+button:hover { border-color: var(--muted); }
+button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.toggle { display: inline-flex; gap: 8px; align-items: center; }
+.toggle input { accent-color: var(--accent); margin: 0; }
+.spacer { flex: 1; }
+
+/* The joint panel */
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 6px 16px 14px; min-width: 0; }
+.group-title { font: 600 0.75rem var(--body); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); margin: 14px 0 2px; }
+.joint { display: grid; gap: 2px; padding: 8px 10px; margin: 0 -10px; border-radius: 10px; }
+.joint.selected { background: color-mix(in srgb, var(--accent) 12%, transparent); }
+.row-top, .row-bottom { display: flex; justify-content: space-between; gap: 12px; align-items: baseline; }
+.row-top label { font-weight: 600; }
+.row-top output { font: 500 0.95rem var(--mono); font-variant-numeric: tabular-nums; }
+.joint.at-limit output { color: var(--limit); }
+.row-bottom { font-size: 0.82rem; color: var(--muted); }
+.row-bottom .dir { text-align: right; }
+.limits { font-family: var(--mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
+input[type="range"] { width: 100%; accent-color: var(--accent); margin: 2px 0; }
+.note { color: var(--muted); font-size: 0.85rem; margin: 14px 0 0; }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>Duck joint explorer</h1>
+    <p class="lede">Drag a part of the duck to bend its joint, or use the sliders. The blue fan shows how far the selected joint can turn; the numbers are the limits in the MuJoCo model the duck trains in.</p>
+    <div class="facts"><span>12 joints</span><span>1.53 kg</span><span>stands 25 cm tall</span><span>wings fixed to the body</span></div>
+  </header>
+
+  <div class="layout">
+    <section class="stage" aria-label="3D duck">
+      <div class="canvas-box" id="canvas-box">
+        <div class="readout" id="readout">Standing pose</div>
+        <p class="hint">Drag a leg, foot, toe or the neck to move it. Drag the empty space to turn the view, scroll or pinch to zoom.</p>
+      </div>
+      <div class="controls">
+        <button id="view-side">Side</button>
+        <button id="view-front">Front</button>
+        <button id="view-three-quarter">Three quarter</button>
+        <span class="spacer"></span>
+        <label class="toggle" for="mirror"><input type="checkbox" id="mirror"> Move both legs as mirror images</label>
+        <button id="stand">Standing pose</button>
+      </div>
+    </section>
+
+    <section class="panel" aria-label="Joints" id="panel"></section>
+  </div>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script>
+// ---------- The duck, exported from duck/assets/duck.xml (MuJoCo units: metres, z up, x forward, y left) ----------
+const DUCK = {"bodies": [{"name": "torso", "parent": "world", "pos": [0.0, 0.0, 0.25], "quat": [1.0, 0.0, 0.0, 0.0]}, {"name": "neck_lower", "parent": "torso", "pos": [0.1375, 0.0, 0.075], "quat": [1.0, 0.0, 0.0, 0.0]}, {"name": "neck_upper", "parent": "neck_lower", "pos": [0.0325, 0.0, 0.075], "quat": [1.0, 0.0, 0.0, 0.0]}, {"name": "left_thigh", "parent": "torso", "pos": [-0.075, 0.05, -0.0875], "quat": [1.0, 0.0, 0.0, 0.0]}, {"name": "left_shin", "parent": "left_thigh", "pos": [0.025, 0.0, -0.0675], "quat": [1.0, 0.0, 0.0, 0.0]}, {"name": "left_foot", "parent": "left_shin", "pos": [-0.02, 0.0, -0.075], "quat": [1.0, 0.0, 0.0, 0.0]}, {"name": "left_toes", "parent": "left_foot", "pos": [0.065, 0.0, -0.016], "quat": [1.0, 0.0, 0.0, 0.0]}, {"name": "right_thigh", "parent": "torso", "pos": [-0.075, -0.05, -0.0875], "quat": [1.0, 0.0, 0.0, 0.0]}, {"name": "right_shin", "parent": "right_thigh", "pos": [0.025, 0.0, -0.0675], "quat": [1.0, 0.0, 0.0, 0.0]}, {"name": "right_foot", "parent": "right_shin", "pos": [-0.02, 0.0, -0.075], "quat": [1.0, 0.0, 0.0, 0.0]}, {"name": "right_toes", "parent": "right_foot", "pos": [0.065, 0.0, -0.016], "quat": [1.0, 0.0, 0.0, 0.0]}], "joints": [{"name": "neck_base", "body": "neck_lower", "axis": [0.0, 1.0, 0.0], "range": [-34.4, 34.4], "ctrl": [-34.4, 34.4], "kp": 4.0, "force": [-1.0, 1.0], "forcelimited": 1}, {"name": "neck_top", "body": "neck_upper", "axis": [0.0, 1.0, 0.0], "range": [-45.8, 45.8], "ctrl": [-45.8, 45.8], "kp": 4.0, "force": [-1.0, 1.0], "forcelimited": 1}, {"name": "left_hip_swing", "body": "left_thigh", "axis": [0.0, 1.0, 0.0], "range": [-57.3, 57.3], "ctrl": [-57.3, 57.3], "kp": 20.0, "force": [-4.0, 4.0], "forcelimited": 1}, {"name": "left_hip_side", "body": "left_thigh", "axis": [1.0, 0.0, 0.0], "range": [-22.9, 22.9], "ctrl": [-22.9, 22.9], "kp": 20.0, "force": [-4.0, 4.0], "forcelimited": 1}, {"name": "left_knee", "body": "left_shin", "axis": [0.0, 1.0, 0.0], "range": [-57.3, 57.3], "ctrl": [-57.3, 57.3], "kp": 20.0, "force": [-4.0, 4.0], "forcelimited": 1}, {"name": "left_ankle", "body": "left_foot", "axis": [0.0, 1.0, 0.0], "range": [-45.8, 45.8], "ctrl": [-45.8, 45.8], "kp": 20.0, "force": [-3.0, 3.0], "forcelimited": 1}, {"name": "left_toes", "body": "left_toes", "axis": [0.0, 1.0, 0.0], "range": [-34.4, 34.4], "ctrl": [-34.4, 34.4], "kp": 5.0, "force": [-0.5, 0.5], "forcelimited": 1}, {"name": "right_hip_swing", "body": "right_thigh", "axis": [0.0, 1.0, 0.0], "range": [-57.3, 57.3], "ctrl": [-57.3, 57.3], "kp": 20.0, "force": [-4.0, 4.0], "forcelimited": 1}, {"name": "right_hip_side", "body": "right_thigh", "axis": [1.0, 0.0, 0.0], "range": [-22.9, 22.9], "ctrl": [-22.9, 22.9], "kp": 20.0, "force": [-4.0, 4.0], "forcelimited": 1}, {"name": "right_knee", "body": "right_shin", "axis": [0.0, 1.0, 0.0], "range": [-57.3, 57.3], "ctrl": [-57.3, 57.3], "kp": 20.0, "force": [-4.0, 4.0], "forcelimited": 1}, {"name": "right_ankle", "body": "right_foot", "axis": [0.0, 1.0, 0.0], "range": [-45.8, 45.8], "ctrl": [-45.8, 45.8], "kp": 20.0, "force": [-3.0, 3.0], "forcelimited": 1}, {"name": "right_toes", "body": "right_toes", "axis": [0.0, 1.0, 0.0], "range": [-34.4, 34.4], "ctrl": [-34.4, 34.4], "kp": 5.0, "force": [-0.5, 0.5], "forcelimited": 1}], "geoms": [{"name": "body", "body": "torso", "type": "ellipsoid", "size": [0.1875, 0.106, 0.094], "pos": [0.0, 0.0, 0.0], "quat": [0.9982, 0.0, 0.06, 0.0], "rgba": [0.96, 0.77, 0.19, 1.0]}, {"name": "tail", "body": "torso", "type": "ellipsoid", "size": [0.0585, 0.036, 0.027], "pos": [-0.1875, 0.0, 0.0375], "quat": [1.0, 0.0, 0.0, 0.0], "rgba": [0.96, 0.77, 0.19, 1.0]}, {"name": "left_wing", "body": "torso", "type": "ellipsoid", "size": [0.13, 0.025, 0.05], "pos": [-0.025, 0.09, 0.02], "quat": [1.0, 0.0, 0.0, 0.0], "rgba": [0.88, 0.69, 0.13, 1.0]}, {"name": "right_wing", "body": "torso", "type": "ellipsoid", "size": [0.13, 0.025, 0.05], "pos": [-0.025, -0.09, 0.02], "quat": [1.0, 0.0, 0.0, 0.0], "rgba": [0.88, 0.69, 0.13, 1.0]}, {"name": "neck_lower", "body": "neck_lower", "type": "capsule", "size": [0.0275, 0.0409, 0.0], "pos": [0.0163, 0.0, 0.0375], "quat": [0.203, -0.0, -0.9792, 0.0], "rgba": [0.96, 0.77, 0.19, 1.0]}, {"name": "neck_upper", "body": "neck_upper", "type": "capsule", "size": [0.025, 0.0289, 0.0], "pos": [0.0088, 0.0, 0.0275], "quat": [0.1534, -0.0, -0.9882, 0.0], "rgba": [0.96, 0.77, 0.19, 1.0]}, {"name": "head", "body": "neck_upper", "type": "sphere", "size": [0.06, 0.0, 0.0], "pos": [0.03, 0.0, 0.0875], "quat": [1.0, 0.0, 0.0, 0.0], "rgba": [0.96, 0.77, 0.19, 1.0]}, {"name": "beak", "body": "neck_upper", "type": "box", "size": [0.0375, 0.021, 0.009], "pos": [0.105, 0.0, 0.075], "quat": [1.0, 0.0, 0.0, 0.0], "rgba": [1.0, 0.55, 0.1, 1.0]}, {"name": "", "body": "neck_upper", "type": "sphere", "size": [0.0132, 0.0, 0.0], "pos": [0.06, 0.045, 0.1025], "quat": [1.0, 0.0, 0.0, 0.0], "rgba": [1.0, 1.0, 1.0, 1.0]}, {"name": "", "body": "neck_upper", "type": "sphere", "size": [0.0132, 0.0, 0.0], "pos": [0.06, -0.045, 0.1025], "quat": [1.0, 0.0, 0.0, 0.0], "rgba": [1.0, 1.0, 1.0, 1.0]}, {"name": "", "body": "neck_upper", "type": "sphere", "size": [0.0066, 0.0, 0.0], "pos": [0.0672, 0.0528, 0.1043], "quat": [1.0, 0.0, 0.0, 0.0], "rgba": [0.13, 0.13, 0.13, 1.0]}, {"name": "", "body": "neck_upper", "type": "sphere", "size": [0.0066, 0.0, 0.0], "pos": [0.0672, -0.0528, 0.1043], "quat": [1.0, 0.0, 0.0, 0.0], "rgba": [0.13, 0.13, 0.13, 1.0]}, {"name": "left_thigh", "body": "left_thigh", "type": "capsule", "size": [0.015, 0.036, 0.0], "pos": [0.0125, 0.0, -0.0338], "quat": [0.9843, 0.0, -0.1764, 0.0], "rgba": [1.0, 0.55, 0.1, 1.0]}, {"name": "left_shin", "body": "left_shin", "type": "capsule", "size": [0.011, 0.0388, 0.0], "pos": [-0.01, 0.0, -0.0375], "quat": [0.9915, 0.0, 0.1299, 0.0], "rgba": [1.0, 0.55, 0.1, 1.0]}, {"name": "left_foot", "body": "left_foot", "type": "box", "size": [0.0325, 0.025, 0.004], "pos": [0.0325, 0.0, -0.016], "quat": [1.0, 0.0, 0.0, 0.0], "rgba": [1.0, 0.55, 0.1, 1.0]}, {"name": "left_toes", "body": "left_toes", "type": "box", "size": [0.0125, 0.035, 0.004], "pos": [0.0125, 0.0, 0.0], "quat": [1.0, 0.0, 0.0, 0.0], "rgba": [1.0, 0.55, 0.1, 1.0]}, {"name": "right_thigh", "body": "right_thigh", "type": "capsule", "size": [0.015, 0.036, 0.0], "pos": [0.0125, 0.0, -0.0338], "quat": [0.9843, 0.0, -0.1764, 0.0], "rgba": [1.0, 0.55, 0.1, 1.0]}, {"name": "right_shin", "body": "right_shin", "type": "capsule", "size": [0.011, 0.0388, 0.0], "pos": [-0.01, 0.0, -0.0375], "quat": [0.9915, 0.0, 0.1299, 0.0], "rgba": [1.0, 0.55, 0.1, 1.0]}, {"name": "right_foot", "body": "right_foot", "type": "box", "size": [0.0325, 0.025, 0.004], "pos": [0.0325, 0.0, -0.016], "quat": [1.0, 0.0, 0.0, 0.0], "rgba": [1.0, 0.55, 0.1, 1.0]}, {"name": "right_toes", "body": "right_toes", "type": "box", "size": [0.0125, 0.035, 0.004], "pos": [0.0125, 0.0, 0.0], "quat": [1.0, 0.0, 0.0, 0.0], "rgba": [1.0, 0.55, 0.1, 1.0]}]};
+
+// Plain names, and what a negative or positive angle does (measured on the model)
+const JOINT_INFO = {
+  neck_base:       { label: "Neck base", negative: "head pulls back",        positive: "head pushes forward" },
+  neck_top:        { label: "Neck top",  negative: "head tips up",           positive: "head tips down" },
+  left_hip_swing:  { label: "Hip swing", negative: "leg swings forward",     positive: "leg swings back" },
+  left_hip_side:   { label: "Hip side",  negative: "leg pulls in",           positive: "leg spreads out" },
+  left_knee:       { label: "Knee",      negative: "foot comes forward",     positive: "foot pulls back" },
+  left_ankle:      { label: "Ankle",     negative: "foot lifts",             positive: "foot points down" },
+  left_toes:       { label: "Toes",      negative: "toes lift",              positive: "toes curl down" },
+  right_hip_swing: { label: "Hip swing", negative: "leg swings forward",     positive: "leg swings back" },
+  right_hip_side:  { label: "Hip side",  negative: "leg spreads out",        positive: "leg pulls in" },
+  right_knee:      { label: "Knee",      negative: "foot comes forward",     positive: "foot pulls back" },
+  right_ankle:     { label: "Ankle",     negative: "foot lifts",             positive: "foot points down" },
+  right_toes:      { label: "Toes",      negative: "toes lift",              positive: "toes curl down" },
+};
+const GROUPS = [
+  ["Neck", ["neck_base", "neck_top"]],
+  ["Left leg", ["left_hip_swing", "left_hip_side", "left_knee", "left_ankle", "left_toes"]],
+  ["Right leg", ["right_hip_swing", "right_hip_side", "right_knee", "right_ankle", "right_toes"]],
+];
+const FAN_RADIUS = 0.075;  // metres
+
+// ---------- Small helpers ----------
+const $ = id => document.getElementById(id);
+const toRad = deg => deg * Math.PI / 180;
+const css = name => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+const vec = a => new THREE.Vector3(a[0], a[1], a[2]);
+const quat = q => new THREE.Quaternion(q[1], q[2], q[3], q[0]);  // MuJoCo stores w first
+const signed = v => (v > 0 ? "+" : v < 0 ? "−" : "") + Math.abs(v).toFixed(0) + "°";
+
+// Current angle of every joint, in degrees (0 is the standing pose)
+const angles = Object.fromEntries(DUCK.joints.map(j => [j.name, 0]));
+const jointByName = Object.fromEntries(DUCK.joints.map(j => [j.name, j]));
+let selected = null;
+
+// ---------- Scene ----------
+const box = $("canvas-box");
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.shadowMap.enabled = true;
+box.prepend(renderer.domElement);
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(35, 1, 0.01, 20);
+const controls = new THREE.OrbitControls(camera, renderer.domElement);
+controls.target.set(0, 0.2, 0);
+controls.enableDamping = false;
+controls.minDistance = 0.35;
+controls.maxDistance = 3;
+
+scene.add(new THREE.HemisphereLight(0xffffff, 0x8899aa, 0.75));
+const sun = new THREE.DirectionalLight(0xffffff, 0.75);
+sun.position.set(0.6, 1.4, 0.9);
+sun.castShadow = true;
+sun.shadow.mapSize.set(1024, 1024);
+Object.assign(sun.shadow.camera, { left: -0.6, right: 0.6, top: 0.6, bottom: -0.6 });
+scene.add(sun);
+
+const floor = new THREE.Mesh(new THREE.PlaneGeometry(4, 4), new THREE.ShadowMaterial({ opacity: 0.18 }));
+floor.rotation.x = -Math.PI / 2;
+floor.receiveShadow = true;
+scene.add(floor);
+let grid = null;
+
+// The whole duck is turned so MuJoCo's z up becomes three.js y up (left side faces away from the side view)
+const world = new THREE.Group();
+world.rotation.x = -Math.PI / 2;
+scene.add(world);
+
+// ---------- Build the duck: one group per body, one inner group per joint ----------
+const bodyFrames = { world };     // where a body's children and joints start
+const bodyContent = {};           // where a body's own shapes hang (after its joints)
+const jointGroups = {};           // the group each joint turns
+const meshesByBody = {};
+
+for (const body of DUCK.bodies) {
+  const frame = new THREE.Group();
+  frame.position.copy(vec(body.pos));
+  frame.quaternion.copy(quat(body.quat));
+  bodyFrames[body.parent === "world" ? "world" : body.parent + ":content"].add(frame);
+  let inner = frame;
+  for (const joint of DUCK.joints.filter(j => j.body === body.name)) {
+    const turn = new THREE.Group();
+    inner.add(turn);
+    jointGroups[joint.name] = turn;
+    inner = turn;
+  }
+  bodyFrames[body.name + ":content"] = inner;
+  bodyContent[body.name] = inner;
+  meshesByBody[body.name] = [];
+}
+
+// One mesh for a MuJoCo shape (capsules are a cylinder with two half spheres along z)
+function shapeMesh(geom, material) {
+  const [a, b, c] = geom.size;
+  if (geom.type === "sphere") return new THREE.Mesh(new THREE.SphereGeometry(a, 32, 20), material);
+  if (geom.type === "ellipsoid") {
+    const mesh = new THREE.Mesh(new THREE.SphereGeometry(1, 40, 24), material);
+    mesh.scale.set(a, b, c);
+    return mesh;
+  }
+  if (geom.type === "box") return new THREE.Mesh(new THREE.BoxGeometry(2 * a, 2 * b, 2 * c), material);
+  const capsule = new THREE.Group();
+  const tube = new THREE.Mesh(new THREE.CylinderGeometry(a, a, 2 * b, 24), material);
+  tube.rotation.x = Math.PI / 2;
+  capsule.add(tube);
+  for (const end of [-b, b]) {
+    const cap = new THREE.Mesh(new THREE.SphereGeometry(a, 24, 16), material);
+    cap.position.z = end;
+    capsule.add(cap);
+  }
+  return capsule;
+}
+
+for (const geom of DUCK.geoms) {
+  const [r, g, b, alpha] = geom.rgba;
+  const material = new THREE.MeshStandardMaterial({ color: new THREE.Color(r, g, b), roughness: 0.55, metalness: 0.05 });
+  const mesh = shapeMesh(geom, material);
+  mesh.position.copy(vec(geom.pos));
+  mesh.quaternion.copy(quat(geom.quat));
+  mesh.traverse(part => {
+    if (!part.isMesh) return;
+    part.castShadow = true;
+    part.userData.body = geom.body;
+    meshesByBody[geom.body].push(part);
+  });
+  bodyContent[geom.body].add(mesh);
+}
+
+// Put the duck on the floor: torso at its standing height
+world.position.set(0, 0, 0);
+
+// ---------- Joints: turning, the range fan ----------
+// Which way the part points at rest, in its parent's frame, flattened across the joint's plane
+function restDirection(joint) {
+  const geom = DUCK.geoms.find(g => g.body === joint.body && g.name === joint.body) || DUCK.geoms.find(g => g.body === joint.body);
+  const axis = vec(joint.axis);
+  const direction = vec(geom.pos);
+  direction.sub(axis.clone().multiplyScalar(direction.dot(axis)));
+  return direction.lengthSq() > 1e-8 ? direction.normalize() : new THREE.Vector3(0, 0, -1);
+}
+
+// The fan of reachable angles and a needle at the current angle, drawn over everything
+let fan = null;
+function drawFan(name) {
+  if (fan) { fan.parent.remove(fan); fan = null; }
+  if (!name) return;
+  const joint = jointByName[name];
+  const axis = vec(joint.axis);
+  const rest = restDirection(joint);
+  const [low, high] = joint.range.map(toRad);
+  const points = [new THREE.Vector3()];
+  for (let i = 0; i <= 48; i++) {
+    const angle = low + (high - low) * i / 48;
+    points.push(rest.clone().applyAxisAngle(axis, angle).multiplyScalar(FAN_RADIUS));
+  }
+  const fanGeometry = new THREE.BufferGeometry().setFromPoints(points);
+  fanGeometry.setIndex([...Array(48).keys()].flatMap(i => [0, i + 1, i + 2]));
+  const overlay = { depthTest: false, transparent: true };
+  fan = new THREE.Group();
+  fan.add(new THREE.Mesh(fanGeometry, new THREE.MeshBasicMaterial({ ...overlay, color: css("--fan"), opacity: 0.28, side: THREE.DoubleSide })));
+  fan.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints([...points.slice(1), new THREE.Vector3(), points[1]]),
+                          new THREE.LineBasicMaterial({ ...overlay, color: css("--fan"), opacity: 0.9 })));
+  const needle = new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(), rest.clone().multiplyScalar(FAN_RADIUS * 1.15)]),
+                                new THREE.LineBasicMaterial({ ...overlay, color: css("--accent") }));
+  needle.name = "needle";
+  fan.add(needle);
+  fan.userData = { axis, joint: name };
+  fan.renderOrder = 10;
+  fan.traverse(part => { part.renderOrder = 10; });
+  jointGroups[name].parent.add(fan);
+  updateNeedle();
+}
+function updateNeedle() {
+  if (!fan) return;
+  fan.getObjectByName("needle").quaternion.setFromAxisAngle(fan.userData.axis, toRad(angles[fan.userData.joint]));
+}
+
+// The partner joint on the other leg, and the angle that mirrors this one (hip side flips sign)
+function mirrorOf(name, value) {
+  if (!name.startsWith("left_") && !name.startsWith("right_")) return null;
+  const partner = name.startsWith("left_") ? name.replace("left_", "right_") : name.replace("right_", "left_");
+  return { name: partner, value: name.endsWith("hip_side") ? -value : value };
+}
+
+// Set a joint's angle (kept inside its range), mirrored if asked, then update the duck and the panel
+function setAngle(name, value, mirrored = $("mirror").checked) {
+  const [low, high] = jointByName[name].range;
+  angles[name] = Math.min(high, Math.max(low, value));
+  jointGroups[name].quaternion.setFromAxisAngle(vec(jointByName[name].axis), toRad(angles[name]));
+  showRow(name);
+  if (mirrored) {
+    const partner = mirrorOf(name, angles[name]);
+    if (partner) setAngle(partner.name, partner.value, false);
+  }
+  updateNeedle();
+  updateReadout();
+  requestRender();
+}
+
+// ---------- The panel ----------
+function buildPanel() {
+  const panel = $("panel");
+  for (const [title, names] of GROUPS) {
+    const heading = document.createElement("h2");
+    heading.className = "group-title";
+    heading.textContent = title;
+    panel.append(heading);
+    for (const name of names) {
+      const joint = jointByName[name];
+      const [low, high] = joint.range;
+      const row = document.createElement("div");
+      row.className = "joint";
+      row.id = "row-" + name;
+      row.innerHTML =
+        `<div class="row-top"><label for="slider-${name}">${JOINT_INFO[name].label}</label><output id="out-${name}">0°</output></div>` +
+        `<input type="range" id="slider-${name}" min="${low}" max="${high}" step="0.5" value="0">` +
+        `<div class="row-bottom"><span class="limits">${signed(low)} to ${signed(high)} · strength ${joint.force[1]} N·m</span>` +
+        `<span class="dir" id="dir-${name}">standing pose</span></div>`;
+      panel.append(row);
+      const slider = row.querySelector("input");
+      slider.addEventListener("input", () => setAngle(name, Number(slider.value)));
+      slider.addEventListener("focus", () => select(name));
+    }
+  }
+  const note = document.createElement("p");
+  note.className = "note";
+  note.textContent = "Each motor is a position motor: the brain picks a target angle anywhere in the joint's full range " +
+    "(its commands from −1 to 1 cover the range exactly), and the motor pulls toward it with at most its strength. " +
+    "Strength is the most turning force the motor can give, in newton metres.";
+  panel.append(note);
+}
+
+// Show one joint's angle, what it is doing, and whether it is at a limit
+function showRow(name) {
+  const value = angles[name];
+  const [low, high] = jointByName[name].range;
+  $("slider-" + name).value = value;
+  $("out-" + name).textContent = signed(value);
+  const info = JOINT_INFO[name];
+  $("dir-" + name).textContent = Math.abs(value) < 0.5 ? "standing pose" : (value < 0 ? info.negative : info.positive);
+  $("row-" + name).classList.toggle("at-limit", value <= low + 0.01 || value >= high - 0.01);
+}
+
+// Highlight one joint in the panel and draw its fan
+function select(name) {
+  if (selected === name) return;
+  if (selected) $("row-" + selected).classList.remove("selected");
+  selected = name;
+  if (name) $("row-" + name).classList.add("selected");
+  drawFan(name);
+  updateReadout();
+  requestRender();
+}
+
+// The line at the top of the stage: the selected joint and its angle
+function updateReadout() {
+  if (!selected) { $("readout").textContent = "Pick a part to see its range"; return; }
+  const side = selected.startsWith("left_") ? "Left " : selected.startsWith("right_") ? "Right " : "";
+  const [low, high] = jointByName[selected].range;
+  $("readout").textContent = `${side}${JOINT_INFO[selected].label.toLowerCase()}: ${signed(angles[selected])} (range ${signed(low)} to ${signed(high)})`;
+}
+
+// ---------- Dragging parts ----------
+const raycaster = new THREE.Raycaster();
+const pointer = new THREE.Vector2();
+const allMeshes = Object.values(meshesByBody).flat();
+let drag = null;
+let hovered = null;
+
+// The body under the pointer that has a joint, or null
+function bodyAt(event) {
+  const rect = renderer.domElement.getBoundingClientRect();
+  pointer.set(((event.clientX - rect.left) / rect.width) * 2 - 1, -((event.clientY - rect.top) / rect.height) * 2 + 1);
+  raycaster.setFromCamera(pointer, camera);
+  for (const hit of raycaster.intersectObjects(allMeshes, false)) {
+    const body = hit.object.userData.body;
+    if (DUCK.joints.some(j => j.body === body)) return body;
+    return null;  // the torso and wings have no joint: let the view turn
+  }
+  return null;
+}
+
+// A joint's axis and pivot in world space
+function axisAndPivot(name) {
+  const group = jointGroups[name];
+  group.updateWorldMatrix(true, false);
+  const pivot = new THREE.Vector3().setFromMatrixPosition(group.matrixWorld);
+  const parentQuat = new THREE.Quaternion();
+  group.parent.getWorldQuaternion(parentQuat);
+  return { axis: vec(jointByName[name].axis).applyQuaternion(parentQuat).normalize(), pivot };
+}
+
+// For a body, the joint to drag: the one whose axis points most toward the viewer (hips have two)
+function jointToDrag(body) {
+  const view = camera.position.clone().sub(controls.target).normalize();
+  let best = null;
+  for (const joint of DUCK.joints.filter(j => j.body === body)) {
+    const { axis } = axisAndPivot(joint.name);
+    const facing = axis.dot(view);
+    if (!best || Math.abs(facing) > Math.abs(best.facing)) best = { name: joint.name, facing };
+  }
+  return best;
+}
+
+// The pointer's angle around the joint's pivot on screen
+function screenAngle(event, pivot) {
+  const rect = renderer.domElement.getBoundingClientRect();
+  const projected = pivot.clone().project(camera);
+  const x = (projected.x + 1) / 2 * rect.width + rect.left;
+  const y = (1 - projected.y) / 2 * rect.height + rect.top;
+  return Math.atan2(-(event.clientY - y), event.clientX - x);
+}
+
+renderer.domElement.addEventListener("pointerdown", event => {
+  const body = bodyAt(event);
+  if (!body) return;
+  const choice = jointToDrag(body);
+  select(choice.name);
+  const { pivot } = axisAndPivot(choice.name);
+  // Facing the viewer, the part follows the pointer around its pivot; seen edge on, drag up and down instead
+  drag = { name: choice.name, facing: choice.facing, pivot, start: angles[choice.name],
+           startAngle: screenAngle(event, pivot), startY: event.clientY, turned: 0, last: screenAngle(event, pivot) };
+  controls.enabled = false;
+  renderer.domElement.setPointerCapture(event.pointerId);
+  event.preventDefault();
+  event.stopImmediatePropagation();  // the view controls never see a press on a part
+}, { capture: true });
+
+renderer.domElement.addEventListener("pointermove", event => {
+  if (drag) {
+    let value;
+    if (Math.abs(drag.facing) > 0.35) {
+      const now = screenAngle(event, drag.pivot);
+      let step = now - drag.last;
+      if (step > Math.PI) step -= 2 * Math.PI;
+      if (step < -Math.PI) step += 2 * Math.PI;
+      drag.turned += step;
+      drag.last = now;
+      value = drag.start + Math.sign(drag.facing) * drag.turned * 180 / Math.PI;
+    } else {
+      value = drag.start + (event.clientY - drag.startY) * 0.5;
+    }
+    setAngle(drag.name, value);
+    return;
+  }
+  const body = event.pointerType === "mouse" ? bodyAt(event) : null;
+  if (body !== hovered) {
+    if (hovered) meshesByBody[hovered].forEach(m => m.material.emissive.setHex(0x000000));
+    hovered = body;
+    if (hovered) meshesByBody[hovered].forEach(m => m.material.emissive.setHex(0x2a2a2a));
+    renderer.domElement.style.cursor = hovered ? "grab" : "";
+    requestRender();
+  }
+});
+
+function endDrag(event) {
+  if (!drag) return;
+  drag = null;
+  controls.enabled = true;
+  if (renderer.domElement.hasPointerCapture(event.pointerId)) renderer.domElement.releasePointerCapture(event.pointerId);
+}
+renderer.domElement.addEventListener("pointerup", endDrag);
+renderer.domElement.addEventListener("pointercancel", endDrag);
+
+// ---------- Views, theme, size and drawing ----------
+const VIEWS = {
+  side: [0, 0.26, 1.3],             // from the duck's right side, walking left to right
+  front: [1.3, 0.26, 0],
+  "three-quarter": [0.85, 0.5, 1.0],
+};
+function setView(name) {
+  camera.position.set(...VIEWS[name]);
+  controls.target.set(0, 0.22, 0);
+  controls.update();
+  requestRender();
+}
+for (const name of Object.keys(VIEWS)) $("view-" + name).addEventListener("click", () => setView(name));
+$("stand").addEventListener("click", () => {
+  for (const joint of DUCK.joints) setAngle(joint.name, 0, false);
+});
+
+// Colours of the scene follow the page theme
+function applyTheme() {
+  scene.background = new THREE.Color(css("--scene"));
+  if (grid) scene.remove(grid);
+  grid = new THREE.GridHelper(2, 40, css("--line"), css("--line"));
+  grid.position.y = 0.0005;
+  scene.add(grid);
+  if (selected) { const name = selected; selected = null; select(name); }
+  requestRender();
+}
+window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", applyTheme);
+new MutationObserver(applyTheme).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+
+function resize() {
+  const { width, height } = box.getBoundingClientRect();
+  renderer.setSize(width, height, false);
+  camera.aspect = width / height;
+  camera.updateProjectionMatrix();
+  requestRender();
+}
+new ResizeObserver(resize).observe(box);
+
+// Draw only when something changed
+let renderQueued = false;
+function requestRender() {
+  if (renderQueued) return;
+  renderQueued = true;
+  requestAnimationFrame(() => { renderQueued = false; renderer.render(scene, camera); });
+}
+controls.addEventListener("change", requestRender);
+
+buildPanel();
+applyTheme();
+setView("three-quarter");
+resize();
+// Open with one joint picked and bent a little, so the fan shows what the page does
+select("left_knee");
+setAngle("left_knee", 25);
+</script>
+</body>
+</html>
