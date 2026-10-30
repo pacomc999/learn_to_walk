@@ -23,3 +23,6 @@ duck_catalogue/*/challenges/*/films/
 
 # Planning tool workspaces (recreated by the tools when needed)
 .superpowers/
+
+# Phone page status written by docs/phone_page/phone_status.py
+docs/phone_page/phone_status.json

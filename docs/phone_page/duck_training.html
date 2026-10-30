@@ -1,0 +1,196 @@
+<title>Duck Training Live</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600&family=IBM+Plex+Sans:wght@400;600&family=IBM+Plex+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: one narrow column, phone first: header, progress bar, three numbers, exam chart, exam list */
+:root {
+  --bg: #f3f6f1;          /* pond-water pale green */
+  --panel: #ffffff;
+  --fg: #1d2a22;
+  --muted: #5d6e63;
+  --line: #d5ddd6;
+  --duck: #d9a21b;        /* duck yellow: the current duck */
+  --old: #8a9a90;         /* grey green: the duck it is compared with */
+  --good: #2f7d4f;
+  --bad: #b5452f;
+  --display: "Fraunces", Georgia, serif;
+  --body: "IBM Plex Sans", system-ui, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #121a15; --panel: #1b251f; --fg: #e6eee8; --muted: #9aaba0; --line: #2d3a32;
+    --duck: #f0bd3c; --old: #7b8b81; --good: #5fbf85; --bad: #e07a63; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #121a15; --panel: #1b251f; --fg: #e6eee8; --muted: #9aaba0; --line: #2d3a32;
+  --duck: #f0bd3c; --old: #7b8b81; --good: #5fbf85; --bad: #e07a63; color-scheme: dark;
+}
+body { background: var(--bg); color: var(--fg); font-family: var(--body); font-size: 15px; line-height: 1.5; }
+main {
+  max-width: 560px; margin: 0 auto; display: grid; gap: 18px;
+  padding-block: 20px 32px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+h1 { font-family: var(--display); font-weight: 600; font-size: 1.9rem; line-height: 1.1; margin: 0; text-wrap: balance; }
+h2 { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin: 0 0 8px; font-weight: 600; }
+.sub { color: var(--muted); margin: 4px 0 0; font-size: 0.9rem; }
+.status { display: inline-block; font-size: 0.75rem; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase;
+  padding: 2px 9px; border-radius: 99px; border: 1px solid currentColor; }
+.status.training { color: var(--good); }
+.status.finished, .status.stopped { color: var(--muted); }
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 16px; min-width: 0; }
+.bar { height: 14px; background: var(--line); border-radius: 7px; overflow: hidden; }
+.bar > div { height: 100%; width: 0; background: var(--duck); border-radius: 7px; transition: width 0.6s ease; }
+.barline { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-top: 8px;
+  font-family: var(--mono); font-size: 0.85rem; font-variant-numeric: tabular-nums; }
+.stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.stat { min-width: 0; }
+.stat b { display: block; font-family: var(--mono); font-size: 1.35rem; font-variant-numeric: tabular-nums; }
+.stat span { font-size: 0.78rem; color: var(--muted); }
+.legend { display: flex; gap: 16px; flex-wrap: wrap; font-size: 0.82rem; color: var(--muted); margin-top: 6px; }
+.legend i { display: inline-block; width: 14px; height: 3px; border-radius: 2px; vertical-align: middle; margin-right: 6px; }
+svg text { fill: var(--muted); font-family: var(--mono); font-size: 10px; }
+.table-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-family: var(--mono); font-size: 0.85rem; font-variant-numeric: tabular-nums; }
+th { text-align: right; font-weight: 600; color: var(--muted); font-size: 0.72rem; padding: 4px 6px; border-bottom: 1px solid var(--line); }
+td { text-align: right; padding: 5px 6px; border-bottom: 1px solid var(--line); }
+th:first-child, td:first-child { text-align: left; }
+.best { color: var(--duck); font-weight: 600; }
+.empty { color: var(--muted); }
+footer { color: var(--muted); font-size: 0.8rem; }
+</style>
+
+<main>
+  <header>
+    <span class="status" id="status">waiting</span>
+    <h1 id="duck">Duck training</h1>
+    <p class="sub" id="recipe">Waiting for the first update from the laptop.</p>
+  </header>
+
+  <section class="panel" aria-labelledby="progress-title">
+    <h2 id="progress-title">Training progress</h2>
+    <div class="bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" id="bar"><div id="fill"></div></div>
+    <div class="barline"><span id="steps">0 of 0 steps</span><span id="eta"></span></div>
+  </section>
+
+  <section class="stats">
+    <div class="panel stat"><b id="last">none</b><span>latest exam</span></div>
+    <div class="panel stat"><b id="best">none</b><span>best exam</span></div>
+    <div class="panel stat"><b id="falls">none</b><span>falls, latest exam</span></div>
+  </section>
+
+  <section class="panel" aria-labelledby="chart-title">
+    <h2 id="chart-title">Exam score by training steps</h2>
+    <svg id="chart" viewBox="0 0 520 230" width="100%" role="img" aria-label="Exam score chart"></svg>
+    <div class="legend" id="legend"></div>
+  </section>
+
+  <section class="panel" aria-labelledby="list-title">
+    <h2 id="list-title">Every exam (fixed attempts, no wobble)</h2>
+    <div class="table-wrap"><table>
+      <thead><tr><th>Steps</th><th>Score</th><th>Flat</th><th>Rough</th><th>Falls</th><th id="cmp-head">Duck 1</th></tr></thead>
+      <tbody id="rows"><tr><td colspan="6" class="empty">No exams yet.</td></tr></tbody>
+    </table></div>
+  </section>
+
+  <footer id="updated">Updated by Claude after every exam (about every 4 minutes).</footer>
+</main>
+
+<script>
+// ---------- Small helpers ----------
+const $ = (id) => document.getElementById(id);
+const millions = (steps) => (steps / 1e6).toFixed(2) + "M";
+
+// Duck 1 score at the snapshot nearest to the given step count
+function nearestScore(compareExams, steps) {
+  if (!compareExams || !compareExams.length) return null;
+  let best = compareExams[0];
+  for (const exam of compareExams) if (Math.abs(exam.steps - steps) < Math.abs(best.steps - steps)) best = exam;
+  return Math.abs(best.steps - steps) <= 130000 ? best : null;
+}
+
+// ---------- Header, bar and numbers ----------
+function renderTop(s) {
+  $("status").textContent = s.status || "training";
+  $("status").className = "status " + (s.status || "training");
+  $("duck").textContent = s.duck || "Duck training";
+  $("recipe").textContent = s.summary || "";
+  const share = s.total ? Math.min(1, s.steps / s.total) : 0;
+  $("fill").style.width = (share * 100).toFixed(1) + "%";
+  $("bar").setAttribute("aria-valuenow", Math.round(share * 100));
+  $("steps").textContent = `${millions(s.steps)} of ${millions(s.total)} steps (${Math.round(share * 100)}%)`;
+  $("eta").textContent = s.eta ? "done around " + s.eta : "";
+  const exams = s.exams || [];
+  const last = exams[exams.length - 1];
+  const best = exams.reduce((a, e) => (a && a.score >= e.score ? a : e), null);
+  $("last").textContent = last ? Math.round(last.score) : "none";
+  $("best").textContent = best ? Math.round(best.score) : "none";
+  $("falls").textContent = last ? `${last.falls} of ${last.attempts || 12}` : "none";
+  $("updated").textContent = s.updated ? `Last update ${s.updated}. Claude updates this page after every exam.` : "";
+}
+
+// ---------- Exam chart: both ducks on one scale ----------
+function renderChart(s) {
+  const svg = $("chart");
+  const W = 520, H = 230, L = 40, R = 12, T = 10, B = 26;
+  const ours = s.exams || [], theirs = (s.compare && s.compare.exams) || [];
+  const maxX = Math.max(s.total || 1, ...theirs.map(e => e.steps).filter(x => x <= (s.total || 0) * 1.05));
+  const all = [...ours, ...theirs].map(e => e.score);
+  const maxY = Math.max(100, Math.ceil(Math.max(...all, 0) / 100) * 100);
+  const minY = Math.min(0, Math.floor(Math.min(...all, 0) / 100) * 100);
+  const x = (v) => L + (v / maxX) * (W - L - R);
+  const y = (v) => T + (1 - (v - minY) / (maxY - minY)) * (H - T - B);
+  let out = "";
+  for (let v = minY; v <= maxY; v += 100) {
+    out += `<line x1="${L}" x2="${W - R}" y1="${y(v)}" y2="${y(v)}" stroke="var(--line)" stroke-width="1"/>`;
+    out += `<text x="${L - 6}" y="${y(v) + 3}" text-anchor="end">${v}</text>`;
+  }
+  for (let m = 0; m <= maxX / 1e6 + 1e-9; m += 1) {
+    out += `<text x="${x(m * 1e6)}" y="${H - 8}" text-anchor="middle">${m}M</text>`;
+  }
+  const path = (list) => list.map((e, i) => `${i ? "L" : "M"}${x(e.steps).toFixed(1)},${y(e.score).toFixed(1)}`).join("");
+  const shown = theirs.filter(e => e.steps <= maxX);
+  if (shown.length) out += `<path d="${path(shown)}" fill="none" stroke="var(--old)" stroke-width="2" stroke-dasharray="5 4"/>`;
+  if (ours.length) {
+    out += `<path d="${path(ours)}" fill="none" stroke="var(--duck)" stroke-width="2.5"/>`;
+    for (const e of ours) out += `<circle cx="${x(e.steps)}" cy="${y(e.score)}" r="3.5" fill="var(--duck)" stroke="var(--panel)" stroke-width="2"><title>${millions(e.steps)}: ${Math.round(e.score)}, ${e.falls} falls</title></circle>`;
+  }
+  svg.innerHTML = out;
+  const cmpName = (s.compare && s.compare.name) || "";
+  $("legend").innerHTML = `<span><i style="background:var(--duck)"></i>${s.duck || "This duck"}</span>` +
+    (cmpName ? `<span><i style="background:var(--old)"></i>${cmpName} (dashed)</span>` : "");
+}
+
+// ---------- Exam list ----------
+function renderRows(s) {
+  const exams = s.exams || [];
+  const cmp = (s.compare && s.compare.exams) || [];
+  $("cmp-head").textContent = (s.compare && s.compare.name) || "";
+  if (!exams.length) return;
+  const bestScore = Math.max(...exams.map(e => e.score));
+  $("rows").innerHTML = exams.slice().reverse().map(e => {
+    const other = nearestScore(cmp, e.steps);
+    const cls = e.score === bestScore ? ' class="best"' : "";
+    const partCell = (v) => `<td>${v === null || v === undefined ? "" : Math.round(v)}</td>`;
+    return `<tr><td>${millions(e.steps)}</td><td${cls}>${Math.round(e.score)}</td>${partCell(e.flat)}${partCell(e.rough)}` +
+      `<td>${e.falls} of ${e.attempts || 12}</td>` +
+      `<td>${other ? Math.round(other.score) : ""}</td></tr>`;
+  }).join("");
+}
+
+function render(s) { renderTop(s); renderChart(s); renderRows(s); }
+
+// ---------- Live data from the artifact store ----------
+(async () => {
+  const db = await claude.use("db");
+  if (!db) { $("recipe").textContent = "Live data is not available in this view. Open the page while signed in."; return; }
+  db.doc("training/current").onSnapshot(
+    (snap) => { if (snap.exists) render(snap.data()); },
+    () => { $("recipe").textContent = "Could not reach the live data. Reload the page to try again."; }
+  );
+})();
+</script>
