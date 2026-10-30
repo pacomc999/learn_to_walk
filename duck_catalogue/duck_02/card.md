@@ -4,6 +4,9 @@
 
 Started 2026-10-29 16:53. Starts from: zero (same seed and untrained brain as Duck 1).
 
+- World: flat_walking, Flat floor, walking speeds 0.2 to 0.7 m/s
+- Body: standard, The duck as designed in duck/assets/duck.xml
+
 ## What changed and why
 
 Same recipe as Duck 1, except the step size: after every brain update the learning rate is divided by 1.5 if the brain changed more than twice the target (0.01), or multiplied by 1.5 if it changed less than half of it (Rudin and others 2021).

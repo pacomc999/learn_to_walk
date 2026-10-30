@@ -1,5 +1,7 @@
 {
   "name": "Duck 1",
+  "world": "flat_walking",
+  "body": "standard",
   "started": "2026-10-29 11:06",
   "summary": "Symmetric brain, trained from zero",
   "what_changed": "The brain is built left/right symmetric (the NET method of Abdolhosseini and others 2019): one network reads the situation and its mirror image, and the left leg commands of the mirrored view drive the right leg. The judge (critic) and the sense scaling are symmetric too, and each left/right motor pair shares one wobble.",
@@ -62,5 +64,29 @@
     "physics_steps_per_action": 4,
     "start_noise": 0.02,
     "code_version": "43acb18"
+  },
+  "world_settings": {
+    "name": "flat_walking",
+    "description": "Flat floor, walking speeds 0.2 to 0.7 m/s",
+    "floor": {
+      "tallest_stones": 0.0
+    },
+    "target_speed_range": [
+      0.2,
+      0.7
+    ],
+    "reward": {
+      "forward": 3.0,
+      "alive": 0.2,
+      "energy": 1.5,
+      "sideways": 0.5
+    },
+    "extras": {},
+    "notes": "Duck 1, Duck 2 and Duck 2.1. They trained under an older forward reward, without the overshoot rule (going faster than asked did not lose points); this world has today's rule."
+  },
+  "body_settings": {
+    "name": "standard",
+    "description": "The duck as designed in duck/assets/duck.xml",
+    "notes": ""
   }
 }

@@ -294,7 +294,7 @@ def _started_from_brain(story: dict) -> bool:
 def card_recipe(story: dict) -> dict:
     recipe = story["recipe"]
     world = story.get("world_settings")
-    if world is None:
+    if world is None or "reward" in recipe:  # a recipe from before worlds shows exactly as recorded
         return recipe
     tallest = world["floor"]["tallest_stones"]
     reward = world["reward"]

@@ -4,6 +4,9 @@
 
 Started 2026-10-29 11:06. Starts from: zero (a new brain; no plain brain was converted).
 
+- World: flat_walking, Flat floor, walking speeds 0.2 to 0.7 m/s
+- Body: standard, The duck as designed in duck/assets/duck.xml
+
 ## What changed and why
 
 The brain is built left/right symmetric (the NET method of Abdolhosseini and others 2019): one network reads the situation and its mirror image, and the left leg commands of the mirrored view drive the right leg. The judge (critic) and the sense scaling are symmetric too, and each left/right motor pair shares one wobble.

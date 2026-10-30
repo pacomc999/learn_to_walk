@@ -1,5 +1,7 @@
 {
   "name": "Duck 3.2",
+  "world": "flat_running",
+  "body": "standard",
   "started": "2026-10-30 16:27",
   "summary": "Duck 3.1's brain on a flat floor, asked to run at up to 1.5 m/s",
   "what_changed": "Three changes from Duck 3.1. The speeds: each training attempt asks for a random speed from 0.2 to 1.5 m/s instead of 0.2 to 0.7. The floor: training is flat again (training roughness 0; the cobblestone floor is kept for later ducks and the tests). The exam: only the flat part, 12 attempts, with asked speeds spread over the new range.",
@@ -80,5 +82,29 @@
     "start_noise": 0.02,
     "start_stride": 0.04,
     "code_version": "e162b47"
+  },
+  "world_settings": {
+    "name": "flat_running",
+    "description": "Flat floor, speeds 0.2 to 1.5 m/s, for learning to run",
+    "floor": {
+      "tallest_stones": 0.0
+    },
+    "target_speed_range": [
+      0.2,
+      1.5
+    ],
+    "reward": {
+      "forward": 3.0,
+      "alive": 0.2,
+      "energy": 1.5,
+      "sideways": 0.5
+    },
+    "extras": {},
+    "notes": "Duck 3.2."
+  },
+  "body_settings": {
+    "name": "standard",
+    "description": "The duck as designed in duck/assets/duck.xml",
+    "notes": ""
   }
 }

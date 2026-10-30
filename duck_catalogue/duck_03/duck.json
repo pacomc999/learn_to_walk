@@ -1,5 +1,7 @@
 {
   "name": "Duck 3",
+  "world": "stones_up_to_1cm",
+  "body": "standard",
   "started": "2026-10-30 03:12",
   "summary": "Duck 2.1's brain on a rough cobblestone floor, with an overshoot penalty",
   "what_changed": "Three changes from Duck 2.1. The floor: square cobblestones (6 cm) laid on rolling bumps, with a new layout every attempt and a random roughness from flat to 1 cm. The reward: going faster than the asked speed now loses forward points the same way as going slower. The exam: a flat part and a rough part of 12 attempts each, averaged; the average picks the best brain.",
@@ -73,5 +75,29 @@
     "start_noise": 0.02,
     "start_stride": 0.04,
     "code_version": "953f4c0"
+  },
+  "world_settings": {
+    "name": "stones_up_to_1cm",
+    "description": "Cobblestones from flat up to 1 cm, walking speeds 0.2 to 0.7 m/s",
+    "floor": {
+      "tallest_stones": 0.01
+    },
+    "target_speed_range": [
+      0.2,
+      0.7
+    ],
+    "reward": {
+      "forward": 3.0,
+      "alive": 0.2,
+      "energy": 1.5,
+      "sideways": 0.5
+    },
+    "extras": {},
+    "notes": "Duck 3. Its exam used the full 1 cm for all 12 rough attempts; exams in this world use the stone exam."
+  },
+  "body_settings": {
+    "name": "standard",
+    "description": "The duck as designed in duck/assets/duck.xml",
+    "notes": ""
   }
 }

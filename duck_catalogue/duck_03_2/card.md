@@ -4,6 +4,9 @@
 
 Started 2026-10-30 16:27. Starts from: Duck 3.1's best brain (duck_catalogue/duck_03_1/brain, 2.25M steps, exam 981 under Duck 3.1's exam).
 
+- World: flat_running, Flat floor, speeds 0.2 to 1.5 m/s, for learning to run
+- Body: standard, The duck as designed in duck/assets/duck.xml
+
 ## What changed and why
 
 Three changes from Duck 3.1. The speeds: each training attempt asks for a random speed from 0.2 to 1.5 m/s instead of 0.2 to 0.7. The floor: training is flat again (training roughness 0; the cobblestone floor is kept for later ducks and the tests). The exam: only the flat part, 12 attempts, with asked speeds spread over the new range.

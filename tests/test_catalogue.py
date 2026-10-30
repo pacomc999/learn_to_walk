@@ -220,3 +220,14 @@ def test_run_line_names_the_body_its_brain_came_from():
     line = catalogue._run_lines([{"folder": "runs/x", "dates": "d", "steps": "s", "outcome": "o.",
                                   "brain_from_body": "standard"}])[0]
     assert line.endswith("(its brain came from the standard body)")
+
+
+# A recipe from before worlds (it has its own reward) shows exactly as recorded, even with a world added
+def test_old_recipe_is_not_changed_by_its_world():
+    old = {"brain": "SymmetricPolicy", "layers": {"pi": [256, 256], "vf": [256, 256]}, "start_log_std": -1.0,
+           "ppo": {"n_steps": 1024}, "reward": {"forward": 3.0, "alive": 0.2, "energy": 1.5, "sideways": 0.5},
+           "target_speed_range": [0.2, 0.7], "attempt_seconds": 20.0, "start_noise": 0.02, "code_version": "x"}
+    recipe = catalogue.card_recipe({"recipe": old, "world_settings": world_to_dict(FLAT)})
+    text = "\n".join(catalogue._recipe_lines(recipe))
+    assert "- Floor: flat" in text and "flat in training" not in text
+    assert "per m/s up to the target speed" in text

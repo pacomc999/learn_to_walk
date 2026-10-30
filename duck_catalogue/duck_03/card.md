@@ -4,6 +4,9 @@
 
 Started 2026-10-30 03:12. Starts from: Duck 2.1's best brain (duck_catalogue/duck_02_1/brain, 4.0M steps, exam 986).
 
+- World: stones_up_to_1cm, Cobblestones from flat up to 1 cm, walking speeds 0.2 to 0.7 m/s
+- Body: standard, The duck as designed in duck/assets/duck.xml
+
 ## What changed and why
 
 Three changes from Duck 2.1. The floor: square cobblestones (6 cm) laid on rolling bumps, with a new layout every attempt and a random roughness from flat to 1 cm. The reward: going faster than the asked speed now loses forward points the same way as going slower. The exam: a flat part and a rough part of 12 attempts each, averaged; the average picks the best brain.

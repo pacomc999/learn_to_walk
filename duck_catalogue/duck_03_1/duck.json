@@ -1,5 +1,7 @@
 {
   "name": "Duck 3.1",
+  "world": "stones_up_to_4cm",
+  "body": "standard",
   "started": "2026-10-30 10:14",
   "summary": "Duck 3's brain on taller stones, up to 3 cm, then up to 4 cm",
   "what_changed": "Two changes from Duck 3. The floor: the most roughness goes from 1 cm to 3 cm, still picked at random from flat up to the most for every training attempt, so about a third of attempts stay under 1 cm. The exam: the rough part climbs instead of using the full height for all 12 attempts; its attempts are spread evenly from 0.25 cm to 3 cm (each attempt keeps its seed, so only the stone height changes). The flat part is unchanged. Second run (from_duck_03_1): the most roughness goes from 3 cm to 4 cm, and the exam matches training: 24 attempts with floor heights spread evenly from flat to 4 cm, scored in a lower half (flat to about 1.9 cm) and a taller half (about 2.1 to 4 cm); each half asks for all 12 speeds, mixed. Still Duck 3.1, Francisco's choice, since it is the same idea as the first run.",
@@ -19,7 +21,7 @@
       "outcome": "Started at 885 (lower 1162, taller 607, 8 falls of 24) with Duck 3.1's first best brain on the new exam. Jumped to 1052 at 0.25M and 1204 (4 falls) at 0.5M, then swung between 951 and 1168 without a new best until the final exam at 2,506,760 steps scored 1206 with 1 fall (lower 1302, taller 1110), only 8 steps after an exam of 1139 with 4 falls: the brain was the same, only the sense scaling had moved. The training score did not rise (about 950 throughout). The step size sat at its floor all run. About 700 steps per second. On 30 new floors (seeds 300 to 329) the kept brain walked 30 of 30 flat, 28 of 30 at 2 cm, 23 of 30 at 3 cm (first best: 19) and 10 of 30 at 4 cm (first best: 4). In the exam all its falls were on stones of 3.5 cm and taller, at slow and fast speeds alike."
     }
   ],
-  "notes": "Exam scores of Duck 3 and Duck 3.1 cannot be compared, because the rough part changed. Duck 3.1's first exam, at step 0, is Duck 3's brain on Duck 3.1's exam, which gives the fair starting point. A started run inherits the source brain's wobble, adapted step size and PPO settings, so the starting wobble and learning rate in the recipe above do not apply to this run. Attempt by attempt, the best brain loses about 105 points per attempt to energy (about 11 J per metre on flat ground), 38 to 70 to forward points (starting from standstill, small speed errors, the one fall at 2.5 cm) and 3 to 5 to drift; the exam ceiling is about 1,150 with no energy, about 1,045 at its energy use. Challenges (speed, backpack, perilous road of tall stones, rocks): see challenges/README.md. The kept brain is from the second run, kept with --force because the first best's 981 came from the older exam; the second run's first exam (885) is the first best on the new exam. The recipe below is the second run's; the first run used a most roughness of 3 cm and the older exam (12 flat attempts plus 12 climbing to 3 cm).",
+  "notes": "Exam scores of Duck 3 and Duck 3.1 cannot be compared, because the rough part changed. Duck 3.1's first exam, at step 0, is Duck 3's brain on Duck 3.1's exam, which gives the fair starting point. A started run inherits the source brain's wobble, adapted step size and PPO settings, so the starting wobble and learning rate in the recipe above do not apply to this run. Attempt by attempt, the best brain loses about 105 points per attempt to energy (about 11 J per metre on flat ground), 38 to 70 to forward points (starting from standstill, small speed errors, the one fall at 2.5 cm) and 3 to 5 to drift; the exam ceiling is about 1,150 with no energy, about 1,045 at its energy use. Challenges (speed, backpack, perilous road of tall stones, rocks): see challenges/README.md. The kept brain is from the second run, kept with --force because the first best's 981 came from the older exam; the second run's first exam (885) is the first best on the new exam. The recipe below is the second run's; the first run used a most roughness of 3 cm and the older exam (12 flat attempts plus 12 climbing to 3 cm). Worlds: Duck 3.1 names stones_up_to_4cm, the world of its second run; its first run (from_duck_03) trained in stones_up_to_3cm.",
   "recipe": {
     "brain": "SymmetricPolicy",
     "layers": {
@@ -80,5 +82,29 @@
     "start_noise": 0.02,
     "start_stride": 0.04,
     "code_version": "8068a17"
+  },
+  "world_settings": {
+    "name": "stones_up_to_4cm",
+    "description": "Cobblestones from flat up to 4 cm, walking speeds 0.2 to 0.7 m/s",
+    "floor": {
+      "tallest_stones": 0.04
+    },
+    "target_speed_range": [
+      0.2,
+      0.7
+    ],
+    "reward": {
+      "forward": 3.0,
+      "alive": 0.2,
+      "energy": 1.5,
+      "sideways": 0.5
+    },
+    "extras": {},
+    "notes": "Duck 3.1's second run (from_duck_03_1)."
+  },
+  "body_settings": {
+    "name": "standard",
+    "description": "The duck as designed in duck/assets/duck.xml",
+    "notes": ""
   }
 }

@@ -1,5 +1,7 @@
 {
   "name": "Duck 2",
+  "world": "flat_walking",
+  "body": "standard",
   "started": "2026-10-29 16:53",
   "summary": "Duck 1 plus an adaptive step size, trained from zero",
   "what_changed": "Same recipe as Duck 1, except the step size: after every brain update the learning rate is divided by 1.5 if the brain changed more than twice the target (0.01), or multiplied by 1.5 if it changed less than half of it (Rudin and others 2021).",
@@ -56,5 +58,29 @@
     "physics_steps_per_action": 4,
     "start_noise": 0.02,
     "code_version": "22a13ba"
+  },
+  "world_settings": {
+    "name": "flat_walking",
+    "description": "Flat floor, walking speeds 0.2 to 0.7 m/s",
+    "floor": {
+      "tallest_stones": 0.0
+    },
+    "target_speed_range": [
+      0.2,
+      0.7
+    ],
+    "reward": {
+      "forward": 3.0,
+      "alive": 0.2,
+      "energy": 1.5,
+      "sideways": 0.5
+    },
+    "extras": {},
+    "notes": "Duck 1, Duck 2 and Duck 2.1. They trained under an older forward reward, without the overshoot rule (going faster than asked did not lose points); this world has today's rule."
+  },
+  "body_settings": {
+    "name": "standard",
+    "description": "The duck as designed in duck/assets/duck.xml",
+    "notes": ""
   }
 }

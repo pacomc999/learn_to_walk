@@ -4,6 +4,9 @@
 
 Started 2026-10-29 23:06. Starts from: zero (same seed and untrained brain as Duck 1 and Duck 2).
 
+- World: flat_walking, Flat floor, walking speeds 0.2 to 0.7 m/s
+- Body: standard, The duck as designed in duck/assets/duck.xml
+
 ## What changed and why
 
 Same recipe as Duck 2, except the start of each attempt: after the usual random nudge, a coin flip picks the leading leg and one hip swing starts 0.04 rad forward and the other 0.04 rad back (each twice the random nudge, so the nudge can never close the gap).
