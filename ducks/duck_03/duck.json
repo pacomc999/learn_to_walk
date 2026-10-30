@@ -13,7 +13,7 @@
       "outcome": "running"
     }
   ],
-  "notes": "Duck 2.1's best brain scored 986 under the old forward rule. Under Duck 3's exam and reward the same brain scores 732 (flat 798, rough 667, 3 falls of 24): the flat drop is entirely the overshoot penalty, because Duck 2.1 walks faster than asked. Scores before and after the reward change cannot be compared. A started run inherits the source brain's wobble (std about 0.099), its adapted step size (about 0.0000117) and its PPO settings, so the starting wobble and learning rate in the recipe below do not apply to this run.",
+  "notes": "Duck 2.1's best brain scored 986 under the old forward rule. Under Duck 3's exam and reward the same brain scores 732 (flat 798, rough 667, 3 falls of 24): the flat drop is entirely the overshoot penalty, because Duck 2.1 walks faster than asked. Scores before and after the reward change cannot be compared. A started run inherits the source brain's wobble (std about 0.099), its adapted step size (about 0.0000117) and its PPO settings, so the starting wobble and learning rate in the recipe above do not apply to this run.",
   "recipe": {
     "brain": "SymmetricPolicy",
     "layers": {
