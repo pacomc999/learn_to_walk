@@ -138,3 +138,67 @@ def test_adapted_learning_rate_is_used_and_resumed(tmp_path):
     saved_rate = model.learning_rate
     resumed = train(tmp_path, total_steps=1536, resume=True, **FAST)  # nothing left to learn: just loads
     assert resumed.learning_rate == pytest.approx(saved_rate)
+
+
+# The files of a folder with their modification times, to prove nothing in it changed
+def folder_fingerprint(folder):
+    return {str(path): path.stat().st_mtime_ns for path in sorted(folder.rglob("*")) if path.is_file()}
+
+
+# A new run starts from another run's newest brain, counts from 0 and leaves the source alone
+def test_start_from_another_runs_brain(tmp_path):
+    import csv
+    source, target = tmp_path / "source", tmp_path / "target"
+    train(source, total_steps=512, snapshot_every=512, exam_every=10_000, **FAST)
+    source_newest = list_snapshots(source)[-1]
+    before = folder_fingerprint(source)
+
+    train(target, total_steps=0, start_from=source, **FAST)
+    assert [s.steps for s in list_snapshots(target)] == [0]
+    started = PPO.load(str(list_snapshots(target)[0].model_path), device="cpu")
+    original = PPO.load(str(source_newest.model_path), device="cpu")
+    for name, weights in started.policy.state_dict().items():
+        assert torch.equal(weights, original.policy.state_dict()[name]), name
+    assert started.learning_rate == pytest.approx(original.learning_rate)
+
+    model = train(target, total_steps=256, snapshot_every=256, resume=True, **FAST)  # carries on from 0
+    assert 256 <= model.num_timesteps <= 1024  # counted from 0, not from the source steps
+    with (target / "exam.csv").open(newline="") as exam_file:
+        assert int(next(csv.DictReader(exam_file))["timesteps"]) == 0
+    assert folder_fingerprint(source) == before
+
+
+# The first exam row of a started run is at 0 steps even when learning follows
+def test_start_from_counts_steps_from_zero(tmp_path, capsys):
+    import csv
+    source, target = tmp_path / "source", tmp_path / "target"
+    train(source, total_steps=0, **FAST)
+    model = train(target, total_steps=512, snapshot_every=512, exam_every=10_000, start_from=source, **FAST)
+    assert 512 <= model.num_timesteps < 1024
+    with (target / "exam.csv").open(newline="") as exam_file:
+        assert int(next(csv.DictReader(exam_file))["timesteps"]) == 0
+    assert "Starting from the brain at 0 steps" in capsys.readouterr().out
+
+
+def test_start_from_refuses_a_used_run_folder(tmp_path):
+    source, target = tmp_path / "source", tmp_path / "target"
+    train(source, total_steps=0, **FAST)
+    train(target, total_steps=0, **FAST)
+    with pytest.raises(FileExistsError, match="Use --resume"):
+        train(target, total_steps=0, start_from=source, **FAST)
+
+
+def test_start_from_and_resume_together_is_refused(tmp_path):
+    source, target = tmp_path / "source", tmp_path / "target"
+    train(source, total_steps=0, **FAST)
+    with pytest.raises(ValueError, match="--start-from"):
+        train(target, total_steps=0, start_from=source, resume=True, **FAST)
+    assert not target.exists()
+
+
+def test_start_from_an_empty_folder_is_refused(tmp_path):
+    empty, target = tmp_path / "empty", tmp_path / "target"
+    empty.mkdir()
+    with pytest.raises(FileNotFoundError, match="No complete snapshot"):
+        train(target, total_steps=0, start_from=empty, **FAST)
+    assert list_snapshots(target) == []

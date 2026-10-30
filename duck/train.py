@@ -7,6 +7,8 @@ Run from the project root, for example:
     python -m duck.train --run runs/duck_v1 --steps 30000000
 Resume a stopped run, optionally with more curiosity:
     python -m duck.train --run runs/duck_v1 --steps 30000000 --resume --ent-coef 0.01
+Start a new run from another run's brain (a run folder, its best/ folder or a duck's brain/ folder):
+    python -m duck.train --run runs/duck_03/a --steps 30000000 --start-from ducks/duck_02_1/brain
 """
 import argparse
 import ctypes
@@ -378,13 +380,40 @@ def _resumed_model(run_dir: Path, n_envs: int, use_subprocess: bool,
     return model, vec_normalize
 
 
+# Stop if --start-from and --resume are both given, since they ask for two different starts
+def _refuse_start_from_with_resume(start_from: Path | None, resume: bool) -> None:
+    if start_from is not None and resume:
+        raise ValueError("Use either --start-from (a new run) or --resume (continue a run), not both.")
+
+
+# A new run that begins with the newest complete brain in another folder, counting steps from 0.
+# The source folder is only read. The started brain is saved as this run's step 0 snapshot
+def _started_model(run_dir: Path, start_from: Path, n_envs: int, use_subprocess: bool,
+                   ent_coef: float | None) -> tuple[PPO, VecNormalize]:
+    _refuse_used_run_folder(run_dir)
+    source = latest_snapshot(start_from)
+    if source is None:
+        raise FileNotFoundError(f"No complete snapshot to start from in {start_from}")
+    venv = _build_raw_vec_env(n_envs, seed=0, use_subprocess=use_subprocess)
+    model, vec_normalize = _load_snapshot(source, venv)
+    model.num_timesteps = 0  # the new run counts from 0
+    if ent_coef is not None:
+        model.ent_coef = ent_coef
+    _save_snapshot_once(model, vec_normalize, run_dir, steps=0)
+    print(f"Starting from the brain at {source.steps:,} steps in {start_from}.", flush=True)
+    return model, vec_normalize
+
+
 # Train a new run or resume one until total_steps in total, saving snapshots and progress
 def train(run_dir: Path, total_steps: int, snapshot_every: int = 1_000_000, n_envs: int = 8,
           ent_coef: float | None = None, resume: bool = False, use_subprocess: bool = True,
           ppo_overrides: dict | None = None, exam_every: int = DEFAULT_EXAM_EVERY,
-          patience: int = DEFAULT_PATIENCE) -> PPO:
+          patience: int = DEFAULT_PATIENCE, start_from: Path | None = None) -> PPO:
     run_dir = Path(run_dir)
-    if resume:
+    _refuse_start_from_with_resume(start_from, resume)
+    if start_from is not None:
+        model, vec_normalize = _started_model(run_dir, Path(start_from), n_envs, use_subprocess, ent_coef)
+    elif resume:
         model, vec_normalize = _resumed_model(run_dir, n_envs, use_subprocess, ent_coef)
     else:
         model, vec_normalize = _new_model(run_dir, n_envs, use_subprocess, ent_coef, ppo_overrides)
@@ -410,6 +439,8 @@ def main() -> None:
     parser.add_argument("--run", type=Path, required=True, help="run folder, for example runs/duck_v1")
     parser.add_argument("--steps", type=int, required=True, help="total training steps for the whole run")
     parser.add_argument("--resume", action="store_true", help="continue from the newest snapshot")
+    parser.add_argument("--start-from", type=Path, default=None,
+                        help="start a new run from the newest brain in this folder (run, best/ or brain/)")
     parser.add_argument("--ent-coef", type=float, default=None, help="curiosity, for example 0.01")
     parser.add_argument("--envs", type=int, default=8, help="duck worlds running side by side")
     parser.add_argument("--snapshot-every", type=int, default=1_000_000, help="steps between snapshots")
@@ -422,8 +453,8 @@ def main() -> None:
     try:
         train(args.run, args.steps, snapshot_every=args.snapshot_every, n_envs=args.envs,
               ent_coef=args.ent_coef, resume=args.resume, exam_every=args.exam_every,
-              patience=args.patience)
-    except FileExistsError as error:
+              patience=args.patience, start_from=args.start_from)
+    except (FileExistsError, FileNotFoundError, ValueError) as error:
         print(error)  # a plain message, no traceback
         raise SystemExit(1)
     print("Training finished.")
