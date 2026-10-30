@@ -130,13 +130,13 @@ They use the newest brain in the folder; add `--snapshot` with a step count for 
 
 Challenges put a duck's kept brain in situations it never trained for. They are tests, not training: the brain does not change. Run one or more for a duck:
 
-`.venv/Scripts/python -m duck.challenges duck_catalogue/duck_03_1 speed backpack stones rocks`
+`.venv/Scripts/python -m duck.challenges duck_catalogue/duck_03_1 speed backpack perilous_road rocks`
 
 | Challenge | What it asks |
 |---|---|
 | `speed` | Walk at one speed from 0.4 up to 1.5 m/s on the flat floor; training asked for 0.2 to 0.7 |
 | `backpack` | Carry a box of 100 to 800 g on its back, on the flat floor at 0.4 m/s |
-| `stones` | Walk on cobblestones of one height, from 1 up to 8 cm, at 0.4 m/s (30 attempts per height) |
+| `perilous_road` | Walk a road of cobblestones of one height, from 1 up to 8 cm, at 0.4 m/s (30 attempts per height) |
 | `rocks` | Keep walking while a stone ball of 25 to 400 g is thrown at its body every 2 seconds |
 
 Each challenge saves a table, for example `duck_catalogue/duck_03_1/challenges/speed/results.csv`: for each value, how many attempts walked the full 20 seconds, how long it stayed up on average, its actual speed and its energy per metre. The same command always gives the same numbers, so ducks can be compared. `challenges/README.md` is rewritten from all of a duck's tables after every run; remarks written by hand go in `challenges/notes.md` and are copied into it.

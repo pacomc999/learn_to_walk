@@ -8,7 +8,7 @@ each run; remarks written by hand go in challenges/notes.md and are copied into 
 Run from the project root, for example:
     python -m duck.challenges duck_catalogue/duck_03_1 speed backpack
     python -m duck.challenges duck_catalogue/duck_03_1 rocks --film 150
-    python -m duck.challenges duck_catalogue/duck_03_1 speed backpack stones rocks --films
+    python -m duck.challenges duck_catalogue/duck_03_1 speed backpack perilous_road rocks --films
 """
 import argparse
 import csv
@@ -110,9 +110,9 @@ CHALLENGES = {
         world=lambda grams, seed, **film: (BackpackWorld(grams / 1000, **film) if grams
                                            else DuckWalkEnv(target_speed=EVALUATION_TARGET_SPEED, roughness=0.0, **film)),
     ),
-    "stones": Challenge(
-        title="Taller stones",
-        description=f"Cobblestones of one height for the whole attempt, at {EVALUATION_TARGET_SPEED} m/s, a new layout "
+    "perilous_road": Challenge(
+        title="Perilous road",
+        description=f"A road of cobblestones taller than training, one height for the whole attempt, at {EVALUATION_TARGET_SPEED} m/s, a new layout "
                     "each attempt. 30 attempts per height, because on tall stones tiny differences decide falls.",
         column="stones cm",
         label="{} cm stones",

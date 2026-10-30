@@ -29,9 +29,9 @@ An 8 x 7 x 4 cm box fixed on the back, on the flat floor at 0.4 m/s. The duck we
 | 500 | 9 | 10 | 18.1 | 0.42 | 15.2 |
 | 800 | 8 | 10 | 16.1 | 0.39 | 17.3 |
 
-## Taller stones (`stones`)
+## Perilous road (`perilous_road`)
 
-Cobblestones of one height for the whole attempt, at 0.4 m/s, a new layout each attempt. 30 attempts per height, because on tall stones tiny differences decide falls.
+A road of cobblestones taller than training, one height for the whole attempt, at 0.4 m/s, a new layout each attempt. 30 attempts per height, because on tall stones tiny differences decide falls.
 
 | stones cm | walked | attempts | average seconds up | actual m/s | J per metre |
 |---|---|---|---|---|---|
@@ -64,5 +64,5 @@ Not kept in git; make them again with `--films` (and `--film GRAMS` for a rock r
 
 - `speed/films/index.html`: attempt 1 of every value
 - `backpack/films/index.html`: attempt 1 of every value
-- `stones/films/index.html`: attempt 1 of every value
+- `perilous_road/films/index.html`: attempt 1 of every value
 - `rocks/films/index.html`: attempt 1 of every value
