@@ -2,7 +2,7 @@
 
 The training score includes the brain's random experimenting and a random target
 speed per attempt, so it jumps around a lot. The exam removes that noise: the same
-12 starts every time, asked speeds climbing evenly across the training range
+12 starts every time, asked speeds spread evenly across the training range
 (from Duck 3.2's second run; before, each attempt's seed drew a random speed),
 and the brain's best action without wobble.
 It has two parts, a flat floor and a rough floor, and the average of the two is the score.

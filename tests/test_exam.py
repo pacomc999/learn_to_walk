@@ -175,7 +175,7 @@ def test_take_exam_uses_one_height_per_attempt(tmp_path, monkeypatch):
     assert seen == [(1000, 0.01), (1001, 0.02), (1002, 0.03)]
 
 
-# The exam's asked speeds climb evenly from the slowest to the fastest training speed
+# The exam's asked speeds are spread evenly from the slowest to the fastest training speed
 def test_exam_speeds_cover_the_training_range():
     from duck.duck_env import TARGET_SPEED_RANGE
     from duck.exam import exam_speeds
@@ -185,8 +185,8 @@ def test_exam_speeds_cover_the_training_range():
     assert all(slow < fast for slow, fast in zip(speeds, speeds[1:]))
 
 
-# Each exam attempt asks for its own climbing speed
-def test_take_exam_asks_the_climbing_speeds(monkeypatch):
+# Each exam attempt asks for its own speed from the evenly spread list
+def test_take_exam_asks_the_spread_speeds(monkeypatch):
     import duck.exam
     seen = []
     monkeypatch.setattr(duck.exam, "_exam_attempt_on",
