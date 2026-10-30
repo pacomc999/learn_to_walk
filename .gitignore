@@ -9,8 +9,11 @@ __pycache__/
 .venv/
 venv/
 
-# Training output (saved models, logs, recordings)
-runs/
+# Training output (saved models, logs, recordings), except the note on the early experiments
+runs/*
+!runs/early_experiments/
+runs/early_experiments/*
+!runs/early_experiments/README.md
 *.log
 MUJOCO_LOG.TXT
 

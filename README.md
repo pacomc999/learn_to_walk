@@ -94,7 +94,7 @@ To judge or watch an older snapshot, add `--snapshot` and its step count, for ex
 
 - `duck/`: the code, and `tests/` its tests
 - `ducks/`: the catalogue, one folder per duck with its story, recipe, best brain and card (kept in git)
-- `runs/`: training output (not in git): `runs/duck_NN/<run>/` for each duck's runs, with the training output in `train.log`, and `runs/early_experiments/` for the runs before the catalogue
+- `runs/`: training output (not in git): `runs/duck_NN/<run>/` for each duck's runs, with the training output in `train.log`, and `runs/early_experiments/` for the runs before the catalogue (its `README.md` explains each one)
 - `docs/designs/` and `docs/plans/`: the design notes and build plans; `docs/duck_joints.html`: the joint explorer
 
 A finished run's brains can be slimmed: `.venv/Scripts/python -m duck.snapshots slim runs/duck_03` empties each brain's optimizer memory, two thirds of its size. The brains still load and walk exactly the same; only a run that is still training needs that memory.
