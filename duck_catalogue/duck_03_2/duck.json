@@ -5,8 +5,21 @@
   "what_changed": "Three changes from Duck 3.1. The speeds: each training attempt asks for a random speed from 0.2 to 1.5 m/s instead of 0.2 to 0.7. The floor: training is flat again (training roughness 0; the cobblestone floor is kept for later ducks and the tests). The exam: only the flat part, 12 attempts, with asked speeds spread over the new range.",
   "why": "Asked for more than it trained for, Duck 3.1 walked up to about 0.74 m/s and dove forward and fell from 0.9 m/s on. The goal is a duck that runs as fast as it can, up to 1.5 m/s. Francisco chose to keep the slow speeds in training so one brain covers every pace, and a flat exam so the best brain is picked on what the duck trains for. A flat floor also roughly doubles the training speed. Running probably needs a new gait with both feet off the ground at times, which none of the ducks has yet.",
   "starts_from": "Duck 3.1's best brain (duck_catalogue/duck_03_1/brain, 2.25M steps, exam 981 under Duck 3.1's exam)",
-  "runs": [],
-  "notes": "Exam scores of Duck 3.2 cannot be compared with earlier ducks: the exam is flat only and asks for faster speeds, which can earn more forward points. Duck 3.2's first exam, at step 0, is Duck 3.1's brain on Duck 3.2's exam. A started run inherits the source brain's wobble, adapted step size and PPO settings, so the starting wobble and learning rate in the recipe above do not apply to this run.",
+  "runs": [
+    {
+      "folder": "runs/duck_03_2/from_duck_03_1",
+      "dates": "2026-10-30 16:28 to 17:37",
+      "steps": "0 to 4.0M",
+      "outcome": "From Duck 3.1's brain, with the first version of the flat exam, whose 12 attempts each drew a random speed from their seed: they happened to ask for 0.20 to 1.00 m/s, 0.50 on average, nothing faster. Started at 886 with 4 falls of 12 (Duck 3.1 dove forward above about 0.8 m/s); 1,220 at 0.25M, best 1,356 with 1 fall at 3.75M. Its best brain started run 2. About 1,000 steps per second"
+    },
+    {
+      "folder": "runs/duck_03_2/climbing_exam",
+      "dates": "2026-10-30 17:38 to 19:04",
+      "steps": "0 to 4.0M",
+      "outcome": "From run 1's best brain, with the exam's speeds climbing evenly from 0.20 to 1.50 m/s (the same range as training, 0.85 on average; the best possible score is about 2,750). Started at 2,291 with no falls, then new bests at almost every exam, a few points at a time: 2,348 at 1.0M, 2,388 at 2.5M and the best, 2,391 with no falls (87% of the possible), at 2.75M. One weak exam (2,048, 2 falls) at 3.25M; 2,387 at the end"
+    }
+  ],
+  "notes": "Exam scores of Duck 3.2 cannot be compared with earlier ducks: the exam is flat only and asks for faster speeds, which can earn more forward points. Duck 3.2's first exam, at step 0, is Duck 3.1's brain on Duck 3.2's exam. A started run inherits the source brain's wobble, adapted step size and PPO settings, so the starting wobble and learning rate in the recipe above do not apply to this run. The kept brain runs: on the flat floor, asked for 0.4 m/s it walks (one foot always down, 2.8 steps a second); from 0.8 m/s both feet are off the ground part of the time: 34% at 0.8, 44% at 1.0, 49% at 1.2 and 54% at 1.5 m/s, where it reaches 1.42 m/s at about 5.4 steps a second. Nobody told it to run: the switch from walking to running appeared by itself, between 0.4 and 0.8 m/s. The exam's speeds were made to climb across the training range after run 1, because the random speeds of the first exam never asked for running.",
   "recipe": {
     "brain": "SymmetricPolicy",
     "layers": {

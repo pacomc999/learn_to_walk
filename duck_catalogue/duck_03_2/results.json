@@ -1,0 +1,16 @@
+{
+  "from_run": "runs/duck_03_2/climbing_exam/best",
+  "steps": 2752512,
+  "measured": "2026-10-30 19:06",
+  "exam_score": 2391.3,
+  "exam_falls": 0,
+  "walking_test": "10 of 10",
+  "gait_at_judging_speed": {
+    "feet_in_air": 0.0,
+    "one_foot_down": 0.967,
+    "both_feet_down": 0.033,
+    "joules_per_metre": 12.0,
+    "speed": 0.38,
+    "falls": 0
+  }
+}
