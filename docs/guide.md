@@ -111,6 +111,8 @@ A new run needs `--duck`: it trains in that duck's world and body and saves them
 
 `.venv/Scripts/python -m duck.train --duck duck_catalogue/duck_04 --run runs/duck_04/from_duck_03_1 --steps 4000000 --start-from duck_catalogue/duck_03_1/brain`
 
+A body with much stiffer motors needs a calmer start when training from zero: the same random wobble shakes it far harder, and Duck 3.3's first try learned to throw himself down to save energy. `--start-log-std -3.3` starts the wobble 10 times smaller than the usual -1.0.
+
 A brain from another body fits too (every brain fits every body); add `"brain_from_body": "<name>"` to the run in `duck.json` and the card says so.
 
 Continue a stopped run (it keeps its own world and body, so `--duck` is not needed). The number of steps is the total for the whole run, so a bigger number trains on past the first goal:

@@ -49,7 +49,8 @@ NET_ARCH = {"pi": [256, 256], "vf": [256, 256]}
 NEW_RUN_POLICY = SymmetricPolicy
 
 # A new brain starts with calmer random moves: log_std -1 is a spread of about 0.37
-# per motor, instead of 1.0, so early attempts are not pure flailing
+# per motor, instead of 1.0, so early attempts are not pure flailing. A body with stiffer
+# motors can start smaller (--start-log-std), since the same wobble shakes it harder
 START_LOG_STD = -1.0
 
 # PPO settings used unless a caller overrides them (8 envs x 1024 steps = 8192 steps per rollout)
@@ -341,14 +342,15 @@ def _refuse_used_run_folder(run_dir: Path) -> None:
 
 # A brand new untrained brain, saved as the step 0 snapshot
 def _new_model(run_dir: Path, n_envs: int, use_subprocess: bool, ent_coef: float | None,
-               ppo_overrides: dict | None, world: World, body: Body) -> tuple[PPO, VecNormalize]:
+               ppo_overrides: dict | None, world: World, body: Body,
+               start_log_std: float) -> tuple[PPO, VecNormalize]:
     _refuse_used_run_folder(run_dir)
     vec_normalize = build_vec_env(n_envs, seed=0, world=world, body=body, use_subprocess=use_subprocess)
     settings = {**DEFAULT_PPO_SETTINGS, **(ppo_overrides or {})}
     if ent_coef is not None:
         settings["ent_coef"] = ent_coef
     model = PPO(NEW_RUN_POLICY, vec_normalize, device="cpu", seed=0, verbose=0,
-                policy_kwargs={"net_arch": NET_ARCH, "log_std_init": START_LOG_STD}, **settings)
+                policy_kwargs={"net_arch": NET_ARCH, "log_std_init": start_log_std}, **settings)
     if _save_snapshot_once(model, vec_normalize, run_dir, steps=0):
         print("Untrained snapshot saved at 0 steps.", flush=True)
     return model, vec_normalize
@@ -433,11 +435,13 @@ def _run_settings(run_dir: Path, settings: RunSettings | None, resume: bool) -> 
 
 
 # Train a new run or resume one until total_steps in total, saving snapshots and progress.
-# settings gives the world and body of a new run; a resumed run uses its own run_settings.json
+# settings gives the world and body of a new run; a resumed run uses its own run_settings.json.
+# start_log_std is the starting wobble of a brand new brain (started and resumed brains keep theirs)
 def train(run_dir: Path, total_steps: int, settings: RunSettings | None = None, snapshot_every: int = 1_000_000,
           n_envs: int = 8, ent_coef: float | None = None, resume: bool = False, use_subprocess: bool = True,
           ppo_overrides: dict | None = None, exam_every: int = DEFAULT_EXAM_EVERY,
-          patience: int = DEFAULT_PATIENCE, start_from: Path | None = None) -> PPO:
+          patience: int = DEFAULT_PATIENCE, start_from: Path | None = None,
+          start_log_std: float = START_LOG_STD) -> PPO:
     run_dir = Path(run_dir)
     _refuse_start_from_with_resume(start_from, resume)
     if not resume:
@@ -450,7 +454,8 @@ def train(run_dir: Path, total_steps: int, settings: RunSettings | None = None, 
     elif resume:
         model, vec_normalize = _resumed_model(run_dir, n_envs, use_subprocess, ent_coef, world, body)
     else:
-        model, vec_normalize = _new_model(run_dir, n_envs, use_subprocess, ent_coef, ppo_overrides, world, body)
+        model, vec_normalize = _new_model(run_dir, n_envs, use_subprocess, ent_coef, ppo_overrides, world, body,
+                                         start_log_std)
 
     try:
         steps_left = total_steps - model.num_timesteps
@@ -500,6 +505,8 @@ def main() -> None:
     parser.add_argument("--resume", action="store_true", help="continue from the newest snapshot")
     parser.add_argument("--start-from", type=Path, default=None,
                         help="start a new run from the newest brain in this folder (run, best/ or brain/)")
+    parser.add_argument("--start-log-std", type=float, default=START_LOG_STD,
+                        help=f"starting wobble of a brand new brain (default {START_LOG_STD}; -3.3 is 10 times smaller)")
     parser.add_argument("--ent-coef", type=float, default=None, help="curiosity, for example 0.01")
     parser.add_argument("--envs", type=int, default=8, help="duck worlds running side by side")
     parser.add_argument("--snapshot-every", type=int, default=1_000_000, help="steps between snapshots")
@@ -523,7 +530,7 @@ def main() -> None:
     try:
         train(args.run, args.steps, settings=settings, snapshot_every=args.snapshot_every, n_envs=args.envs,
               ent_coef=args.ent_coef, resume=args.resume, exam_every=args.exam_every,
-              patience=args.patience, start_from=args.start_from)
+              patience=args.patience, start_from=args.start_from, start_log_std=args.start_log_std)
     except (FileExistsError, FileNotFoundError, ValueError) as error:
         print(error)  # a plain message, no traceback
         raise SystemExit(1)

@@ -71,6 +71,12 @@ def test_new_brain_starts_with_log_std_minus_one(tmp_path):
     model = train(tmp_path, total_steps=0, **FAST)
     assert torch.allclose(model.policy.log_std, torch.full((12,), -1.0))
 
+
+# A stronger body can start with a smaller wobble (Duck 3.3: 10 times smaller)
+def test_new_brain_can_start_with_a_smaller_wobble(tmp_path):
+    model = train(tmp_path, total_steps=0, start_log_std=-3.3, **FAST)
+    assert torch.allclose(model.policy.log_std, torch.full((12,), -3.3))
+
 # A broken newest snapshot is skipped with a warning, and the one before it is used
 def test_corrupt_newest_snapshot_falls_back(tmp_path, capsys):
     train(tmp_path, total_steps=1024, snapshot_every=1024, **FAST)
