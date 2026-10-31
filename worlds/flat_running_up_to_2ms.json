@@ -1,0 +1,19 @@
+{
+  "name": "flat_running_up_to_2ms",
+  "description": "Flat floor, speeds 0.2 to 2.0 m/s, for learning to run fast",
+  "floor": {
+    "tallest_stones": 0.0
+  },
+  "target_speed_range": [
+    0.2,
+    2.0
+  ],
+  "reward": {
+    "forward": 3.0,
+    "alive": 0.2,
+    "energy": 1.5,
+    "sideways": 0.5
+  },
+  "extras": {},
+  "notes": "Duck 3.3's running school (from_run_1). Like flat_running, but up to 2.0 m/s instead of 1.5, since his legs are 10 times stronger."
+}

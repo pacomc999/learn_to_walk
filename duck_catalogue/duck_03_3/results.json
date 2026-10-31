@@ -1,0 +1,17 @@
+{
+  "from_run": "runs/duck_03_3/from_zero/best",
+  "steps": 6504448,
+  "measured": "2026-10-31 12:18",
+  "exam_world": "flat_walking",
+  "exam_score": 1188.3,
+  "exam_falls": 0,
+  "walking_test": "10 of 10",
+  "gait_at_judging_speed": {
+    "feet_in_air": 0.43,
+    "one_foot_down": 0.549,
+    "both_feet_down": 0.021,
+    "joules_per_metre": 18.5,
+    "speed": 0.38,
+    "falls": 0
+  }
+}

@@ -1,21 +1,27 @@
 {
   "name": "Duck 3.3 the Strong",
-  "world": "flat_walking",
+  "world": "flat_running_up_to_2ms",
   "body": "ten_times_stronger",
   "started": "2026-10-31 11:30",
-  "summary": "A body with every motor 10 times stronger, trained from zero on a flat floor",
+  "summary": "A body with every motor 10 times stronger, trained from zero on a flat floor, then sent to running school up to 2 m/s",
   "what_changed": "Three changes from Duck 3.1. The body: every motor has 10 times the force limit and 10 times the stiffness (hips and knees 40 from 4, ankles 30 from 3, neck 10 from 1, toes 5 from 0.5; stiffness 200 for hips, knees and ankles from 20, 40 for the neck from 4, 50 for the toes from 5). The brain: a new one trained from zero, not Duck 3.1's, starting with a 10 times smaller wobble (log_std -3.3, a spread of 0.037 instead of 0.37). The world is the flat floor with walking speeds 0.2 to 0.7 m/s and today's reward (flat_walking), so the exam is 12 flat attempts.",
   "why": "Francisco wanted to see what the duck is capable of with much stronger muscles. Raising only the force limits would have kept Duck 3.1's walk but given at most about 5 times the force in normal moves; raising the stiffness too gives the full 10 times, and Duck 3.1's brain fell every time in that body (its small commands turned into hard kicks), so this brain learns the body from the start.",
   "starts_from": "zero",
   "runs": [
     {
       "folder": "runs/duck_03_3/from_zero",
+      "dates": "2026-10-31 10:55 to 12:10",
+      "steps": "0 to 6.5M (4M, then continued toward 8M and stopped by hand once his walk was steady)",
+      "outcome": "Started with the 10 times smaller wobble (log_std -3.3). Every exam was a new best, but it climbed slowly: all 12 attempts fell up to 3.5M (score 124), as against 1.5M for Duck 2.1. Early on his attempts got shorter (1.1 s untrained, 0.23 s at 0.5M, with negative forward points), then longer again with forward points rising (0.53 s and +23 at 1.5M); by 2.25M his feet landed ahead of each other about twice per attempt. The jump came at the end of the first 4M: 346 with 11 falls at 3.75M and 655 with 7 falls at 4.0M. Continued from 4M: 1094 with 0 falls at 5.0M (above Duck 2.1's best of 986), then 0 falls in every exam, reaching 1188 at 6.5M, where it was stopped to move on to running. The wobble shrank by itself from 0.037 to about 0.014. About 1,000 to 1,100 steps per second."
+    },
+    {
+      "folder": "runs/duck_03_3/from_run_1",
       "dates": "",
       "steps": "",
       "outcome": ""
     }
   ],
-  "notes": "A first try with the usual starting wobble (log_std -1.0, stopped at 1M steps) learned to fall on purpose: in this body the wobble whipped the stiff legs and burned about 180 joules per step, far more than staying up earns, and the strong legs could throw him down within 0.05 s. Measured on random wobble around standing, log_std -3.3 shakes the joints about as much as -1.0 shook the standard body, though it still burns about 5 times the energy. The closest duck to compare with is Duck 2.1, also trained from zero on the flat floor at the same speeds, but under an older forward reward without the overshoot rule.",
+  "notes": "A first try with the usual starting wobble (log_std -1.0, stopped at 1M steps) learned to fall on purpose: in this body the wobble whipped the stiff legs and burned about 180 joules per step, far more than staying up earns, and the strong legs could throw him down within 0.05 s. Measured on random wobble around standing, log_std -3.3 shakes the joints about as much as -1.0 shook the standard body, though it still burns about 5 times the energy. The closest duck to compare with is Duck 2.1, also trained from zero on the flat floor at the same speeds, but under an older forward reward without the overshoot rule. Running school (from_run_1, his idea once the walk was steady): his best walking brain (exam 1188 in flat_walking) continues on the flat floor at speeds 0.2 to 2.0 m/s (the flat_running_up_to_2ms world), faster than Duck 3.2's 1.5 since his legs are much stronger. The duck's world is now that one; the walking run keeps flat_walking in its own run_settings.json. Running exam scores cannot be compared with walking ones (faster speeds earn more forward points), nor directly with Duck 3.2's (his speeds only went to 1.5).",
   "recipe": {
     "brain": "SymmetricPolicy",
     "layers": {
@@ -65,14 +71,14 @@
     "code_version": "f90f501"
   },
   "world_settings": {
-    "name": "flat_walking",
-    "description": "Flat floor, walking speeds 0.2 to 0.7 m/s",
+    "name": "flat_running_up_to_2ms",
+    "description": "Flat floor, speeds 0.2 to 2.0 m/s, for learning to run fast",
     "floor": {
       "tallest_stones": 0.0
     },
     "target_speed_range": [
       0.2,
-      0.7
+      2.0
     ],
     "reward": {
       "forward": 3.0,
@@ -81,7 +87,7 @@
       "sideways": 0.5
     },
     "extras": {},
-    "notes": "Duck 1, Duck 2 and Duck 2.1. They trained under an older forward reward, without the overshoot rule (going faster than asked did not lose points); this world has today's rule."
+    "notes": "Duck 3.3's running school (from_run_1). Like flat_running, but up to 2.0 m/s instead of 1.5, since his legs are 10 times stronger."
   },
   "body_settings": {
     "name": "ten_times_stronger",
