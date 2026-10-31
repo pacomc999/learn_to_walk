@@ -1,0 +1,19 @@
+{
+  "name": "flat_walking_free_energy",
+  "description": "Flat floor, walking speeds 0.2 to 0.7 m/s, and motor work costs nothing",
+  "floor": {
+    "tallest_stones": 0.0
+  },
+  "target_speed_range": [
+    0.2,
+    0.7
+  ],
+  "reward": {
+    "forward": 3.0,
+    "alive": 0.2,
+    "energy": 0.0,
+    "sideways": 0.5
+  },
+  "extras": {},
+  "notes": "Duck 4's second run (from_run_1), if his walk stops improving in flat_walking. Like flat_walking, but with no energy penalty: with force motors he learned to save energy by holding his hips, neck and ankles against their end stops (a crouched, tilted walk), and free energy takes away the reason for that."
+}
