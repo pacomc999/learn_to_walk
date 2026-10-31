@@ -1,0 +1,102 @@
+{
+  "name": "Duck 4",
+  "world": "stones_up_to_4cm",
+  "body": "strong_legs",
+  "started": "2026-10-31 09:49",
+  "summary": "Duck 3.1's brain in a body with 10 times stronger legs, on cobblestones up to 4 cm",
+  "what_changed": "One change from Duck 3.1: the body. The hip, knee and ankle motors have 10 times the force limit (40, 40 and 30 instead of 4, 4 and 3) and 10 times the stiffness (200 instead of 20). The world is the same as Duck 3.1's second run: stones from flat up to 4 cm, walking speeds 0.2 to 0.7 m/s.",
+  "why": "Duck 3.1 still falls on about two thirds of 4 cm floors, and Francisco wanted to see what the duck is capable of with much stronger legs.",
+  "starts_from": "Duck 3.1's kept brain (duck_catalogue/duck_03_1/brain, exam 1206 in the stones_up_to_4cm world)",
+  "runs": [
+    {
+      "folder": "runs/duck_04/from_duck_03_1",
+      "dates": "",
+      "steps": "",
+      "outcome": "",
+      "brain_from_body": "standard"
+    }
+  ],
+  "notes": "Duck 3.1's brain falls 10 of 10 times on flat ground in this body before training: its small commands now kick hard. Exam scores compare directly with Duck 3.1's second run (same world, same exam).",
+  "recipe": {
+    "brain": "SymmetricPolicy",
+    "layers": {
+      "pi": [
+        256,
+        256
+      ],
+      "vf": [
+        256,
+        256
+      ]
+    },
+    "start_log_std": -1.0,
+    "ppo": {
+      "n_steps": 1024,
+      "batch_size": 256,
+      "n_epochs": 10,
+      "learning_rate": 0.0003,
+      "gamma": 0.99,
+      "gae_lambda": 0.95,
+      "clip_range": 0.2
+    },
+    "step_size_rule": {
+      "target_change": 0.01,
+      "factor": 1.5,
+      "min_learning_rate": 1e-05,
+      "max_learning_rate": 0.01
+    },
+    "floor_shape": {
+      "waves": 8,
+      "wavelength_range": [
+        0.2,
+        0.5
+      ],
+      "stone_size": 0.06,
+      "stone_height_range": [
+        0.35,
+        1.0
+      ],
+      "gap_share": 0.07,
+      "bump_share": 0.5
+    },
+    "attempt_seconds": 20.0,
+    "physics_steps_per_action": 4,
+    "start_noise": 0.02,
+    "start_stride": 0.04,
+    "code_version": "f90f501"
+  },
+  "world_settings": {
+    "name": "stones_up_to_4cm",
+    "description": "Cobblestones from flat up to 4 cm, walking speeds 0.2 to 0.7 m/s",
+    "floor": {
+      "tallest_stones": 0.04
+    },
+    "target_speed_range": [
+      0.2,
+      0.7
+    ],
+    "reward": {
+      "forward": 3.0,
+      "alive": 0.2,
+      "energy": 1.5,
+      "sideways": 0.5
+    },
+    "extras": {},
+    "notes": "Duck 3.1's second run (from_duck_03_1)."
+  },
+  "body_settings": {
+    "name": "strong_legs",
+    "description": "Hip, knee and ankle motors 10 times stronger: 10 times the force limit and 10 times the stiffness",
+    "motor_force_limits": {
+      "hips": 40.0,
+      "knees": 40.0,
+      "ankles": 30.0
+    },
+    "motor_stiffness": {
+      "hips": 200.0,
+      "knees": 200.0,
+      "ankles": 200.0
+    },
+    "notes": "Both numbers go up together: with stiffness 20 a motor only reaches a 40 force limit 2 radians off its target, so a higher limit alone would barely change how hard the legs push. Neck and toes stay standard. Checked stable on 2026-10-31 (no simulation warnings with random commands); Duck 3.1's brain falls in it 10 of 10 times on flat ground because its small commands now kick hard."
+  }
+}
