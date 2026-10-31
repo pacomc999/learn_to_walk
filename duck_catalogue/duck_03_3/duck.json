@@ -1,10 +1,10 @@
 {
   "name": "Duck 3.3 the Strong",
-  "world": "stones_up_to_4cm",
+  "world": "flat_walking",
   "body": "ten_times_stronger",
-  "started": "2026-10-31 10:40",
-  "summary": "A body with every motor 10 times stronger, trained from zero on cobblestones up to 4 cm",
-  "what_changed": "Two changes from Duck 3.1. The body: every motor has 10 times the force limit and 10 times the stiffness (hips and knees 40 from 4, ankles 30 from 3, neck 10 from 1, toes 5 from 0.5; stiffness 200 for hips, knees and ankles from 20, 40 for the neck from 4, 50 for the toes from 5). The brain: a new one trained from zero, not Duck 3.1's. The world is the same as Duck 3.1's second run: stones from flat up to 4 cm, walking speeds 0.2 to 0.7 m/s.",
+  "started": "2026-10-31 10:50",
+  "summary": "A body with every motor 10 times stronger, trained from zero on a flat floor",
+  "what_changed": "Two changes from Duck 3.1. The body: every motor has 10 times the force limit and 10 times the stiffness (hips and knees 40 from 4, ankles 30 from 3, neck 10 from 1, toes 5 from 0.5; stiffness 200 for hips, knees and ankles from 20, 40 for the neck from 4, 50 for the toes from 5). The brain: a new one trained from zero, not Duck 3.1's. The world is the flat floor with walking speeds 0.2 to 0.7 m/s and today's reward (flat_walking), so the exam is 12 flat attempts.",
   "why": "Francisco wanted to see what the duck is capable of with much stronger muscles. Raising only the force limits would have kept Duck 3.1's walk but given at most about 5 times the force in normal moves; raising the stiffness too gives the full 10 times, and Duck 3.1's brain fell every time in that body (its small commands turned into hard kicks), so this brain learns the body from the start.",
   "starts_from": "zero",
   "runs": [
@@ -15,7 +15,7 @@
       "outcome": ""
     }
   ],
-  "notes": "Exam scores compare directly with Duck 3.1's second run (same world, same exam). Before training, Duck 3.1's brain fell 10 of 10 times on flat ground in this body.",
+  "notes": "The closest duck to compare with is Duck 2.1, also trained from zero on the flat floor at the same speeds, but under an older forward reward without the overshoot rule, so the scores are close but not identical in meaning. Before training, Duck 3.1's brain fell 10 of 10 times on flat ground in this body.",
   "recipe": {
     "brain": "SymmetricPolicy",
     "layers": {
@@ -65,10 +65,10 @@
     "code_version": "f90f501"
   },
   "world_settings": {
-    "name": "stones_up_to_4cm",
-    "description": "Cobblestones from flat up to 4 cm, walking speeds 0.2 to 0.7 m/s",
+    "name": "flat_walking",
+    "description": "Flat floor, walking speeds 0.2 to 0.7 m/s",
     "floor": {
-      "tallest_stones": 0.04
+      "tallest_stones": 0.0
     },
     "target_speed_range": [
       0.2,
@@ -81,7 +81,7 @@
       "sideways": 0.5
     },
     "extras": {},
-    "notes": "Duck 3.1's second run (from_duck_03_1)."
+    "notes": "Duck 1, Duck 2 and Duck 2.1. They trained under an older forward reward, without the overshoot rule (going faster than asked did not lose points); this world has today's rule."
   },
   "body_settings": {
     "name": "ten_times_stronger",
