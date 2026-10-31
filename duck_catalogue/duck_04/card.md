@@ -1,17 +1,17 @@
 # Duck 4
 
-**Duck 3.1's brain in a body with 10 times stronger legs, on cobblestones up to 4 cm**
+**Duck 3.1's brain in a body with every motor 10 times stronger, on cobblestones up to 4 cm**
 
-Started 2026-10-31 09:49. Starts from: Duck 3.1's kept brain (duck_catalogue/duck_03_1/brain, exam 1206 in the stones_up_to_4cm world).
+Started 2026-10-31 10:05. Starts from: Duck 3.1's kept brain (duck_catalogue/duck_03_1/brain, exam 1206 in the stones_up_to_4cm world).
 
 - World: stones_up_to_4cm, Cobblestones from flat up to 4 cm, walking speeds 0.2 to 0.7 m/s
-- Body: strong_legs, Hip, knee and ankle motors 10 times stronger: 10 times the force limit and 10 times the stiffness
+- Body: ten_times_stronger, Every motor 10 times stronger: 10 times the force limit and 10 times the stiffness
 
 ## What changed and why
 
-One change from Duck 3.1: the body. The hip, knee and ankle motors have 10 times the force limit (40, 40 and 30 instead of 4, 4 and 3) and 10 times the stiffness (200 instead of 20). The world is the same as Duck 3.1's second run: stones from flat up to 4 cm, walking speeds 0.2 to 0.7 m/s.
+One change from Duck 3.1: the body. Every motor has 10 times the force limit and 10 times the stiffness: hips and knees 40 (from 4), ankles 30 (from 3), neck 10 (from 1), toes 5 (from 0.5); stiffness 200 for hips, knees and ankles (from 20), 40 for the neck (from 4) and 50 for the toes (from 5). The world is the same as Duck 3.1's second run: stones from flat up to 4 cm, walking speeds 0.2 to 0.7 m/s.
 
-Duck 3.1 still falls on about two thirds of 4 cm floors, and Francisco wanted to see what the duck is capable of with much stronger legs.
+Duck 3.1 still falls on about two thirds of 4 cm floors, and Francisco wanted to see what the duck is capable of with much stronger muscles.
 
 ## Recipe
 

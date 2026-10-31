@@ -1,0 +1,19 @@
+{
+  "name": "ten_times_stronger",
+  "description": "Every motor 10 times stronger: 10 times the force limit and 10 times the stiffness",
+  "motor_force_limits": {
+    "neck": 10,
+    "hips": 40,
+    "knees": 40,
+    "ankles": 30,
+    "toes": 5
+  },
+  "motor_stiffness": {
+    "neck": 40,
+    "hips": 200,
+    "knees": 200,
+    "ankles": 200,
+    "toes": 50
+  },
+  "notes": "Both numbers go up together: with the old stiffness a motor would only reach its new force limit far off its target, so a higher limit alone would barely change how hard the duck pushes. Checked stable on 2026-10-31 (no simulation warnings with random commands)."
+}
