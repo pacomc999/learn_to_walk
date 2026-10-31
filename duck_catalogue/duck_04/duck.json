@@ -1,0 +1,99 @@
+{
+  "name": "Duck 4",
+  "world": "flat_walking",
+  "body": "force_motors",
+  "started": "2026-10-31 22:51",
+  "summary": "Force motors: the brain sets each joint's force (up to 10 times the standard limits), loose at 0; learning to walk from zero on a flat floor",
+  "what_changed": "The muscles. Every duck before had position motors, which pull each joint toward the angle the brain asks for like a spring. Duck 4 has force motors (the force_motors body): the brain's command is the force itself, from minus to plus the force limit, with the same limits as Duck 3.3 (10 times the standard). A command of 0 leaves the joint loose. Starting wobble 0.05 (log_std -3.0).",
+  "why": "Duck 3.3's 10 times stiffer position motors made his legs rigid: asked for 2 m/s he ran about 1.5 m/s, and with free energy about 1.6 m/s, then stopped improving. Francisco wanted muscles that are not stiff but can push hard when the brain wants. The wobble was measured on random moves of a new brain (10 attempts each): with force motors a wobble of 0.05 costs 1.3 J per step, less than the standard duck's start (2.8 J at 0.37), so energy should not make falling on purpose pay, the trap Duck 3.3 fell into at first.",
+  "starts_from": "Nothing: a new brain, since old brains send angles, not forces",
+  "runs": [
+    {
+      "folder": "runs/duck_04/from_zero",
+      "dates": "",
+      "steps": "",
+      "outcome": ""
+    }
+  ],
+  "notes": "Exam and walking scores can be compared with the walking ducks in flat_walking. With no commands the duck collapses in about 0.4 s, so he has to learn to hold himself up first.",
+  "recipe": {
+    "brain": "SymmetricPolicy",
+    "layers": {
+      "pi": [
+        256,
+        256
+      ],
+      "vf": [
+        256,
+        256
+      ]
+    },
+    "start_log_std": -3.0,
+    "ppo": {
+      "n_steps": 1024,
+      "batch_size": 256,
+      "n_epochs": 10,
+      "learning_rate": 0.0003,
+      "gamma": 0.99,
+      "gae_lambda": 0.95,
+      "clip_range": 0.2
+    },
+    "step_size_rule": {
+      "target_change": 0.01,
+      "factor": 1.5,
+      "min_learning_rate": 1e-05,
+      "max_learning_rate": 0.01
+    },
+    "floor_shape": {
+      "waves": 8,
+      "wavelength_range": [
+        0.2,
+        0.5
+      ],
+      "stone_size": 0.06,
+      "stone_height_range": [
+        0.35,
+        1.0
+      ],
+      "gap_share": 0.07,
+      "bump_share": 0.5
+    },
+    "attempt_seconds": 20.0,
+    "physics_steps_per_action": 4,
+    "start_noise": 0.02,
+    "start_stride": 0.04,
+    "code_version": "861ce13"
+  },
+  "world_settings": {
+    "name": "flat_walking",
+    "description": "Flat floor, walking speeds 0.2 to 0.7 m/s",
+    "floor": {
+      "tallest_stones": 0.0
+    },
+    "target_speed_range": [
+      0.2,
+      0.7
+    ],
+    "reward": {
+      "forward": 3.0,
+      "alive": 0.2,
+      "energy": 1.5,
+      "sideways": 0.5
+    },
+    "extras": {},
+    "notes": "Duck 1, Duck 2 and Duck 2.1. They trained under an older forward reward, without the overshoot rule (going faster than asked did not lose points); this world has today's rule."
+  },
+  "body_settings": {
+    "name": "force_motors",
+    "description": "Force motors with 10 times the standard force limits: the brain sets each joint's force, loose at 0",
+    "motor_type": "force",
+    "motor_force_limits": {
+      "neck": 10.0,
+      "hips": 40.0,
+      "knees": 40.0,
+      "ankles": 30.0,
+      "toes": 5.0
+    },
+    "notes": "Duck 4. The same strength as ten_times_stronger (Duck 3.3), but with no spring: Duck 3.3's 10 times stiffer position motors made his legs rigid, and asked for 2 m/s he ran about 1.5 to 1.6 m/s. Here the brain's command is the force itself, so a leg is as stiff or as loose as the brain makes it."
+  }
+}

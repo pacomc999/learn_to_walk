@@ -1,0 +1,13 @@
+{
+  "name": "force_motors",
+  "description": "Force motors with 10 times the standard force limits: the brain sets each joint's force, loose at 0",
+  "motor_type": "force",
+  "motor_force_limits": {
+    "neck": 10,
+    "hips": 40,
+    "knees": 40,
+    "ankles": 30,
+    "toes": 5
+  },
+  "notes": "Duck 4. The same strength as ten_times_stronger (Duck 3.3), but with no spring: Duck 3.3's 10 times stiffer position motors made his legs rigid, and asked for 2 m/s he ran about 1.5 to 1.6 m/s. Here the brain's command is the force itself, so a leg is as stiff or as loose as the brain makes it."
+}

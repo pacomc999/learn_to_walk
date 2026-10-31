@@ -1,8 +1,10 @@
 """Bodies: the duck himself, as changes from the standard duck in duck/assets/duck.xml.
 
-A body is a small JSON file in bodies/ that lists only what differs: how strong and how
-stiff the motors are, how heavy the parts are, and how well the feet grip. Bodies change
-numbers only, so every body has the same 12 motors and senses and every brain fits it.
+A body is a small JSON file in bodies/ that lists only what differs: the kind of motors,
+how strong and how stiff they are, how heavy the parts are, and how well the feet grip.
+Every body has the same 12 motors and senses, so every brain fits it. Position motors (the
+standard) pull each joint toward the angle the brain asks for, like a spring; force motors
+push with the force the brain asks for, from minus to plus the force limit, and are loose at 0.
 A duck keeps a frozen copy of its body in its duck.json.
 """
 import json
@@ -31,7 +33,11 @@ FOOT_GEOMS = ["left_foot", "left_toes", "right_foot", "right_toes"]
 PART_NAMES = [element.get("name") for element in ElementTree.parse(DUCK_XML_PATH).iter("body")]
 
 # The keys a body file may have
-BODY_KEYS = {"name", "description", "motor_force_limits", "motor_stiffness", "part_masses", "foot_friction", "notes"}
+BODY_KEYS = {"name", "description", "motor_type", "motor_force_limits", "motor_stiffness", "part_masses",
+             "foot_friction", "notes"}
+
+# The kinds of motor a body can have
+MOTOR_TYPES = ["position", "force"]
 
 
 # One body, read from its file. Empty changes mean the standard duck
@@ -39,6 +45,7 @@ BODY_KEYS = {"name", "description", "motor_force_limits", "motor_stiffness", "pa
 class Body:
     name: str
     description: str
+    motor_type: str = "position"                                        # "position" or "force"
     motor_force_limits: dict[str, float] = field(default_factory=dict)  # by group or motor name
     motor_stiffness: dict[str, float] = field(default_factory=dict)     # kp, by group or motor name
     part_masses: dict[str, float] = field(default_factory=dict)         # kg, by part name
@@ -80,9 +87,15 @@ def body_from_dict(data: dict, source: str = "body") -> Body:
     if unknown:
         raise ValueError(f"{source}: {sorted(unknown)[0]} is not something a body can have")
     friction = data.get("foot_friction")
+    motor_type = data.get("motor_type", "position")
+    if motor_type not in MOTOR_TYPES:
+        raise ValueError(f"{source}: motor_type must be one of {', '.join(MOTOR_TYPES)}, not {motor_type!r}")
+    if motor_type == "force" and data.get("motor_stiffness"):
+        raise ValueError(f"{source}: motor_stiffness has no meaning for force motors (they have no spring)")
     return Body(
         name=data["name"],
         description=data["description"],
+        motor_type=motor_type,
         motor_force_limits=_motor_table(data.get("motor_force_limits", {}), source, "motor_force_limits"),
         motor_stiffness=_motor_table(data.get("motor_stiffness", {}), source, "motor_stiffness"),
         part_masses=_mass_table(data.get("part_masses", {}), source),
@@ -94,6 +107,8 @@ def body_from_dict(data: dict, source: str = "body") -> Body:
 # The file layout of a body: only the changes it has
 def body_to_dict(body: Body) -> dict:
     data = {"name": body.name, "description": body.description}
+    if body.motor_type != "position":
+        data["motor_type"] = body.motor_type
     for key in ("motor_force_limits", "motor_stiffness", "part_masses"):
         if getattr(body, key):
             data[key] = dict(getattr(body, key))
@@ -115,7 +130,8 @@ def load_body(name: str, folder: Path = BODIES_DIR) -> Body:
 
 # Whether the body changes anything at all
 def _is_standard(body: Body) -> bool:
-    return not (body.motor_force_limits or body.motor_stiffness or body.part_masses or body.foot_friction)
+    return not (body.motor_type != "position" or body.motor_force_limits or body.motor_stiffness
+                or body.part_masses or body.foot_friction)
 
 
 # The motor names a table entry stands for: a group's motors, or the one motor
@@ -129,6 +145,15 @@ def _set_motors(root, table: dict[str, float], attribute: str, text) -> None:
     for name, value in table.items():
         for motor in _motors(name):
             motors[motor].set(attribute, text(value))
+
+
+# Turn every position motor into a force motor: the brain's command is the force itself,
+# from minus to plus the motor's force limit, with no spring pulling toward an angle
+def _use_force_motors(root) -> None:
+    for motor in root.find("actuator"):
+        motor.tag = "motor"
+        motor.set("ctrlrange", motor.get("forcerange"))  # the force range stays: duck.xml limits every motor's force
+        motor.attrib.pop("kp", None)
 
 
 # Give a part a new mass, shared over its own shapes in proportion to their old masses
@@ -156,6 +181,8 @@ def body_xml(body: Body) -> str:
     root = ElementTree.fromstring(text, parser=parser)
     _set_motors(root, body.motor_force_limits, "forcerange", lambda value: f"-{value:g} {value:g}")
     _set_motors(root, body.motor_stiffness, "kp", lambda value: f"{value:g}")
+    if body.motor_type == "force":
+        _use_force_motors(root)
     for part, mass in body.part_masses.items():
         _set_part_mass(root, part, mass)
     if body.foot_friction is not None:
