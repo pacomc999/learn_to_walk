@@ -1,22 +1,21 @@
 {
-  "name": "Duck 4",
+  "name": "Duck 3.3 the Strong",
   "world": "stones_up_to_4cm",
   "body": "ten_times_stronger",
-  "started": "2026-10-31 10:05",
-  "summary": "Duck 3.1's brain in a body with every motor 10 times stronger, on cobblestones up to 4 cm",
-  "what_changed": "One change from Duck 3.1: the body. Every motor has 10 times the force limit and 10 times the stiffness: hips and knees 40 (from 4), ankles 30 (from 3), neck 10 (from 1), toes 5 (from 0.5); stiffness 200 for hips, knees and ankles (from 20), 40 for the neck (from 4) and 50 for the toes (from 5). The world is the same as Duck 3.1's second run: stones from flat up to 4 cm, walking speeds 0.2 to 0.7 m/s.",
-  "why": "Duck 3.1 still falls on about two thirds of 4 cm floors, and Francisco wanted to see what the duck is capable of with much stronger muscles.",
-  "starts_from": "Duck 3.1's kept brain (duck_catalogue/duck_03_1/brain, exam 1206 in the stones_up_to_4cm world)",
+  "started": "2026-10-31 10:40",
+  "summary": "A body with every motor 10 times stronger, trained from zero on cobblestones up to 4 cm",
+  "what_changed": "Two changes from Duck 3.1. The body: every motor has 10 times the force limit and 10 times the stiffness (hips and knees 40 from 4, ankles 30 from 3, neck 10 from 1, toes 5 from 0.5; stiffness 200 for hips, knees and ankles from 20, 40 for the neck from 4, 50 for the toes from 5). The brain: a new one trained from zero, not Duck 3.1's. The world is the same as Duck 3.1's second run: stones from flat up to 4 cm, walking speeds 0.2 to 0.7 m/s.",
+  "why": "Francisco wanted to see what the duck is capable of with much stronger muscles. Raising only the force limits would have kept Duck 3.1's walk but given at most about 5 times the force in normal moves; raising the stiffness too gives the full 10 times, and Duck 3.1's brain fell every time in that body (its small commands turned into hard kicks), so this brain learns the body from the start.",
+  "starts_from": "zero",
   "runs": [
     {
-      "folder": "runs/duck_04/from_duck_03_1",
+      "folder": "runs/duck_03_3/from_zero",
       "dates": "",
       "steps": "",
-      "outcome": "",
-      "brain_from_body": "standard"
+      "outcome": ""
     }
   ],
-  "notes": "Duck 3.1's brain falls 10 of 10 times on flat ground in this body before training: its small commands now kick hard. Exam scores compare directly with Duck 3.1's second run (same world, same exam).",
+  "notes": "Exam scores compare directly with Duck 3.1's second run (same world, same exam). Before training, Duck 3.1's brain fell 10 of 10 times on flat ground in this body.",
   "recipe": {
     "brain": "SymmetricPolicy",
     "layers": {

@@ -1,4 +1,4 @@
-# Duck 3.2
+# Duck 3.2 the Fast
 
 **Duck 3.1's brain on a flat floor, asked to run at up to 1.5 m/s**
 
