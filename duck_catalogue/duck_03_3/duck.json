@@ -22,9 +22,9 @@
     },
     {
       "folder": "runs/duck_03_3/from_run_2",
-      "dates": "",
-      "steps": "",
-      "outcome": ""
+      "dates": "2026-10-31 21:40 to 22:52",
+      "steps": "0 to 3.3M (planned 8M; stopped by hand to start Duck 4)",
+      "outcome": "From running school's best brain (9.0M), with no energy penalty. Exam (no energy points taken off, so not comparable with running school's): 2,882 at the start, best 3,016 with no falls at 1.5M, then 2,361 to 2,712 with 1 to 4 falls. Asked for 2.0 m/s (6 attempts of 10 s): 1.48 m/s at the start, 1.51 at 1M, 1.54 at 1.5M (0 falls), 1.61 at 2M and 1.60 at 3M (3 falls of 6). Asked for 1.5 m/s: 1.28 at the start, 1.40 at 2M, no falls. Free energy raised his top speed by about 0.1 m/s, then it levelled off, so Francisco moved on to force motors (Duck 4). About 690 to 870 steps per second"
     }
   ],
   "notes": "A first try with the usual starting wobble (log_std -1.0, stopped at 1M steps) learned to fall on purpose: in this body the wobble whipped the stiff legs and burned about 180 joules per step, far more than staying up earns, and the strong legs could throw him down within 0.05 s. Measured on random wobble around standing, log_std -3.3 shakes the joints about as much as -1.0 shook the standard body, though it still burns about 5 times the energy. The closest duck to compare with is Duck 2.1, also trained from zero on the flat floor at the same speeds, but under an older forward reward without the overshoot rule. Running school (from_run_1, his idea once the walk was steady): his best walking brain (exam 1188 in flat_walking) continues on the flat floor at speeds 0.2 to 2.0 m/s (the flat_running_up_to_2ms world), faster than Duck 3.2's 1.5 since his legs are much stronger. The duck's world is now that one; the walking run keeps flat_walking in its own run_settings.json. Running exam scores cannot be compared with walking ones (faster speeds earn more forward points), nor directly with Duck 3.2's (his speeds only went to 1.5). Free energy (from_run_2, his idea): in running school he settled at about 1.5 m/s when asked for 2, so the energy penalty is removed (the flat_running_free_energy world, energy weight 0) and training continues from running school's best brain (9.0M). The duck's world is now that one.",
