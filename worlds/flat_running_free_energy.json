@@ -1,0 +1,19 @@
+{
+  "name": "flat_running_free_energy",
+  "description": "Flat floor, speeds 0.2 to 2.0 m/s, and motor work costs nothing",
+  "floor": {
+    "tallest_stones": 0.0
+  },
+  "target_speed_range": [
+    0.2,
+    2.0
+  ],
+  "reward": {
+    "forward": 3.0,
+    "alive": 0.2,
+    "energy": 0.0,
+    "sideways": 0.5
+  },
+  "extras": {},
+  "notes": "Duck 3.3's third run (from_run_2). Like flat_running_up_to_2ms, but with no energy penalty: asked for 2 m/s he settled at about 1.5 m/s, probably because the last 0.5 m/s cost more energy points than it earned."
+}

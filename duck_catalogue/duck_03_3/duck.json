@@ -1,6 +1,6 @@
 {
   "name": "Duck 3.3 the Strong",
-  "world": "flat_running_up_to_2ms",
+  "world": "flat_running_free_energy",
   "body": "ten_times_stronger",
   "started": "2026-10-31 11:30",
   "summary": "A body with every motor 10 times stronger, trained from zero on a flat floor, then sent to running school up to 2 m/s",
@@ -16,12 +16,18 @@
     },
     {
       "folder": "runs/duck_03_3/from_run_1",
+      "dates": "2026-10-31 12:20 to 21:40",
+      "steps": "0 to 12.75M (planned 4M; stopped by low memory at 1.5M and resumed from 1.0M, then extended to 8M, 16M, and resumed once more; stopped early at 12.75M after 8 exams without a new best)",
+      "outcome": "From his walking brain (exam 1188 in flat_walking). Running school exam: 455 with 8 falls at the start, 1,471 at 2.0M, 1,958 at 4.0M, the first exam with no falls at 6.5M (2,286), 2,401 with no falls at 8.0M and the best, 2,473 with 1 fall, at 9.0M; then 2,226 to 2,468 until it stopped. Asked for 2.0 m/s on 6 attempts of 10 s, every brain from 9M on cruised at about 1.46 to 1.49 m/s (8M: 1.40, 6M: 1.34); falls at 2 m/s: 3 of 6 for the 9M best brain, 0 of 6 for the 11M one. A saving bug lost one best brain (1,226 at 1,507,328 steps, where the brain from before the memory stop already had a file). About 690 steps per second"
+    },
+    {
+      "folder": "runs/duck_03_3/from_run_2",
       "dates": "",
       "steps": "",
       "outcome": ""
     }
   ],
-  "notes": "A first try with the usual starting wobble (log_std -1.0, stopped at 1M steps) learned to fall on purpose: in this body the wobble whipped the stiff legs and burned about 180 joules per step, far more than staying up earns, and the strong legs could throw him down within 0.05 s. Measured on random wobble around standing, log_std -3.3 shakes the joints about as much as -1.0 shook the standard body, though it still burns about 5 times the energy. The closest duck to compare with is Duck 2.1, also trained from zero on the flat floor at the same speeds, but under an older forward reward without the overshoot rule. Running school (from_run_1, his idea once the walk was steady): his best walking brain (exam 1188 in flat_walking) continues on the flat floor at speeds 0.2 to 2.0 m/s (the flat_running_up_to_2ms world), faster than Duck 3.2's 1.5 since his legs are much stronger. The duck's world is now that one; the walking run keeps flat_walking in its own run_settings.json. Running exam scores cannot be compared with walking ones (faster speeds earn more forward points), nor directly with Duck 3.2's (his speeds only went to 1.5).",
+  "notes": "A first try with the usual starting wobble (log_std -1.0, stopped at 1M steps) learned to fall on purpose: in this body the wobble whipped the stiff legs and burned about 180 joules per step, far more than staying up earns, and the strong legs could throw him down within 0.05 s. Measured on random wobble around standing, log_std -3.3 shakes the joints about as much as -1.0 shook the standard body, though it still burns about 5 times the energy. The closest duck to compare with is Duck 2.1, also trained from zero on the flat floor at the same speeds, but under an older forward reward without the overshoot rule. Running school (from_run_1, his idea once the walk was steady): his best walking brain (exam 1188 in flat_walking) continues on the flat floor at speeds 0.2 to 2.0 m/s (the flat_running_up_to_2ms world), faster than Duck 3.2's 1.5 since his legs are much stronger. The duck's world is now that one; the walking run keeps flat_walking in its own run_settings.json. Running exam scores cannot be compared with walking ones (faster speeds earn more forward points), nor directly with Duck 3.2's (his speeds only went to 1.5). Free energy (from_run_2, his idea): in running school he settled at about 1.5 m/s when asked for 2, so the energy penalty is removed (the flat_running_free_energy world, energy weight 0) and training continues from running school's best brain (9.0M). The duck's world is now that one.",
   "recipe": {
     "brain": "SymmetricPolicy",
     "layers": {
@@ -71,8 +77,8 @@
     "code_version": "f90f501"
   },
   "world_settings": {
-    "name": "flat_running_up_to_2ms",
-    "description": "Flat floor, speeds 0.2 to 2.0 m/s, for learning to run fast",
+    "name": "flat_running_free_energy",
+    "description": "Flat floor, speeds 0.2 to 2.0 m/s, and motor work costs nothing",
     "floor": {
       "tallest_stones": 0.0
     },
@@ -83,11 +89,11 @@
     "reward": {
       "forward": 3.0,
       "alive": 0.2,
-      "energy": 1.5,
+      "energy": 0.0,
       "sideways": 0.5
     },
     "extras": {},
-    "notes": "Duck 3.3's running school (from_run_1). Like flat_running, but up to 2.0 m/s instead of 1.5, since his legs are 10 times stronger."
+    "notes": "Duck 3.3's third run (from_run_2). Like flat_running_up_to_2ms, but with no energy penalty: asked for 2 m/s he settled at about 1.5 m/s, probably because the last 0.5 m/s cost more energy points than it earned."
   },
   "body_settings": {
     "name": "ten_times_stronger",
