@@ -26,3 +26,4 @@ duck_catalogue/*/challenges/*/films/
 
 # Phone page status written by docs/phone_page/phone_status.py
 docs/phone_page/phone_status.json
+docs/phone_page/phone_video.json

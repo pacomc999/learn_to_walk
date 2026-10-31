@@ -61,6 +61,8 @@ td { text-align: right; padding: 5px 6px; border-bottom: 1px solid var(--line); 
 th:first-child, td:first-child { text-align: left; }
 .best { color: var(--duck); font-weight: 600; }
 .empty { color: var(--muted); }
+video { display: block; width: 100%; aspect-ratio: 4 / 3; border-radius: 6px; background: var(--line); }
+.caption { color: var(--muted); font-size: 0.82rem; margin: 8px 0 0; }
 footer { color: var(--muted); font-size: 0.8rem; }
 </style>
 
@@ -81,6 +83,12 @@ footer { color: var(--muted); font-size: 0.8rem; }
     <div class="panel stat"><b id="last">none</b><span>latest exam</span></div>
     <div class="panel stat"><b id="best">none</b><span>best exam</span></div>
     <div class="panel stat"><b id="falls">none</b><span>falls, latest exam</span></div>
+  </section>
+
+  <section class="panel" aria-labelledby="video-title" id="video-panel" hidden>
+    <h2 id="video-title">Best brain so far</h2>
+    <video id="video" controls playsinline muted loop preload="metadata"></video>
+    <p class="caption" id="video-caption"></p>
   </section>
 
   <section class="panel" aria-labelledby="chart-title">
@@ -188,7 +196,25 @@ function renderRows(s) {
   }).join("");
 }
 
-function render(s) { renderTop(s); renderChart(s); renderRows(s); }
+// ---------- Film of the best brain (uploaded by Claude when a new best brain is filmed) ----------
+function renderVideo(s) {
+  const video = s.video;
+  $("video-panel").hidden = !(video && video.url);
+  if (!video || !video.url) return;
+  // Swap the source only when the film changes, so a playing video is not restarted by every update
+  if ($("video").getAttribute("src") !== video.url) $("video").setAttribute("src", video.url);
+  $("video-caption").textContent = `The best brain at ${millions(video.steps)} steps, on the dashboard's 20 second walk.`;
+}
+
+// Hide the two part columns when no exam has part scores (a flat world's exam has one part)
+function hidePartColumns(s) {
+  const exams = s.exams || [];
+  const used = exams.some(e => e.parts && e.parts[1] !== null && e.parts[1] !== undefined);
+  for (const cell of document.querySelectorAll("#part1-head, #part2-head")) cell.hidden = !used;
+  for (const row of $("rows").rows) for (const i of [2, 3]) if (row.cells[i]) row.cells[i].hidden = !used;
+}
+
+function render(s) { renderTop(s); renderVideo(s); renderChart(s); renderRows(s); hidePartColumns(s); }
 
 // ---------- Live data from the artifact store ----------
 (async () => {

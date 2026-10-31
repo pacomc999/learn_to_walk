@@ -31,6 +31,11 @@ doc = {"duck": duck, "summary": summary, "status": status, "steps": steps if sta
        "total": total, "eta": eta, "updated": datetime.now().strftime("%d %b %H:%M"), "exams": exams,
        "part_names": [name.capitalize() for name in part_names],
        "compare": {"name": compare_name, "exams": compare}}
+# The dashboard film of the best brain so far: Claude uploads it to the page and notes its address
+# and step count in phone_video.json next to this script (no file: no video on the page)
+video_file = Path(sys.argv[0]).parent / "phone_video.json"
+if video_file.exists():
+    doc["video"] = json.loads(video_file.read_text())
 out = Path(sys.argv[0]).parent / "phone_status.json"  # next to this script
 out.write_text(json.dumps(doc))
 print(f"{steps:,} steps, {len(exams)} exams, eta {eta}")
