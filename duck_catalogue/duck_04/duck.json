@@ -34,9 +34,9 @@
     },
     {
       "folder": "runs/duck_04/from_run_4",
-      "dates": "",
-      "steps": "",
-      "outcome": ""
+      "dates": "2026-11-01 11:27 to 12:35",
+      "steps": "0 to 4.0M",
+      "outcome": "From the strong end stop run's best brain (4.0M) with end stop weight 0.2. The falling trap: -61 with no falls at the start, -111 (1 fall) at 0.25M, then 11 of 12 falls at 0.75M and all 12 from 1.0M to the end; the score crept up to 58 only by falling in a way that costs less (12 of 12 falls at 4.0M; the 1.0M brain falls after 0.7 s at 0.4 m/s). At this weight the crouch costs more than walking earns, and he chose to fall rather than leave his end stops."
     }
   ],
   "notes": "Exam and walking scores can be compared with the walking ducks in flat_walking. With no commands the duck collapses in about 0.4 s, so he has to learn to hold himself up first. Free energy (from_run_1): overnight, once his walk stopped improving (no new best for 2M steps), the energy penalty was removed (the flat_walking_free_energy world), as Francisco asked before going to sleep, and training continued from the best brain (12.25M). The hope is that it also ends the end-stop crouch, since leaning on the joint stops only pays because motor work costs energy. The duck's world is now that one. End stops (from_run_2, his idea after the free energy run): a small cost for joints resting on their end stops (the flat_walking_end_stops world, weight 0.05, with the energy cost back on), starting from the energy run's best walking brain (12.25M). A gentle spring toward the standing pose was tried first in a quick test and dropped: holding a joint still against a spring costs no motor work, so weak springs (1 N m per radian) left the crouch as it was, and springs strong enough to push him out of it (2 and up) made the walking brain fall; Francisco also did not want springs to make him stiff like the position motor ducks. The duck's world is now that one. Stronger end stops (from_run_3, his idea): the end stop weight doubled to 0.1 (the flat_walking_strong_end_stops world), from the end stop run's best brain (0.5M, toes already off their stops). The duck's world is now that one. Very strong end stops (from_run_4, his choice over a new duck from zero): weight 0.2, from the strong end stop run's best brain (4.0M). At this weight his crouch costs more than walking earns, so the falling trap is a real risk. The duck's world is now that one.",
