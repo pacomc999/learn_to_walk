@@ -1,0 +1,20 @@
+{
+  "name": "flat_walking_end_stops",
+  "description": "Flat floor, walking speeds 0.2 to 0.7 m/s, and a small cost for resting joints on their end stops",
+  "floor": {
+    "tallest_stones": 0.0
+  },
+  "target_speed_range": [
+    0.2,
+    0.7
+  ],
+  "reward": {
+    "forward": 3.0,
+    "alive": 0.2,
+    "energy": 1.5,
+    "sideways": 0.5,
+    "end_stops": 0.05
+  },
+  "extras": {},
+  "notes": "Duck 4's third run (from_run_2). Like flat_walking, plus 0.05 points per step for each joint resting on an end stop (less in the last 5% of its range before it). With force motors Duck 4 learned to walk with 7 to 8 joints pressed on their stops (hips, hip sides, neck, ankles), a crouch tilted about 28 degrees; that costs him about 0.4 points per step here, while walking still pays more (at 0.2 m/s about 0.6 points per step before this cost)."
+}

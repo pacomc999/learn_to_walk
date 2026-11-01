@@ -10,6 +10,11 @@ class RewardWeights:
     alive: float = 0.2     # points for staying upright every step (small, so standing still does not pay)
     energy: float = 1.5    # penalty per joule of work the motors do
     sideways: float = 0.5  # penalty per metre of sideways drift
+    end_stops: float = 0.0  # penalty per unit of end stop closeness (0: none, as in every world before Duck 4.1)
+
+
+# The share of a joint's range, at each end, that counts as "near the end stop"
+END_STOP_ZONE = 0.05
 
 
 # Points for moving forward. The most points come at the target speed, and going
@@ -40,7 +45,22 @@ def _sideways_part(sideways_offset: float, weights: RewardWeights) -> float:
     return -weights.sideways * abs(sideways_offset)
 
 
-# Work out all four parts and their total for one step.
+# How close the joints are to their end stops, added up: each joint counts 0 until it enters the
+# last END_STOP_ZONE of its range (5% of the range at each end), then rises to 1 at the stop
+def end_stop_closeness(angles, ranges) -> float:
+    total = 0.0
+    for angle, (low, high) in zip(angles, ranges):
+        room = min(angle - low, high - angle) / (high - low)  # 0.5 in the middle, 0 at a stop
+        total += min(max((END_STOP_ZONE - room) / END_STOP_ZONE, 0.0), 1.0)
+    return total
+
+
+# Penalty for resting joints on their end stops, which hold the duck up for free
+def _end_stop_part(closeness: float, weights: RewardWeights) -> float:
+    return -weights.end_stops * closeness
+
+
+# Work out all the parts (four, or five with an end stop penalty) and their total for one step.
 # Without a target speed, forward points have no upper limit
 def compute_reward(
     forward_velocity: float,
@@ -48,6 +68,7 @@ def compute_reward(
     energy_joules: float,
     weights: RewardWeights = RewardWeights(),
     target_speed: float = math.inf,
+    end_stop_closeness: float = 0.0,
 ) -> tuple[float, dict[str, float]]:
     parts = {
         "forward": _forward_part(forward_velocity, target_speed, weights),
@@ -55,6 +76,9 @@ def compute_reward(
         "energy": _energy_part(energy_joules, weights),
         "sideways": _sideways_part(sideways_offset, weights),
     }
+    # Only worlds with an end stop penalty have this part, so older results stay as they were
+    if weights.end_stops:
+        parts["end_stops"] = _end_stop_part(end_stop_closeness, weights)
     total = sum(parts.values())
     return total, parts
 

@@ -42,3 +42,13 @@ def test_the_five_worlds_match_the_old_recipes():
     for name, (stones, speeds) in expected.items():
         world = load_world(name)
         assert (world.tallest_stones, world.target_speed_range) == (stones, speeds)
+
+
+# A world may add an end stop penalty; worlds without one keep their old file layout
+def test_world_with_end_stop_penalty():
+    data = world_to_dict(load_world("flat_walking"))
+    assert "end_stops" not in data["reward"]
+    data["reward"]["end_stops"] = 0.05
+    world = world_from_dict(data)
+    assert world.reward.end_stops == 0.05
+    assert world_from_dict(world_to_dict(world)) == world

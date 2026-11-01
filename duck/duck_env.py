@@ -18,7 +18,7 @@ from duck.floor import (
     highest_floor_near,
     set_floor,
 )
-from duck.rewards import compute_reward, has_fallen
+from duck.rewards import compute_reward, end_stop_closeness, has_fallen
 from duck.rock_thrower import RockThrower
 from duck.scene import load_scene
 from duck.worlds import World
@@ -242,9 +242,15 @@ class DuckWalkEnv(gymnasium.Env):
             return 0.0, {}
         forward_velocity = (float(self.data.qpos[0]) - x_before) / self._control_step_seconds()
         sideways_offset = float(self.data.qpos[1])
+        closeness = self._end_stop_closeness() if self.reward_weights.end_stops else 0.0
         return compute_reward(
-            forward_velocity, sideways_offset, energy_joules, self.reward_weights, self.target_speed
+            forward_velocity, sideways_offset, energy_joules, self.reward_weights, self.target_speed, closeness
         )
+
+    # How close the duck's 12 joints are to their end stops (see rewards.end_stop_closeness)
+    def _end_stop_closeness(self) -> float:
+        ranges = [self.model.joint(name).range for name in MOTOR_NAMES]
+        return end_stop_closeness(self.data.qpos[DUCK_JOINTS_QPOS], ranges)
 
     # Run the small physics steps of one control step and add up the motor work.
     # Work is force times joint speed times time; it counts both pushing and braking

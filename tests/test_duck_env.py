@@ -254,3 +254,18 @@ def test_backpack_world_carries_it():
     env = DuckWalkEnv(world=replace(FLAT, backpack=Backpack(0.5)), body=BODY)
     assert env.model.geom("backpack").size[0] > 0
     assert env.model.body("torso").mass[0] == pytest.approx(1.1 + 0.5)
+
+
+# A joint held at its end stop costs the world's end stop weight each step
+def test_env_charges_for_end_stops():
+    from dataclasses import replace
+    from duck.rewards import RewardWeights
+    world = replace(FLAT, reward=RewardWeights(forward=0.0, alive=0.0, energy=0.0, sideways=0.0, end_stops=1.0))
+    env = DuckWalkEnv(world=world, body=BODY)
+    env.reset(seed=0)
+    assert env.step(np.zeros(12))[1] == pytest.approx(0.0, abs=1e-6)  # standing: no joint near a stop
+    env.data.joint("left_knee").qpos = 1.0  # bend one knee onto its stop, and keep it there
+    action = np.zeros(12)
+    action[4] = 1.0  # left_knee's motor aims at the end of its range
+    _, reward, _, _, info = env.step(action)
+    assert info["reward_parts"]["end_stops"] < -0.5

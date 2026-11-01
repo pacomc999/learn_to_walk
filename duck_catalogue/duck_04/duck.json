@@ -1,6 +1,6 @@
 {
   "name": "Duck 4",
-  "world": "flat_walking_free_energy",
+  "world": "flat_walking_end_stops",
   "body": "force_motors",
   "started": "2026-10-31 22:51",
   "summary": "Force motors: the brain sets each joint's force (up to 10 times the standard limits), loose at 0; learning to walk from zero on a flat floor",
@@ -19,9 +19,15 @@
       "dates": "2026-11-01 03:10 to 08:31",
       "steps": "0 to 19.2M (sized to end around 08:30, no early stop)",
       "outcome": "From the energy run's best brain (12.25M). Free energy exam (no energy points taken off, so higher than the energy run's): 1,484 at the start, then 1,470 to 1,499 with no falls in most exams and a few dips to about 1,310 with 1 or 2 falls; best 1,499 with no falls at 17.25M. It did not end the crouch: at 0.4 m/s (3 attempts of 20 s) the 17.25M brain still holds both hip swings at their end stop (+57 degrees), hip sides at theirs (+24), the neck at its limits and the ankles near theirs (-43), with the body tilted 27 degrees, walking with knees, ankles and toes at 9.2 steps a second (8.1 before) and twice the motor work (0.27 J per step, 0.135 before). So the end-stop posture is not only an energy saving: it is the stable pose he found, and nothing in the reward asks him to leave it. About 990 steps per second"
+    },
+    {
+      "folder": "runs/duck_04/from_run_2",
+      "dates": "",
+      "steps": "",
+      "outcome": ""
     }
   ],
-  "notes": "Exam and walking scores can be compared with the walking ducks in flat_walking. With no commands the duck collapses in about 0.4 s, so he has to learn to hold himself up first. Free energy (from_run_1): overnight, once his walk stopped improving (no new best for 2M steps), the energy penalty was removed (the flat_walking_free_energy world), as Francisco asked before going to sleep, and training continued from the best brain (12.25M). The hope is that it also ends the end-stop crouch, since leaning on the joint stops only pays because motor work costs energy. The duck's world is now that one.",
+  "notes": "Exam and walking scores can be compared with the walking ducks in flat_walking. With no commands the duck collapses in about 0.4 s, so he has to learn to hold himself up first. Free energy (from_run_1): overnight, once his walk stopped improving (no new best for 2M steps), the energy penalty was removed (the flat_walking_free_energy world), as Francisco asked before going to sleep, and training continued from the best brain (12.25M). The hope is that it also ends the end-stop crouch, since leaning on the joint stops only pays because motor work costs energy. The duck's world is now that one. End stops (from_run_2, his idea after the free energy run): a small cost for joints resting on their end stops (the flat_walking_end_stops world, weight 0.05, with the energy cost back on), starting from the energy run's best walking brain (12.25M). A gentle spring toward the standing pose was tried first in a quick test and dropped: holding a joint still against a spring costs no motor work, so weak springs (1 N m per radian) left the crouch as it was, and springs strong enough to push him out of it (2 and up) made the walking brain fall; Francisco also did not want springs to make him stiff like the position motor ducks. The duck's world is now that one.",
   "recipe": {
     "brain": "SymmetricPolicy",
     "layers": {
@@ -71,8 +77,8 @@
     "code_version": "861ce13"
   },
   "world_settings": {
-    "name": "flat_walking_free_energy",
-    "description": "Flat floor, walking speeds 0.2 to 0.7 m/s, and motor work costs nothing",
+    "name": "flat_walking_end_stops",
+    "description": "Flat floor, walking speeds 0.2 to 0.7 m/s, and a small cost for resting joints on their end stops",
     "floor": {
       "tallest_stones": 0.0
     },
@@ -83,11 +89,12 @@
     "reward": {
       "forward": 3.0,
       "alive": 0.2,
-      "energy": 0.0,
-      "sideways": 0.5
+      "energy": 1.5,
+      "sideways": 0.5,
+      "end_stops": 0.05
     },
     "extras": {},
-    "notes": "Duck 4's second run (from_run_1), if his walk stops improving in flat_walking. Like flat_walking, but with no energy penalty: with force motors he learned to save energy by holding his hips, neck and ankles against their end stops (a crouched, tilted walk), and free energy takes away the reason for that."
+    "notes": "Duck 4's third run (from_run_2). Like flat_walking, plus 0.05 points per step for each joint resting on an end stop (less in the last 5% of its range before it). With force motors Duck 4 learned to walk with 7 to 8 joints pressed on their stops (hips, hip sides, neck, ankles), a crouch tilted about 28 degrees; that costs him about 0.4 points per step here, while walking still pays more (at 0.2 m/s about 0.6 points per step before this cost)."
   },
   "body_settings": {
     "name": "force_motors",

@@ -68,3 +68,21 @@ def test_fall_rules():
     assert has_fallen(0.3, 1.0, min_height=0.4)
     assert has_fallen(0.6, 0.5, min_height=0.4)
     assert not has_fallen(0.6, 0.9, min_height=0.4)
+
+
+# Closeness to the end stops: 0 away from them, rising to 1 per joint at the stop
+def test_end_stop_closeness():
+    from duck.rewards import end_stop_closeness
+    ranges = [(-1.0, 1.0), (-1.0, 1.0)]
+    assert end_stop_closeness([0.0, 0.5], ranges) == 0.0
+    assert end_stop_closeness([0.95, 0.0], ranges) == pytest.approx(0.5)  # halfway into the last 10%
+    assert end_stop_closeness([1.0, -1.0], ranges) == pytest.approx(2.0)  # both at a stop
+
+
+# The end stop penalty costs its weight per unit of closeness, and only when the world sets it
+def test_end_stop_penalty():
+    weights = RewardWeights(end_stops=0.1)
+    total, parts = compute_reward(0.0, 0.0, 0.0, weights, end_stop_closeness=3.0)
+    assert parts["end_stops"] == pytest.approx(-0.3)
+    assert total == pytest.approx(0.2 - 0.3)
+    assert "end_stops" not in compute_reward(0.0, 0.0, 0.0)[1]

@@ -19,6 +19,7 @@ WORLDS_DIR = Path(__file__).parent.parent / "worlds"
 WORLD_KEYS = {"name", "description", "floor", "target_speed_range", "reward", "extras", "notes"}
 EXTRA_NAMES = {"rocks", "backpack"}
 REWARD_KEYS = ["forward", "alive", "energy", "sideways"]
+OPTIONAL_REWARD_KEYS = ["end_stops"]  # left out of a world file means 0
 
 
 # A stone ball thrown at the duck: its mass in kg, how often (seconds) and how fast (m/s)
@@ -84,12 +85,14 @@ def _speed_range(value, source: str) -> tuple[float, float]:
     return low, high
 
 
-# The four reward weights, all present
+# The four reward weights, all present, and the optional ones
 def _reward(value: dict, source: str) -> RewardWeights:
     missing = [key for key in REWARD_KEYS if key not in value]
-    if missing or set(value) - set(REWARD_KEYS):
-        _refuse(source, "reward", f"must have exactly the weights {', '.join(REWARD_KEYS)}")
-    return RewardWeights(**{key: float(value[key]) for key in REWARD_KEYS})
+    if missing or set(value) - set(REWARD_KEYS) - set(OPTIONAL_REWARD_KEYS):
+        _refuse(source, "reward", f"must have the weights {', '.join(REWARD_KEYS)} "
+                                  f"(and optionally {', '.join(OPTIONAL_REWARD_KEYS)})")
+    keys = REWARD_KEYS + [key for key in OPTIONAL_REWARD_KEYS if key in value]
+    return RewardWeights(**{key: float(value[key]) for key in keys})
 
 
 # The extras section: rocks and a backpack, each optional
@@ -145,10 +148,17 @@ def world_to_dict(world: World) -> dict:
         "description": world.description,
         "floor": {"tallest_stones": world.tallest_stones},
         "target_speed_range": list(world.target_speed_range),
-        "reward": {key: getattr(world.reward, key) for key in REWARD_KEYS},
+        "reward": _reward_to_dict(world.reward),
         "extras": extras,
         "notes": world.notes,
     }
+
+
+# The reward weights as a world file holds them: optional weights only when they are set
+def _reward_to_dict(reward: RewardWeights) -> dict:
+    data = {key: getattr(reward, key) for key in REWARD_KEYS}
+    data.update({key: getattr(reward, key) for key in OPTIONAL_REWARD_KEYS if getattr(reward, key)})
+    return data
 
 
 # Read the world file with this name from the worlds folder
