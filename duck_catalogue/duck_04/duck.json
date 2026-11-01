@@ -1,6 +1,6 @@
 {
   "name": "Duck 4",
-  "world": "flat_walking_strong_end_stops",
+  "world": "flat_walking_very_strong_end_stops",
   "body": "force_motors",
   "started": "2026-10-31 22:51",
   "summary": "Force motors: the brain sets each joint's force (up to 10 times the standard limits), loose at 0; learning to walk from zero on a flat floor",
@@ -31,9 +31,15 @@
       "dates": "2026-11-01 10:16 to 11:25",
       "steps": "0 to 4.0M",
       "outcome": "From the end stop run's best brain (0.5M) with end stop weight 0.1. Exam (with the doubled cost): 571 at the start, dips to 473 to 498 with 1 fall early, then slow new bests (582 at 1.5M, 600 at 2.75M) and the best, 604 with no falls, at 4.0M; a few exams had 1 or 2 falls, never the falling trap. At 0.4 m/s (3 attempts of 10 s, share of time within 10% of the stop, start then 4.0M): ankles 74% to 45% (mean -43 to -39 degrees), toes about 5%, but neck 95 to 98%, hip swings 98% to about 95% (+57 to +56 degrees) and hip sides 99% to 97%. Doubling the cost loosened the ankles only; the hips, hip sides and neck stayed on their stops. About 1,040 steps per second"
+    },
+    {
+      "folder": "runs/duck_04/from_run_4",
+      "dates": "",
+      "steps": "",
+      "outcome": ""
     }
   ],
-  "notes": "Exam and walking scores can be compared with the walking ducks in flat_walking. With no commands the duck collapses in about 0.4 s, so he has to learn to hold himself up first. Free energy (from_run_1): overnight, once his walk stopped improving (no new best for 2M steps), the energy penalty was removed (the flat_walking_free_energy world), as Francisco asked before going to sleep, and training continued from the best brain (12.25M). The hope is that it also ends the end-stop crouch, since leaning on the joint stops only pays because motor work costs energy. The duck's world is now that one. End stops (from_run_2, his idea after the free energy run): a small cost for joints resting on their end stops (the flat_walking_end_stops world, weight 0.05, with the energy cost back on), starting from the energy run's best walking brain (12.25M). A gentle spring toward the standing pose was tried first in a quick test and dropped: holding a joint still against a spring costs no motor work, so weak springs (1 N m per radian) left the crouch as it was, and springs strong enough to push him out of it (2 and up) made the walking brain fall; Francisco also did not want springs to make him stiff like the position motor ducks. The duck's world is now that one. Stronger end stops (from_run_3, his idea): the end stop weight doubled to 0.1 (the flat_walking_strong_end_stops world), from the end stop run's best brain (0.5M, toes already off their stops). The duck's world is now that one.",
+  "notes": "Exam and walking scores can be compared with the walking ducks in flat_walking. With no commands the duck collapses in about 0.4 s, so he has to learn to hold himself up first. Free energy (from_run_1): overnight, once his walk stopped improving (no new best for 2M steps), the energy penalty was removed (the flat_walking_free_energy world), as Francisco asked before going to sleep, and training continued from the best brain (12.25M). The hope is that it also ends the end-stop crouch, since leaning on the joint stops only pays because motor work costs energy. The duck's world is now that one. End stops (from_run_2, his idea after the free energy run): a small cost for joints resting on their end stops (the flat_walking_end_stops world, weight 0.05, with the energy cost back on), starting from the energy run's best walking brain (12.25M). A gentle spring toward the standing pose was tried first in a quick test and dropped: holding a joint still against a spring costs no motor work, so weak springs (1 N m per radian) left the crouch as it was, and springs strong enough to push him out of it (2 and up) made the walking brain fall; Francisco also did not want springs to make him stiff like the position motor ducks. The duck's world is now that one. Stronger end stops (from_run_3, his idea): the end stop weight doubled to 0.1 (the flat_walking_strong_end_stops world), from the end stop run's best brain (0.5M, toes already off their stops). The duck's world is now that one. Very strong end stops (from_run_4, his choice over a new duck from zero): weight 0.2, from the strong end stop run's best brain (4.0M). At this weight his crouch costs more than walking earns, so the falling trap is a real risk. The duck's world is now that one.",
   "recipe": {
     "brain": "SymmetricPolicy",
     "layers": {
@@ -83,8 +89,8 @@
     "code_version": "861ce13"
   },
   "world_settings": {
-    "name": "flat_walking_strong_end_stops",
-    "description": "Flat floor, walking speeds 0.2 to 0.7 m/s, and a doubled cost for resting joints on their end stops",
+    "name": "flat_walking_very_strong_end_stops",
+    "description": "Flat floor, walking speeds 0.2 to 0.7 m/s, and a large cost for resting joints on their end stops",
     "floor": {
       "tallest_stones": 0.0
     },
@@ -97,10 +103,10 @@
       "alive": 0.2,
       "energy": 1.5,
       "sideways": 0.5,
-      "end_stops": 0.1
+      "end_stops": 0.2
     },
     "extras": {},
-    "notes": "Duck 4's fourth run (from_run_3). Like flat_walking_end_stops but with twice the end stop weight (0.1): at 0.05 he only moved his toes off their stops and kept 8 joints (neck, hip swings, hip sides, ankles) on theirs about 97% of the time. In his crouch (about 7 joints at their stops) this costs about 0.7 points per step: walking at 0.45 m/s still nets about 0.6 per step, but at 0.2 m/s a crouched step nets slightly below zero, so watch for falling on purpose."
+    "notes": "Duck 4's fifth run (from_run_4). End stop weight 0.2, four times flat_walking_end_stops: at 0.1 only his ankles and toes left their stops, while the neck, hip swings and hip sides stayed on theirs about 95% of the time. In that posture (about 6.5 joints at their stops) this costs about 1.3 points per step, more than walking earns at most speeds, so staying crouched now loses points: he must leave the stops, or he may learn to fall on purpose (watch the falls)."
   },
   "body_settings": {
     "name": "force_motors",
