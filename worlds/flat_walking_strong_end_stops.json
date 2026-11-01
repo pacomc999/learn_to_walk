@@ -1,0 +1,20 @@
+{
+  "name": "flat_walking_strong_end_stops",
+  "description": "Flat floor, walking speeds 0.2 to 0.7 m/s, and a doubled cost for resting joints on their end stops",
+  "floor": {
+    "tallest_stones": 0.0
+  },
+  "target_speed_range": [
+    0.2,
+    0.7
+  ],
+  "reward": {
+    "forward": 3.0,
+    "alive": 0.2,
+    "energy": 1.5,
+    "sideways": 0.5,
+    "end_stops": 0.1
+  },
+  "extras": {},
+  "notes": "Duck 4's fourth run (from_run_3). Like flat_walking_end_stops but with twice the end stop weight (0.1): at 0.05 he only moved his toes off their stops and kept 8 joints (neck, hip swings, hip sides, ankles) on theirs about 97% of the time. In his crouch (about 7 joints at their stops) this costs about 0.7 points per step: walking at 0.45 m/s still nets about 0.6 per step, but at 0.2 m/s a crouched step nets slightly below zero, so watch for falling on purpose."
+}
