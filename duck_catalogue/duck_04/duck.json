@@ -16,9 +16,9 @@
     },
     {
       "folder": "runs/duck_04/from_run_1",
-      "dates": "",
-      "steps": "",
-      "outcome": ""
+      "dates": "2026-11-01 03:10 to 08:31",
+      "steps": "0 to 19.2M (sized to end around 08:30, no early stop)",
+      "outcome": "From the energy run's best brain (12.25M). Free energy exam (no energy points taken off, so higher than the energy run's): 1,484 at the start, then 1,470 to 1,499 with no falls in most exams and a few dips to about 1,310 with 1 or 2 falls; best 1,499 with no falls at 17.25M. It did not end the crouch: at 0.4 m/s (3 attempts of 20 s) the 17.25M brain still holds both hip swings at their end stop (+57 degrees), hip sides at theirs (+24), the neck at its limits and the ankles near theirs (-43), with the body tilted 27 degrees, walking with knees, ankles and toes at 9.2 steps a second (8.1 before) and twice the motor work (0.27 J per step, 0.135 before). So the end-stop posture is not only an energy saving: it is the stable pose he found, and nothing in the reward asks him to leave it. About 990 steps per second"
     }
   ],
   "notes": "Exam and walking scores can be compared with the walking ducks in flat_walking. With no commands the duck collapses in about 0.4 s, so he has to learn to hold himself up first. Free energy (from_run_1): overnight, once his walk stopped improving (no new best for 2M steps), the energy penalty was removed (the flat_walking_free_energy world), as Francisco asked before going to sleep, and training continued from the best brain (12.25M). The hope is that it also ends the end-stop crouch, since leaning on the joint stops only pays because motor work costs energy. The duck's world is now that one.",
