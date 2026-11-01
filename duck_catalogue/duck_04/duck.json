@@ -1,6 +1,6 @@
 {
   "name": "Duck 4",
-  "world": "flat_walking",
+  "world": "flat_walking_free_energy",
   "body": "force_motors",
   "started": "2026-10-31 22:51",
   "summary": "Force motors: the brain sets each joint's force (up to 10 times the standard limits), loose at 0; learning to walk from zero on a flat floor",
@@ -10,12 +10,18 @@
   "runs": [
     {
       "folder": "runs/duck_04/from_zero",
+      "dates": "2026-10-31 22:53 to 2026-11-01 03:09",
+      "steps": "0 to 14.5M (4M, then continued overnight toward 30M with no early stop; stopped at 14.5M once it levelled off)",
+      "outcome": "Started at 9 with 12 falls of 12 (with no commands he collapses in about 0.4 s). Every exam a new best but slow at first: 57 at 1.75M, all attempts falling. The breakthrough: 101 (10 falls) at 2.0M, 161 (7) at 2.25M, 501 (4) at 2.5M and the first exam with no falls at 2.75M (799; Duck 2.1 needed 2.0M, Duck 3.3 5.0M). 1,077 at 4.0M, 1,193 at 5.0M (past Duck 3.3's best walk, 1,188), then a few points at a time with almost no falls: 1,262 at 8.0M and the best, 1,287 with no falls, at 12.25M. No new best in the 9 exams after it (1,274 to 1,287), so it was stopped at 14.5M. His gait at 3.25M (0.4 m/s): body tilted 30 degrees chest up, hip swings held still at their end stop (+57 degrees), neck and ankles at theirs too, walking with the knees (42 degree swing) at 7.1 small steps a second: resting on the joint stops costs no motor energy. About 650 (on battery) to 1,050 steps per second"
+    },
+    {
+      "folder": "runs/duck_04/from_run_1",
       "dates": "",
       "steps": "",
       "outcome": ""
     }
   ],
-  "notes": "Exam and walking scores can be compared with the walking ducks in flat_walking. With no commands the duck collapses in about 0.4 s, so he has to learn to hold himself up first.",
+  "notes": "Exam and walking scores can be compared with the walking ducks in flat_walking. With no commands the duck collapses in about 0.4 s, so he has to learn to hold himself up first. Free energy (from_run_1): overnight, once his walk stopped improving (no new best for 2M steps), the energy penalty was removed (the flat_walking_free_energy world), as Francisco asked before going to sleep, and training continued from the best brain (12.25M). The hope is that it also ends the end-stop crouch, since leaning on the joint stops only pays because motor work costs energy. The duck's world is now that one.",
   "recipe": {
     "brain": "SymmetricPolicy",
     "layers": {
@@ -65,8 +71,8 @@
     "code_version": "861ce13"
   },
   "world_settings": {
-    "name": "flat_walking",
-    "description": "Flat floor, walking speeds 0.2 to 0.7 m/s",
+    "name": "flat_walking_free_energy",
+    "description": "Flat floor, walking speeds 0.2 to 0.7 m/s, and motor work costs nothing",
     "floor": {
       "tallest_stones": 0.0
     },
@@ -77,11 +83,11 @@
     "reward": {
       "forward": 3.0,
       "alive": 0.2,
-      "energy": 1.5,
+      "energy": 0.0,
       "sideways": 0.5
     },
     "extras": {},
-    "notes": "Duck 1, Duck 2 and Duck 2.1. They trained under an older forward reward, without the overshoot rule (going faster than asked did not lose points); this world has today's rule."
+    "notes": "Duck 4's second run (from_run_1), if his walk stops improving in flat_walking. Like flat_walking, but with no energy penalty: with force motors he learned to save energy by holding his hips, neck and ankles against their end stops (a crouched, tilted walk), and free energy takes away the reason for that."
   },
   "body_settings": {
     "name": "force_motors",

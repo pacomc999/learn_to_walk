@@ -4,7 +4,7 @@
 
 Started 2026-10-31 22:51. Starts from: Nothing: a new brain, since old brains send angles, not forces.
 
-- World: flat_walking, Flat floor, walking speeds 0.2 to 0.7 m/s
+- World: flat_walking_free_energy, Flat floor, walking speeds 0.2 to 0.7 m/s, and motor work costs nothing
 - Body: force_motors, Force motors with 10 times the standard force limits: the brain sets each joint's force, loose at 0
 
 ## What changed and why
@@ -17,7 +17,7 @@ Duck 3.3's 10 times stiffer position motors made his legs rigid: asked for 2 m/s
 
 - Brain: SymmetricPolicy, actor layers [256, 256], judge layers [256, 256], starting wobble log_std -3.0
 - Started from another brain: it keeps that brain's wobble, step size and PPO settings, so the starting values above apply only to runs from zero
-- Reward per step: forward 3.0 x (target - |speed - target|) (speed over the target loses points too), alive 0.2, energy 1.5 per joule, sideways 0.5 per metre
+- Reward per step: forward 3.0 x (target - |speed - target|) (speed over the target loses points too), alive 0.2, energy 0.0 per joule, sideways 0.5 per metre
 - Target speed: random from 0.2 to 0.7 m/s per attempt; attempts last 20 s
 - Floor: flat in training (training roughness 0; the cobblestone floor is kept for tests). The exam is flat only
 - Start: standing pose, each joint nudged randomly by up to 0.02 rad, then a stride stance: a coin flip picks the leading leg, one hip moves 0.04 rad forward and the other 0.04 rad back
@@ -27,7 +27,8 @@ Duck 3.3's 10 times stiffer position motors made his legs rigid: asked for 2 m/s
 
 ## Training history
 
-- `runs/duck_04/from_zero` (, ): 
+- `runs/duck_04/from_zero` (2026-10-31 22:53 to 2026-11-01 03:09, 0 to 14.5M (4M, then continued overnight toward 30M with no early stop; stopped at 14.5M once it levelled off)): Started at 9 with 12 falls of 12 (with no commands he collapses in about 0.4 s). Every exam a new best but slow at first: 57 at 1.75M, all attempts falling. The breakthrough: 101 (10 falls) at 2.0M, 161 (7) at 2.25M, 501 (4) at 2.5M and the first exam with no falls at 2.75M (799; Duck 2.1 needed 2.0M, Duck 3.3 5.0M). 1,077 at 4.0M, 1,193 at 5.0M (past Duck 3.3's best walk, 1,188), then a few points at a time with almost no falls: 1,262 at 8.0M and the best, 1,287 with no falls, at 12.25M. No new best in the 9 exams after it (1,274 to 1,287), so it was stopped at 14.5M. His gait at 3.25M (0.4 m/s): body tilted 30 degrees chest up, hip swings held still at their end stop (+57 degrees), neck and ankles at theirs too, walking with the knees (42 degree swing) at 7.1 small steps a second: resting on the joint stops costs no motor energy. About 650 (on battery) to 1,050 steps per second
+- `runs/duck_04/from_run_1` (, ): 
 
 ## Best brain
 
@@ -35,4 +36,4 @@ No brain kept yet.
 
 ## Notes
 
-Exam and walking scores can be compared with the walking ducks in flat_walking. With no commands the duck collapses in about 0.4 s, so he has to learn to hold himself up first.
+Exam and walking scores can be compared with the walking ducks in flat_walking. With no commands the duck collapses in about 0.4 s, so he has to learn to hold himself up first. Free energy (from_run_1): overnight, once his walk stopped improving (no new best for 2M steps), the energy penalty was removed (the flat_walking_free_energy world), as Francisco asked before going to sleep, and training continued from the best brain (12.25M). The hope is that it also ends the end-stop crouch, since leaning on the joint stops only pays because motor work costs energy. The duck's world is now that one.
