@@ -56,6 +56,8 @@ export const icon = {
   close: stroke('<path d="M6 6l12 12M18 6L6 18"/>'),
   folder: stroke('<path d="M3 6a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>'),
   lab: stroke('<path d="M9 3h6M10 3v6l-5 9a2 2 0 0 0 1.7 3h10.6A2 2 0 0 0 19 18l-5-9V3"/><path d="M7 15h10"/>'),
+  record: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="7" fill="currentColor"/></svg>',
+  image: stroke('<rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="M21 16l-5-5-9 9"/>'),
   stairs: stroke('<path d="M3 20h5v-5h5v-5h5V5h3"/>'),
 };
 

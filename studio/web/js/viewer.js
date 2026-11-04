@@ -367,7 +367,41 @@ export class Viewer {
     const full = h("button", { class: "vbtn", title: "Full screen", html: icon.expand, onclick: () => {
       if (document.fullscreenElement) document.exitFullscreen(); else this.container.requestFullscreen();
     } });
-    this.tools.append(follow, reset, full);
+    const picture = h("button", { class: "vbtn", title: "Save a picture", html: icon.image, onclick: () => this.savePicture() });
+    this.recordButton = h("button", { class: "vbtn", title: "Record a video of the 3D view", html: icon.record, onclick: () => this.toggleRecording() });
+    this.recordButton.style.color = "#dc2626";
+    this.tools.append(follow, reset, picture, this.recordButton, full);
+  }
+
+  // ---------- Pictures and videos ----------
+
+  savePicture() {
+    download(this.snapshot(), "walk-studio.png");
+  }
+
+  // Record the 3D view (and its playback) as a WebM video; a second press stops and saves it
+  toggleRecording() {
+    if (this.recorder) { this.recorder.stop(); return; }
+    if (!window.MediaRecorder || !this.renderer.domElement.captureStream) {
+      this.banner("This browser cannot record videos.", "bad");
+      return;
+    }
+    const stream = this.renderer.domElement.captureStream(30);
+    const type = ["video/webm;codecs=vp9", "video/webm;codecs=vp8", "video/webm"].find((t) => MediaRecorder.isTypeSupported(t)) || "";
+    const chunks = [];
+    this.recorder = new MediaRecorder(stream, type ? { mimeType: type, videoBitsPerSecond: 8e6 } : {});
+    this.recorder.ondataavailable = (event) => { if (event.data.size) chunks.push(event.data); };
+    this.recorder.onstop = () => {
+      const blob = new Blob(chunks, { type: "video/webm" });
+      download(URL.createObjectURL(blob), "walk-studio.webm");
+      this.recorder = null;
+      this.recordButton.classList.remove("recording");
+      this.banner("Video saved to your downloads.", "good", 3);
+    };
+    this.recorder.start(250);
+    this.recordButton.classList.add("recording");
+    this.banner("Recording. Press the red button again to stop and save.", "good", 4);
+    if (this.replay && this.replay.frames.length > 1) { this.seek(0); this.play(); }
   }
 
   _buildPlaybar() {
@@ -402,6 +436,7 @@ export class Viewer {
   }
 
   dispose() {
+    if (this.recorder) this.recorder.stop();
     this.disposed = true;
     this.resizeObserver.disconnect();
     this._clearGroup(this.walker);
@@ -411,6 +446,15 @@ export class Viewer {
     this.renderer.forceContextLoss();
     this.container.replaceChildren();
   }
+}
+
+function download(url, name) {
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = name;
+  document.body.append(link);
+  link.click();
+  link.remove();
 }
 
 // ---------- Shapes ----------

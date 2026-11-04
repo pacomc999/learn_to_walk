@@ -342,7 +342,7 @@ textarea.input { height: auto; padding: 10px 12px; resize: vertical; }
 .viewer-tall { height: calc(100vh - 260px); min-height: 460px; }
 .viewer-mid { height: 480px; }
 .viewer-overlay { position: absolute; left: 14px; top: 14px; display: flex; gap: 8px; flex-wrap: wrap; pointer-events: none;
-  right: 140px; }
+  right: 220px; }
 .viewer-overlay .chip { pointer-events: auto; }
 .chip { background: rgba(255, 255, 255, 0.86); backdrop-filter: blur(8px); border: 1px solid rgba(0, 0, 0, 0.06);
   color: #111827; border-radius: 10px; padding: 6px 10px; font-size: 12.5px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08); }
@@ -355,6 +355,7 @@ textarea.input { height: auto; padding: 10px 12px; resize: vertical; }
 .vbtn:hover { background: #fff; }
 .vbtn.on { background: #4f46e5; color: #fff; }
 .vbtn svg { width: 17px; height: 17px; }
+.vbtn.recording { background: #dc2626; color: #fff !important; animation: pulse 1.2s infinite; }
 .playbar { position: absolute; left: 12px; right: 12px; bottom: 12px; display: flex; align-items: center; gap: 10px;
   background: rgba(15, 18, 32, 0.78); backdrop-filter: blur(10px); color: #fff; border-radius: 12px; padding: 8px 12px; }
 .playbar button { background: none; border: 0; color: #fff; cursor: pointer; display: grid; place-items: center; padding: 4px;
