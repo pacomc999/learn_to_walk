@@ -58,7 +58,14 @@ def write_json(path: Path, data) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     temporary = path.with_name(path.name + ".tmp")
     temporary.write_text(json.dumps(data, indent=2), encoding="utf-8")
-    temporary.replace(path)
+    for attempt in range(10):  # Windows refuses while another program reads the old file
+        try:
+            temporary.replace(path)
+            return
+        except PermissionError:
+            if attempt == 9:
+                raise
+            time.sleep(0.3)
 
 
 # ---------- Creatures, worlds and brain designs: one JSON file each ----------

@@ -34,9 +34,9 @@ class WalkerBrain:
     def __init__(self, model_path: Path, norm_path: Path):
         from stable_baselines3 import PPO  # imported here so the page server starts quickly
         self.model = PPO.load(str(model_path), device="cpu")
-        scaling = np.load(norm_path)
-        self.mean, self.var = scaling["mean"], scaling["var"]
-        self.clip = float(scaling["clip"])
+        with np.load(norm_path) as scaling:  # closed at once, so training can replace the file (Windows)
+            self.mean, self.var = scaling["mean"], scaling["var"]
+            self.clip = float(scaling["clip"])
 
     def act(self, observation: np.ndarray) -> np.ndarray:
         scaled = np.clip((observation - self.mean) / np.sqrt(self.var + 1e-8), -self.clip, self.clip)
@@ -49,7 +49,20 @@ def save_scaling(vec_normalize, path: Path) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     temporary = path.with_name(path.stem + ".tmp.npz")
     np.savez(temporary, mean=vec_normalize.obs_rms.mean, var=vec_normalize.obs_rms.var, clip=vec_normalize.clip_obs)
-    temporary.replace(path)
+    replace_file(temporary, path)
+
+
+# Move a finished file into place. Windows refuses while another program reads the old one, so try again a few times
+def replace_file(source: Path, target: Path, attempts: int = 10) -> None:
+    import time
+    for attempt in range(attempts):
+        try:
+            source.replace(target)
+            return
+        except PermissionError:
+            if attempt == attempts - 1:
+                raise
+            time.sleep(0.3)
 
 
 # Motor commands that hold the standing pose. Springy muscles simply aim for it; direct muscles push back

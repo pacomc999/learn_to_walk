@@ -40,7 +40,7 @@ from studio.creatures import build_creature  # noqa: E402
 from studio.env import PART_NAMES, WalkEnv, observation_size  # noqa: E402
 from studio.learning import clean_learning, ppo_settings  # noqa: E402
 from studio.mirror import MirroredRunningMeanStd, mirror_tables  # noqa: E402
-from studio.replay import record, save_scaling  # noqa: E402
+from studio.replay import record, replace_file, save_scaling  # noqa: E402
 from studio.scene import build_scene  # noqa: E402
 from studio.worlds import world_from_dict  # noqa: E402
 
@@ -81,12 +81,10 @@ class Folder:
         target = self.path / name
         temporary = target.with_name(target.name + ".tmp")
         temporary.write_text(json.dumps(data), encoding="utf-8")
-        for attempt in range(5):  # Windows may hold the file open for a moment
-            try:
-                temporary.replace(target)
-                return
-            except PermissionError:
-                time.sleep(0.2)
+        try:
+            replace_file(temporary, target)  # Windows may hold the file open for a moment
+        except PermissionError:
+            print(f"Could not write {name} (is it open elsewhere?). Training goes on.", flush=True)
 
     def append_row(self, name: str, header: list[str], row: dict) -> None:
         target = self.path / name
@@ -348,8 +346,10 @@ class SessionCallback(BaseCallback):
 def save_brain(model, vec_normalize, folder: Folder, which: str) -> None:
     temporary = folder.brain / f"{which}.tmp.zip"
     model.save(temporary)
-    temporary.replace(folder.brain / f"{which}.zip")
-    vec_normalize.save(str(folder.brain / f"{which}_scaling.pkl"))
+    replace_file(temporary, folder.brain / f"{which}.zip")
+    scaling = folder.brain / f"{which}_scaling.tmp.pkl"
+    vec_normalize.save(str(scaling))
+    replace_file(scaling, folder.brain / f"{which}_scaling.pkl")
     save_scaling(vec_normalize, folder.brain / f"{which}_norm.npz")
 
 
