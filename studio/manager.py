@@ -13,7 +13,7 @@ from datetime import datetime
 from pathlib import Path
 
 from studio import library
-from studio.brain import clean_design, design_senses
+from studio.brain import clean_design, design_for_body, design_senses
 from studio.creatures import animal, build_creature
 from studio.env import observation_size
 from studio.learning import clean_learning
@@ -70,8 +70,8 @@ def _check_start_from(setup: dict) -> None:
 
 
 def _brain_shape(setup: dict) -> tuple:
-    design = clean_design(setup["brain"])
     build = build_creature(setup["creature"]["animal"], setup["creature"]["values"])
+    design = design_for_body(clean_design(setup["brain"]), build)
     senses = design_senses(design)
     return (build.motor_names, observation_size(build, senses), design["layers"], design["judge_layers"],
             design["values"]["symmetric"], design["values"]["activation"])

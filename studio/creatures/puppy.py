@@ -40,10 +40,11 @@ SETTING_GROUPS = (
         percent("leg_weight", "Leg weight", minimum=25, maximum=400),
     )),
     SettingGroup("muscles", "Muscles", "The motors that move each joint.", (
-        Setting("motor_type", "Kind of muscle", "choice", "position",
-                "Springy muscles pull each joint toward the angle the brain asks for. Direct muscles push with the "
-                "force the brain asks for and go loose at zero: more freedom, harder to learn.",
-                choices=(("position", "Springy (aims for an angle)"), ("force", "Direct (pushes with a force)"))),
+        Setting("motor_type", "Kind of muscle", "choice", "force",
+                "Direct muscles push with the force the brain asks for and let the joint swing freely at zero, like "
+                "real muscles (the newest learn_to_walk ducks). Springy muscles pull each joint toward an angle the "
+                "brain asks for: stiffer, but easier at first.",
+                choices=(("force", "Direct (pushes with a force)"), ("position", "Springy (aims for an angle)"))),
         percent("hip_strength", "Shoulder and hip strength", minimum=25, maximum=1000, step=25),
         percent("knee_strength", "Knee strength", minimum=25, maximum=1000, step=25),
         percent("neck_strength", "Neck strength", minimum=25, maximum=1000, step=25),
@@ -86,6 +87,8 @@ TAIL_RADIUS, TAIL_MASS = 0.012, 0.05
 
 RANGES = {"side": 0.35, "swing": 1.0, "knee": 1.2, "neck": 0.6, "tail": 0.7}
 STIFFNESS = {"hip": 15.0, "knee": 15.0, "neck": 4.0, "tail": 2.0}
+# Direct (force) muscles push up to this many times the springy muscles' force limits
+FORCE_MOTOR_BOOST = 10
 FORCE = {"hip": 3.0, "knee": 3.0, "neck": 1.0, "tail": 0.3}
 LEGS = (("front", 1), ("back", -1))   # (name, +1 at the chest end or -1 at the tail end)
 
@@ -115,7 +118,7 @@ def build(values: dict | None = None) -> Build:
         materials={"pup_fur": _rgba(v["fur_colour"]), "pup_ear": _rgba(v["ear_colour"]),
                    "pup_paw": _rgba(v["paw_colour"]), "pup_nose": _rgba(v["nose_colour"]),
                    "eye_white": "1 1 1 1", "eye_dark": "0.13 0.13 0.13 1"},
-        joint_damping=0.1 * v["s"] ** 4, joint_armature=0.005 * v["s"] ** 5, size=v["s"],
+        motor_type=v["motor_type"], joint_damping=0.1 * v["s"] ** 4, joint_armature=0.005 * v["s"] ** 5, size=v["s"],
         torso_geoms=["body", "head", "snout"],
     )
 
@@ -251,5 +254,7 @@ def _actuator(v: dict, motor: Motor) -> str:
     kind = motor.name.split("_")[-1] if motor.group != "neck" and motor.group != "tail" else motor.group
     limit = RANGES[kind] * flex
     force = FORCE[motor.group] * v[f"{motor.group}_strength"] * s ** 4
+    if v["motor_type"] == "force":
+        force *= FORCE_MOTOR_BOOST
     stiffness = STIFFNESS[motor.group] * v["stiffness"] * s ** 4
     return motor_line(motor.name, limit, stiffness, force, v["motor_type"])

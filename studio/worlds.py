@@ -69,8 +69,12 @@ SETTING_GROUPS = (
                "efficient walking; too high and it barely moves.", 1.5, 0.0, 10.0, 0.1, "points"),
         number("straight_cost", "Walking straight", "Points lost per metre of drifting off the straight line.",
                0.5, 0.0, 5.0, 0.1, "points"),
-        number("end_stop_cost", "Not forcing joints", "Points lost for pushing joints against their limits.",
-               0.0, 0.0, 1.0, 0.01, "points"),
+        switch("end_stops", "Penalty for joints at their limits", "Lose points for resting joints against their "
+               "end stops (the last 5% of their range). With direct muscles, leaning on the stops holds the body up "
+               "for free, so walkers learn odd crouches without this. Learn_to_walk's Duck 4 used it."),
+        number("end_stop_cost", "Joint limit penalty strength", "Points lost per joint fully at its limit, every "
+               "moment. 0.05 is gentle; at 0.2 the duck preferred falling on purpose.", 0.05, 0.0, 0.5, 0.01,
+               "points"),
     )),
     SettingGroup("extras", "Surprises", "Things that happen to the walker while it practises.", (
         switch("rocks", "Thrown rocks", "Stones are thrown at the walker from the side.", default=False),

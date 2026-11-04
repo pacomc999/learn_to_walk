@@ -35,7 +35,7 @@ from stable_baselines3.common.callbacks import BaseCallback  # noqa: E402
 from stable_baselines3.common.monitor import Monitor  # noqa: E402
 from stable_baselines3.common.vec_env import DummyVecEnv, SubprocVecEnv, VecNormalize  # noqa: E402
 
-from studio.brain import clean_design, design_senses, policy_for  # noqa: E402
+from studio.brain import clean_design, design_for_body, design_senses, policy_for  # noqa: E402
 from studio.creatures import build_creature  # noqa: E402
 from studio.env import WalkEnv, observation_size  # noqa: E402
 from studio.learning import clean_learning, ppo_settings  # noqa: E402
@@ -351,8 +351,8 @@ def save_brain(model, vec_normalize, folder: Folder, which: str) -> None:
 
 # ---------- The session ----------
 
-def _new_model(setup, design, mirror, venv, settings, seed):
-    policy, policy_kwargs = policy_for(design, mirror.to_dict() if mirror else None)
+def _new_model(design, mirror, venv, settings, seed, motor_type):
+    policy, policy_kwargs = policy_for(design, mirror.to_dict() if mirror else None, motor_type)
     return PPO(policy, venv, policy_kwargs=policy_kwargs, device="cpu", seed=seed, verbose=0, **settings)
 
 
@@ -377,6 +377,7 @@ def run(path: Path, resume: bool) -> None:
     status.update(state="starting", message="Building the practice worlds", total_steps=total_steps)
 
     build = build_creature(setup["creature"]["animal"], setup["creature"]["values"])
+    design = design_for_body(design, build)
     mirror = mirror_tables(build, senses) if design["values"]["symmetric"] else None
     worlds = int(learning["parallel_worlds"])
     seed = int(learning["seed"])
@@ -391,7 +392,7 @@ def run(path: Path, resume: bool) -> None:
         model = PPO.load(str(folder.brain / "latest.zip"), env=venv, device="cpu")
         print(f"Carrying on from {model.num_timesteps:,} steps.", flush=True)
     else:
-        model = _new_model(setup, design, mirror, venv, settings, seed)
+        model = _new_model(design, mirror, venv, settings, seed, build.motor_type)
         source = setup.get("start_from")
         if source:
             _start_from(model, venv, path.parent / source)
@@ -405,6 +406,8 @@ def run(path: Path, resume: bool) -> None:
     try:
         if remaining:
             model.learn(total_timesteps=remaining, callback=callback, reset_num_timesteps=False)
+        else:
+            callback.init_callback(model)  # nothing left to practise, but the final save and exam still need it
         callback.save("latest")
         if not callback.stopped_by_request:
             callback._examine()

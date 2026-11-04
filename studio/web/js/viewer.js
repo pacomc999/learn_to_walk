@@ -447,7 +447,6 @@ function heightsMesh(ground, style) {
   geometry.computeVertexNormals();
   const mesh = new THREE.Mesh(geometry, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.9, flatShading: false }));
   mesh.receiveShadow = true;
-  mesh.castShadow = true;
   return mesh;
 }
 

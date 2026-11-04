@@ -40,15 +40,19 @@ SETTING_GROUPS = (
                "Helps a lot on stairs and rocks.", default=False),
     )),
     SettingGroup("habits", "Starting habits", "How the brain behaves before it has learned anything.", (
-        Setting("start_wobble", "Starting curiosity", "choice", "calm",
-                "How wildly it tries things at the start. Calm is right for most walkers; very stiff muscles need "
-                "less, slow learners can use more.",
-                choices=(("tiny", "Very calm"), ("calm", "Calm"), ("lively", "Lively"), ("wild", "Wild"))),
+        Setting("start_wobble", "Starting curiosity", "choice", "auto",
+                "How wildly it tries things at the start. Matched to the muscles is very calm for direct muscles "
+                "(as learn_to_walk's Duck 4) and calm for springy ones.",
+                choices=(("auto", "Matched to the muscles"), ("tiny", "Very calm"), ("calm", "Calm"),
+                         ("lively", "Lively"), ("wild", "Wild"))),
     )),
 )
 
 # The starting wobble as the log of the spread of random tries per motor
-START_WOBBLE = {"tiny": -2.5, "calm": -1.0, "lively": -0.5, "wild": 0.0}
+START_WOBBLE = {"tiny": -3.0, "calm": -1.0, "lively": -0.5, "wild": 0.0}
+
+# "Matched to the muscles": Duck 4's wobble for direct muscles (0.05), learn_to_walk's -1 for springy ones
+AUTO_WOBBLE = {"force": -3.0, "position": -1.0}
 
 DEFAULT_LAYERS = [256, 256]
 
@@ -77,6 +81,15 @@ def _clean_layers(layers, fallback: list[int]) -> list[int]:
 def default_design() -> dict:
     return {"values": default_values(SETTING_GROUPS), "layers": list(DEFAULT_LAYERS),
             "judge_layers": list(DEFAULT_LAYERS)}
+
+
+# A design as it can be used by this body: a body with unpaired parts off the middle line cannot have the
+# symmetric brain, so it gets the free one
+def design_for_body(design: dict, build) -> dict:
+    if build.symmetric_ok or not design["values"]["symmetric"]:
+        return design
+    fitted = {**design, "values": {**design["values"], "symmetric": False}}
+    return fitted
 
 
 # The senses switched on by a design, in the environment's words
@@ -225,10 +238,11 @@ class SymmetricPolicy(ActorCriticPolicy):
 
 
 # The policy class and its settings for PPO
-def policy_for(design: dict, mirror: dict):
+def policy_for(design: dict, mirror: dict, motor_type: str = "position"):
     values = design["values"]
-    kwargs = {"net_arch": {"pi": list(design["layers"]), "vf": list(design["judge_layers"])},
-              "log_std_init": START_WOBBLE[values["start_wobble"]]}
+    wobble = values["start_wobble"]
+    log_std = AUTO_WOBBLE.get(motor_type, -1.0) if wobble == "auto" else START_WOBBLE[wobble]
+    kwargs = {"net_arch": {"pi": list(design["layers"]), "vf": list(design["judge_layers"])}, "log_std_init": log_std}
     if values["symmetric"]:
         kwargs.update(mirror=mirror, activation_name=values["activation"])
         return SymmetricPolicy, kwargs

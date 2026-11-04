@@ -433,8 +433,8 @@ function layerEditor(title, layers, onChange) {
       h("button", { class: "btn small", onclick: () => onChange(layers.map((s, i) => (i === index ? nextSize(s, -1) : s))) }, "Fewer"),
       h("button", { class: "btn small", onclick: () => onChange(layers.map((s, i) => (i === index ? nextSize(s, 1) : s))) }, "More"))));
   const add = layers.length < 6 ? h("button", { class: "add-layer", onclick: () => onChange([...layers, layers[layers.length - 1] || 64]), html: `${icon.plus}<span>Add layer</span>` }) : null;
-  return h("div", {}, h("div", { class: "spread", style: { marginBottom: "10px" } }, h("h3", {}, title),
-    h("span", { class: "faint", style: { fontSize: "12.5px" } }, "More layers and cells can learn more, but learn slower.")),
+  return h("div", {}, h("div", { style: { marginBottom: "10px" } }, h("h3", {}, title),
+    h("div", { class: "faint", style: { fontSize: "12.5px" } }, "More layers and cells can learn more, but need more practice.")),
     h("div", { class: "layer-editor" }, ...boxes, add));
 }
 

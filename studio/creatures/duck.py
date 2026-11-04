@@ -43,10 +43,11 @@ SETTING_GROUPS = (
         percent("leg_weight", "Leg weight", minimum=25, maximum=400),
     )),
     SettingGroup("muscles", "Muscles", "The motors that move each joint.", (
-        Setting("motor_type", "Kind of muscle", "choice", "position",
-                "Springy muscles pull each joint toward the angle the brain asks for. Direct muscles push with the "
-                "force the brain asks for and go loose at zero: more freedom, harder to learn.",
-                choices=(("position", "Springy (aims for an angle)"), ("force", "Direct (pushes with a force)"))),
+        Setting("motor_type", "Kind of muscle", "choice", "force",
+                "Direct muscles push with the force the brain asks for and let the joint swing freely at zero, like "
+                "real muscles (the newest learn_to_walk ducks). Springy muscles pull each joint toward an angle the "
+                "brain asks for: stiffer, but easier at first.",
+                choices=(("force", "Direct (pushes with a force)"), ("position", "Springy (aims for an angle)"))),
         percent("hip_strength", "Hip strength", minimum=25, maximum=1000, step=25),
         percent("knee_strength", "Knee strength", minimum=25, maximum=1000, step=25),
         percent("ankle_strength", "Ankle strength", minimum=25, maximum=1000, step=25),
@@ -101,6 +102,8 @@ RANGES = {"neck_base": 0.6, "neck_top": 0.8, "hip_swing": 1.0, "hip_side": 0.4, 
           "toes": 0.6}
 # Springiness (kp) and strongest force of each kind of joint
 STIFFNESS = {"neck": 4.0, "hip": 20.0, "knee": 20.0, "ankle": 20.0, "toes": 5.0}
+# Direct (force) muscles push up to this many times the springy muscles' force limits
+FORCE_MOTOR_BOOST = 10
 FORCE = {"neck": 1.0, "hip": 4.0, "knee": 4.0, "ankle": 3.0, "toes": 0.5}
 
 
@@ -128,7 +131,7 @@ def build(values: dict | None = None) -> Build:
         materials={"duck_body": _rgba(v["body_colour"]), "duck_wing": _rgba(v["wing_colour"]),
                    "duck_leg": _rgba(v["leg_colour"]), "duck_beak": _rgba(v["beak_colour"]),
                    "eye_white": "1 1 1 1", "eye_dark": "0.13 0.13 0.13 1"},
-        joint_damping=0.1 * v["s"] ** 4, joint_armature=0.005 * v["s"] ** 5, size=v["s"],
+        motor_type=v["motor_type"], joint_damping=0.1 * v["s"] ** 4, joint_armature=0.005 * v["s"] ** 5, size=v["s"],
         torso_geoms=["body", "tail", "left_wing", "right_wing"],
     )
 
@@ -285,13 +288,16 @@ def _motors(v: dict) -> list[Motor]:
 
 
 # The motor line of one motor: its range from the joint, its strength from the settings.
-# Strength and springiness grow with the size to the fourth power (weight times lever)
+# Strength and springiness grow with the size to the fourth power (weight times lever).
+# Direct muscles get FORCE_MOTOR_BOOST times the force, as learn_to_walk's force_motors body
 def _actuator(v: dict, motor: Motor) -> str:
     s, flex = v["s"], v["flexibility"]
     joint_kind = motor.name.removeprefix("left_").removeprefix("right_")
     limit = RANGES[joint_kind] * flex
     strength = v[f"{_setting_group(motor.group)}_strength"]
     force = FORCE[motor.group] * strength * s ** 4
+    if v["motor_type"] == "force":
+        force *= FORCE_MOTOR_BOOST
     stiffness = STIFFNESS[motor.group] * v["stiffness"] * s ** 4
     return motor_line(motor.name, limit, stiffness, force, v["motor_type"])
 

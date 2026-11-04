@@ -276,7 +276,7 @@ class WalkEnv(gymnasium.Env):
             "energy": -values["energy_cost"] * energy,
             "straight": -values["straight_cost"] * abs(float(self.data.qpos[1])),
         }
-        if values["end_stop_cost"]:
+        if values["end_stops"] and values["end_stop_cost"]:
             parts["end_stops"] = -values["end_stop_cost"] * self._end_stop_closeness()
         return float(sum(parts.values())), parts
 

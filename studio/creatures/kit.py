@@ -138,6 +138,8 @@ class Build:
     joint_armature: float = 0.005
     size: float = 1.0                # overall size factor, used to scale cameras, rocks and wind
     torso_geoms: list[str] = field(default_factory=list)  # shapes that must not touch the ground
+    symmetric_ok: bool = True
+    motor_type: str = "position"     # "force" (direct) or "position" (springy)        # False when parts without a twin sit off the middle line
 
     @property
     def motor_names(self) -> list[str]:

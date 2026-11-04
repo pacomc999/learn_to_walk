@@ -52,7 +52,8 @@ def save_scaling(vec_normalize, path: Path) -> None:
     temporary.replace(path)
 
 
-# Motor commands that hold the standing pose (springy muscles) or do nothing (direct muscles)
+# Motor commands that hold the standing pose. Springy muscles simply aim for it; direct muscles push back
+# toward it like a firm spring, as hard as they can, which shows whether they are strong enough to carry the body
 def holding_action(env: WalkEnv) -> np.ndarray:
     low = env.model.actuator_ctrlrange[:, 0]
     high = env.model.actuator_ctrlrange[:, 1]
@@ -61,6 +62,23 @@ def holding_action(env: WalkEnv) -> np.ndarray:
         if env.model.actuator_biastype[motor_id] != mujoco.mjtBias.mjBIAS_NONE:
             target[motor_id] = env.build.stand_pose[motor.name]
     return np.clip((target - low) / (high - low) * 2 - 1, -1, 1)
+
+
+def holder(env: WalkEnv):
+    springy = np.array([env.model.actuator_biastype[i] != mujoco.mjtBias.mjBIAS_NONE for i in range(env.model.nu)])
+    if springy.all():
+        hold = holding_action(env)
+        return lambda observation: hold
+    targets = np.array([env.build.stand_pose[motor.name] for motor in env.build.motors])
+
+    # A spring of the force limit per radian with a little damping (tuned so both animals stand;
+    # more damping shakes, since the push only changes 50 times a second)
+    def act(observation):
+        angles = env.data.qpos[env.joint_qpos]
+        speeds = env.data.qvel[env.joint_qvel]
+        push = -(angles - targets) - speeds / 200
+        return np.where(springy, holding_action(env), np.clip(push, -1, 1))
+    return act
 
 
 # ---------- Shapes and ground ----------
@@ -110,12 +128,12 @@ def record(env: WalkEnv, act=None, seed: int = 1000, seconds: float | None = Non
     steps_per_frame = round(50 / REPLAY_FPS)
     limit = env.max_steps if seconds is None else round(seconds / env.control_seconds)
     frames, total, fell_at = [], 0.0, None
-    hold = holding_action(env)
+    hold = holder(env)
     extra_steps = round(keep_going_after_fall / env.control_seconds)
     step = 0
     frames.append(_frame(env))
     while step < limit:
-        action = hold if act is None else act(observation)
+        action = hold(observation) if act is None else act(observation)
         observation, reward, fell, _, info = env.step(action)
         step += 1
         if fell_at is None:

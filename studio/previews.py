@@ -9,7 +9,7 @@ import mujoco
 import numpy as np
 
 from studio import library
-from studio.brain import clean_design, count_weights, design_senses
+from studio.brain import clean_design, count_weights, design_for_body, design_senses
 from studio.creatures import animal, build_creature
 from studio.env import WalkEnv, observation_size
 from studio.replay import WalkerBrain, record, scene_shapes
@@ -122,11 +122,11 @@ def _brain(training_id: str) -> WalkerBrain:
 # Facts about a brain design for one creature: senses, motors and how many numbers it learns
 def brain_facts(animal_key: str, values: dict, design: dict) -> dict:
     build = build_creature(animal_key, values)
-    design = clean_design(design)
+    design = design_for_body(clean_design(design), build)
     senses = design_senses(design)
     inputs = observation_size(build, senses)
     return {"inputs": inputs, "outputs": len(build.motors), "motor_names": build.motor_names,
             "weights": count_weights(inputs, len(build.motors), design), "design": design,
             "left_motors": sum(1 for m in build.motors if m.side == "left"),
             "middle_motors": sum(1 for m in build.motors if m.side == "middle"),
-            "animal_name": animal(animal_key).NAME}
+            "animal_name": animal(animal_key).NAME, "symmetric_ok": build.symmetric_ok}

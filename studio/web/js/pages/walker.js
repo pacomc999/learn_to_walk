@@ -41,7 +41,7 @@ export async function render(main, params) {
     const state = details.status.state;
     statePill.replaceChildren(pillForState(state));
     const running = ACTIVE.includes(state);
-    actions.replaceChildren(
+    actions.replaceChildren(...[
       running
         ? h("button", { class: "btn", onclick: pause, html: `${icon.pause}<span>Pause</span>` })
         : details.status.state !== "finished" || details.status.steps < details.status.total_steps
@@ -49,7 +49,7 @@ export async function render(main, params) {
           : null,
       details.has_brain ? h("button", { class: "btn", onclick: trainMore, html: `${icon.sparkle}<span>Teach a new world</span>` }) : null,
       h("button", { class: "btn ghost icon-btn", title: "Rename", onclick: rename, html: icon.edit }),
-      h("button", { class: "btn ghost icon-btn danger", title: "Delete", onclick: remove, html: icon.trash }));
+      h("button", { class: "btn ghost icon-btn danger", title: "Delete", onclick: remove, html: icon.trash })].filter(Boolean));
   };
 
   const pause = async () => {
@@ -171,14 +171,14 @@ function trainingTab(body, id, details, setup) {
     const progressCard = statCard("Progress", `${fmtSteps(status.steps || 0)}<small>/ ${fmtSteps(status.total_steps)}</small>`,
       ACTIVE.includes(status.state) && speed ? `about ${fmtDuration(remaining)} to go` : status.message || "", icon.clock);
     progressCard.append(h("div", { class: "progress" }, h("div", { style: { width: `${share * 100}%` } })));
-    stats.replaceChildren(
+    stats.replaceChildren(...[
       progressCard,
       statCard("Best walk", status.best_quality !== null && status.best_quality !== undefined ? `${fmtNumber(status.best_quality)}<small>%</small>` : "-",
         "of the asked distance, in its best exam", icon.trophy),
       statCard("Last exam", last ? `${last.attempts - last.falls}<small>/ ${last.attempts} stayed up</small>` : "-",
         last ? `score ${fmtNumber(last.score)} points` : "the first exam comes right at the start", icon.target),
       statCard("Practice speed", speed ? `${fmtNumber(speed)}<small>steps/s</small>` : "-", `${setup.learning.parallel_worlds} worlds at once`, icon.speed),
-      setup.world.values.gradually_harder ? statCard("Ground height", `${fmtNumber((status.difficulty ?? 1) * 100)}<small>%</small>`, "of the tallest, rising as it learns", icon.stairs) : null);
+      setup.world.values.gradually_harder ? statCard("Ground height", `${fmtNumber((status.difficulty ?? 1) * 100)}<small>%</small>`, "of the tallest, rising as it learns", icon.stairs) : null].filter(Boolean));
     story.replaceChildren(storyCallout(status, exams, progress));
 
     // Charts

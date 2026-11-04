@@ -4,6 +4,12 @@ import { icon, groupIcon } from "./icons.js";
 
 // ---------- Elements ----------
 
+// Let replaceChildren skip empty slots (null, undefined, false), like h() does
+const plainReplace = Element.prototype.replaceChildren;
+Element.prototype.replaceChildren = function (...children) {
+  return plainReplace.apply(this, children.flat().filter((child) => child !== null && child !== undefined && child !== false));
+};
+
 export function h(tag, attrs = {}, ...children) {
   const element = document.createElement(tag);
   for (const [key, value] of Object.entries(attrs || {})) {
