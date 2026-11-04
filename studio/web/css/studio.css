@@ -600,4 +600,9 @@ textarea.input { height: auto; padding: 10px 12px; resize: vertical; }
   .step .step-sub { display: none; }
   .hero-art { display: none; }
   .page-head { flex-direction: column; align-items: flex-start; }
+  .viewer-overlay { right: 14px; top: 56px; }
+  .chip { padding: 4px 8px; font-size: 11.5px; }
+  .step-line { display: none; }
+  .step { flex: none; }
+  .score-row { grid-template-columns: 110px 1fr 48px; }
 }
