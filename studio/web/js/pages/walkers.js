@@ -1,6 +1,6 @@
 // My walkers: every training session, newest first.
 
-import { h, api, fmtSteps, fmtNumber, fmtWhen, pillForState } from "../ui.js";
+import { h, api, toast, fmtSteps, fmtNumber, fmtWhen, pillForState } from "../ui.js";
 import { icon, animalArt, STYLE_COLOURS } from "../icons.js";
 import { go, store } from "../app.js";
 
@@ -22,6 +22,27 @@ export function walkerCard(training) {
       h("div", { class: "progress" }, h("div", { style: { width: `${share * 100}%` } }))));
 }
 
+// Open a .walker file someone shared
+export function openShared() {
+  const input = h("input", { type: "file", accept: ".walker,.zip", style: { display: "none" } });
+  input.addEventListener("change", async () => {
+    const file = input.files[0];
+    input.remove();
+    if (!file) return;
+    try {
+      const response = await fetch("/api/trainings/open", { method: "POST", headers: { "Content-Type": "application/zip" }, body: file });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "It could not be opened.");
+      toast("Walker opened", file.name, "good");
+      go(`#/walker/${data.id}`);
+    } catch (error) {
+      toast("Could not open that file", error.message, "bad");
+    }
+  });
+  document.body.append(input);
+  input.click();
+}
+
 export async function render(main) {
   const page = h("div", { class: "page" });
   main.append(page);
@@ -29,6 +50,7 @@ export async function render(main) {
   page.append(h("div", { class: "page-head" },
     h("div", {}, h("h1", {}, "My walkers"), h("div", { class: "sub" }, "Every creature you have trained, with how far along it is and how well it walks.")),
     h("div", { class: "btn-row" },
+      h("button", { class: "btn", onclick: openShared, html: `${icon.open}<span>Open a shared walker</span>` }),
       h("button", { class: "btn", onclick: async () => (await import("./importer.js")).importDialog(), html: `${icon.folder}<span>Bring over learn_to_walk ducks</span>` }),
       h("button", { class: "btn primary", onclick: () => go("#/new/creature"), html: `${icon.plus}<span>New walker</span>` }))));
   if (!trainings.length) {

@@ -59,6 +59,7 @@ export async function render(main, params) {
           : null,
       !running && details.has_brain ? h("button", { class: "btn", onclick: trainLonger, html: `${icon.clock}<span>Train longer</span>` }) : null,
       details.has_brain ? h("button", { class: "btn", onclick: trainMore, html: `${icon.sparkle}<span>Teach a new world</span>` }) : null,
+      h("a", { class: "btn ghost icon-btn", title: "Share: save this walker as a file", href: `/api/trainings/${id}/share`, download: "", html: icon.share }),
       h("button", { class: "btn ghost icon-btn", title: "Rename", onclick: rename, html: icon.edit }),
       h("button", { class: "btn ghost icon-btn danger", title: "Delete", onclick: remove, html: icon.trash })].filter(Boolean));
   };

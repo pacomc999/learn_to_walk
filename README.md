@@ -52,6 +52,10 @@ You also design its **scoring**: points for moving forward (exactly at the asked
 
 **Bring over your learn_to_walk ducks.** On My walkers, point the studio at your learn_to_walk folder and every catalogue duck with a kept brain becomes a walker here (its body, world and brain come along), ready to test drive in the new worlds, race, or teach a new world. They walk as well as they did there: Duck 3.3 takes the studio's exam with no falls, as in his catalogue card.
 
+**Share a walker.** The share button on a walker's page saves it as one `.walker` file (its recipe, brain, charts and replays). Anyone with Walk Studio can open it with Open a shared walker on My walkers.
+
+**Courses.** On the Training step, add stages: after its own world it moves on to more worlds, one after the other, with the same brain (flat ground, then cobblestones, then stairs).
+
 **Pictures and videos.** Every 3D view has buttons to save a picture or record a video to share.
 
 ![Building your own creature](docs/images/builder.jpg)

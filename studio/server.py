@@ -104,6 +104,18 @@ class StudioHandler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(body)
 
+    def read_bytes(self) -> bytes:
+        length = int(self.headers.get("Content-Length") or 0)
+        return self.rfile.read(length) if length else b""
+
+    def send_download(self, body: bytes, filename: str) -> None:
+        self.send_response(200)
+        self.send_header("Content-Type", "application/zip")
+        self.send_header("Content-Disposition", f'attachment; filename="{filename}"')
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+
     def read_body(self) -> dict:
         length = int(self.headers.get("Content-Length") or 0)
         if not length:
@@ -220,6 +232,9 @@ class StudioHandler(BaseHTTPRequestHandler):
         raise ValueError("Unknown request.")
 
     def _trainings(self, method: str, parts: list[str]):
+        if parts == ["open"] and method == "POST":
+            from studio import sharing
+            return {"id": sharing.unpack(self.read_bytes())}
         if not parts:
             if method == "GET":
                 return manager.list_trainings()
@@ -238,6 +253,11 @@ class StudioHandler(BaseHTTPRequestHandler):
             if found is None:
                 raise ValueError("That training was not found.")
             return found
+        if method == "GET" and action == "share":
+            from studio import sharing
+            body, filename = sharing.pack(training_id)
+            self.send_download(body, filename)
+            return None
         if method == "GET" and action == "replay" and len(parts) > 2:
             self.send_file(manager.replay_path(training_id, parts[2]), "application/json")
             return None

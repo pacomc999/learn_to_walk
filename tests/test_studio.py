@@ -64,3 +64,38 @@ def test_bad_requests_get_a_plain_message(studio):
     with pytest.raises(urllib.error.HTTPError) as error:
         call(studio, "trainings/../../etc")
     assert error.value.code in (400, 404)
+
+
+def test_a_walker_can_be_shared_and_opened_again(tmp_path, monkeypatch):
+    from studio import library, sharing
+    monkeypatch.setattr(library, "LIBRARY", tmp_path)
+    folder = library.training_folder("original")
+    library.write_json(folder / "setup.json", {"id": "original", "name": "Speedy", "creature": {"animal": "duck"}})
+    library.write_json(folder / "status.json", {"state": "training", "steps": 5})
+    (folder / "brain").mkdir()
+    (folder / "brain" / "best.zip").write_bytes(b"brain")
+    (folder / "log.txt").write_text("private")
+    data, name = sharing.pack("original")
+    assert name == "Speedy.walker"
+    opened = sharing.unpack(data)
+    copy = library.training_folder(opened)
+    assert opened != "original" and (copy / "brain" / "best.zip").read_bytes() == b"brain"
+    assert not (copy / "log.txt").exists()
+    assert library.read_json(copy / "status.json")["state"] == "stopped"
+
+
+def test_a_bad_walker_file_is_refused(tmp_path, monkeypatch):
+    import io
+    import zipfile
+    from studio import library, sharing
+    monkeypatch.setattr(library, "LIBRARY", tmp_path)
+    with pytest.raises(ValueError):
+        sharing.unpack(b"not a zip")
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, "w") as archive:
+        archive.writestr("setup.json", '{"name": "sneaky"}')
+        archive.writestr("../../evil.txt", "no")
+        archive.writestr("brain/../../evil2.txt", "no")
+    opened = sharing.unpack(buffer.getvalue())
+    assert not (tmp_path / "evil.txt").exists() and not (tmp_path.parent / "evil.txt").exists()
+    assert sorted(p.name for p in library.training_folder(opened).iterdir()) == ["setup.json", "status.json"]
