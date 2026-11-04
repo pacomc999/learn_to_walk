@@ -87,7 +87,7 @@ def drop_test(animal_key: str, values: dict, world_data: dict | None = None, sec
 
 # A trained walker in any world: the best brain of a training session
 def watch(training_id: str, world_data: dict | None, speed: float | None, height: float | None, seed: int,
-          seconds: float | None) -> dict:
+          seconds: float | None, ground_half_width: float | None = None) -> dict:
     folder = library.training_folder(training_id)
     setup = library.read_json(folder / "setup.json")
     if not setup:
@@ -103,7 +103,67 @@ def watch(training_id: str, world_data: dict | None, speed: float | None, height
         height = world.tallest * 0.75 if world.values["mixed_heights"] else world.tallest
     env = WalkEnv(build, world, senses, target_speed=speed, terrain_height=float(height))
     brain = _brain(training_id)
-    return record(env, brain.act, seed=int(seed), seconds=seconds)
+    replay = record(env, brain.act, seed=int(seed), seconds=seconds, keep_going_after_fall=2.0,
+                    ground_half_width=ground_half_width)
+    replay["name"] = setup.get("name", "")
+    replay["creature_name"] = setup["creature"].get("name") or animal(setup["creature"]["animal"]).NAME
+    return replay
+
+
+# A race: several trained walkers in the same world, side by side in lanes, as one replay.
+# Each walks in its own simulation on the same ground (same seed); the lanes only exist in the picture
+def race(training_ids: list[str], world_data: dict, speed: float | None, height: float | None, seed: int,
+         seconds: float) -> dict:
+    ids = list(dict.fromkeys(training_ids))[:6]
+    if len(ids) < 1:
+        raise ValueError("Pick at least one walker for the race.")
+    world_data = dict(world_data or {})
+    world_data["values"] = {**(world_data.get("values") or {}), "attempt_seconds": max(
+        float((world_data.get("values") or {}).get("attempt_seconds", 20)), float(seconds))}
+    world = world_from_dict(world_data)
+    entries = []
+    for training_id in ids:
+        setup = library.read_json(library.training_folder(training_id) / "setup.json") or {}
+        size = build_creature(setup["creature"]["animal"], setup["creature"]["values"]).size if setup else 1.0
+        entries.append((training_id, size))
+    lane = max(0.9, max(size for _, size in entries) * 0.9)
+    replays = [watch(training_id, world.to_dict(), speed, height, seed, seconds, ground_half_width=lane / 2)
+               for training_id, _ in entries]
+    return _merge_lanes(replays, lane)
+
+
+def _merge_lanes(replays: list[dict], lane: float) -> dict:
+    count = len(replays)
+    offsets = [(count - 1) / 2 * lane - i * lane for i in range(count)]  # first walker on the left
+    bodies, shapes, torsos, labels, grounds = [], [], [], [], []
+    for replay, offset in zip(replays, offsets):
+        first = len(bodies)
+        torsos.append(first)
+        bodies += [f"{name}" for name in replay["bodies"]]
+        shapes += [{**shape, "body": shape["body"] + first} for shape in replay["shapes"]]
+        labels.append({"text": replay["name"], "x": replay["frames"][0][0] - 0.35, "y": offset,
+                       "z": replay["stand_height"] * 1.9})
+        ground = dict(replay["ground"])
+        if ground.get("kind") == "heights":
+            ground["y0"] = round(ground["y0"] + offset, 4)
+        grounds.append(ground)
+    length = max(len(replay["frames"]) for replay in replays)
+    frames = []
+    for index in range(length):
+        frame = []
+        for replay, offset in zip(replays, offsets):
+            values = list(replay["frames"][min(index, len(replay["frames"]) - 1)])
+            for start in range(0, len(values), 7):
+                values[start + 1] = round(values[start + 1] + offset, 4)
+            frame += values
+        frames.append(frame)
+    results = sorted(({"name": replay["name"], "creature": replay["creature_name"], **replay["stats"]}
+                      for replay in replays), key=lambda result: -result["distance"])
+    return {"fps": replays[0]["fps"], "bodies": bodies, "shapes": shapes, "frames": frames,
+            "ground": {"kind": "lanes", "patches": grounds, "lane": lane, "count": count},
+            "style": replays[0]["style"], "size": max(1.0, count * lane / 1.2),
+            "stand_height": max(replay["stand_height"] for replay in replays), "torsos": torsos, "labels": labels,
+            "results": results, "stats": {"seconds": max(replay["stats"]["seconds"] for replay in replays)}}
 
 
 def _brain(training_id: str) -> WalkerBrain:

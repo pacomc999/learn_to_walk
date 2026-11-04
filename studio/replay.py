@@ -102,13 +102,13 @@ def scene_shapes(env: WalkEnv) -> tuple[list[str], list[dict]]:
 
 
 # The ground near the walk, as a coarse grid of heights (tenths of a millimetre), or a plain plane
-def ground_patch(env: WalkEnv, x_from: float, x_to: float) -> dict:
+def ground_patch(env: WalkEnv, x_from: float, x_to: float, y_half: float | None = None) -> dict:
     layout = env.scene.layout
     if layout is None or env.heights is None:
         return {"kind": "plane"}
     step = 0.015 if env.world.terrain in ("cobblestones",) else 0.03
     x_from, x_to = max(layout.x_min, x_from), min(layout.x_max, x_to)
-    y_half = min(layout.y_half, 0.9 * max(env.build.size, 1.0))
+    y_half = min(layout.y_half, y_half if y_half is not None else 0.9 * max(env.build.size, 1.0))
     xs = np.arange(x_from, x_to + step / 2, step)
     ys = np.arange(-y_half, y_half + step / 2, step)
     columns = np.clip(np.round((xs - layout.x_min) / layout.cell).astype(int), 0, layout.columns - 1)
@@ -122,7 +122,7 @@ def ground_patch(env: WalkEnv, x_from: float, x_to: float) -> dict:
 
 # Run one attempt and record it. act(observation) picks the motor commands; None holds the pose
 def record(env: WalkEnv, act=None, seed: int = 1000, seconds: float | None = None,
-           keep_going_after_fall: float = 1.0) -> dict:
+           keep_going_after_fall: float = 1.0, ground_half_width: float | None = None) -> dict:
     observation, _ = env.reset(seed=seed)
     bodies, shapes = scene_shapes(env)
     steps_per_frame = round(50 / REPLAY_FPS)
@@ -152,7 +152,7 @@ def record(env: WalkEnv, act=None, seed: int = 1000, seconds: float | None = Non
     xs = [frame[0] for frame in frames]
     return {
         "fps": REPLAY_FPS, "bodies": bodies, "shapes": shapes, "frames": frames,
-        "ground": ground_patch(env, min(xs) - 1.5, max(xs) + 2.5),
+        "ground": ground_patch(env, min(xs) - 1.5, max(xs) + 2.5, ground_half_width),
         "style": env.world.values["style"], "world": env.world.name, "animal": env.build.animal,
         "size": env.build.size, "stand_height": env.scene.stand_height,
         "stats": {"distance": round(distance, 3), "seconds": round(seconds_walked, 2),

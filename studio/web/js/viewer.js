@@ -171,23 +171,39 @@ export class Viewer {
     }));
     plane.material.map.repeat.set(400 / (0.5 * Math.max(size, 0.5)), 400 / (0.5 * Math.max(size, 0.5)));
     plane.receiveShadow = true;
-    plane.position.z = replay.ground && replay.ground.kind === "heights" ? -0.0008 : 0;
+    const patches = this._patches(replay);
+    plane.position.z = patches.length ? -0.0008 : 0;
     this.world.add(plane);
-    if (replay.ground && replay.ground.kind === "heights") {
+    for (const patch of patches) {
       const texture = plane.material.map.clone();
       texture.repeat.set(1, 1);
       texture.needsUpdate = true;
-      this.world.add(heightsMesh(replay.ground, style, texture, 0.5 * Math.max(size, 0.5)));
+      this.world.add(heightsMesh(patch, style, texture, 0.5 * Math.max(size, 0.5)));
+    }
+    for (const label of replay.labels || []) {
+      const sprite = textSprite(label.text, dark ? "#ffffff" : "#111827", 0.95);
+      sprite.position.set(label.x, label.y, label.z);
+      sprite.scale.multiplyScalar(1.6);
+      this.world.add(sprite);
     }
     this._addMetreMarks(replay, style);
   }
 
+  // The height maps of a replay: one, or one per lane in a race
+  _patches(replay) {
+    const ground = replay.ground || {};
+    if (ground.kind === "heights") return [ground];
+    if (ground.kind === "lanes") return ground.patches.filter((patch) => patch.kind === "heights");
+    return [];
+  }
+
   _addMetreMarks(replay, style) {
     if (replay.style === "studio") return;  // the plain studio floor of the creature preview has no track
-    const size = Math.max(replay.size || 1, 0.6);
+    const size = Math.max(replay.ground && replay.ground.kind === "lanes" ? 1 : replay.size || 1, 0.6);
     const xs = replay.frames.length ? replay.frames.map((frame) => frame[0]) : [0];
     const last = Math.ceil(Math.max(...xs, 2) + 3);
-    const side = 0.6 * size;
+    const lanes = replay.ground && replay.ground.kind === "lanes" ? replay.ground : null;
+    const side = lanes ? lanes.count * lanes.lane / 2 + 0.15 : 0.6 * size;
     for (let metre = 0; metre <= last; metre++) {
       const post = new THREE.Mesh(new THREE.CylinderGeometry(0.008 * size, 0.008 * size, 0.12 * size, 8),
         new THREE.MeshStandardMaterial({ color: metre === 0 ? 0x4f46e5 : 0xffffff, roughness: 0.6 }));
@@ -205,8 +221,8 @@ export class Viewer {
   }
 
   _groundHeight(replay, x, y) {
-    const ground = replay.ground;
-    if (!ground || ground.kind !== "heights") return 0;
+    const ground = this._patches(replay).find((patch) => y >= patch.y0 && y <= patch.y0 + patch.step * (patch.rows - 1)) || this._patches(replay)[0];
+    if (!ground) return 0;
     const column = Math.round((x - ground.x0) / ground.step);
     const row = Math.round((y - ground.y0) / ground.step);
     if (column < 0 || row < 0 || column >= ground.cols || row >= ground.rows) return 0;
@@ -231,6 +247,14 @@ export class Viewer {
     const size = Math.max(replay ? replay.size || 1 : 1, 0.5);
     const height = replay ? replay.stand_height || 0.25 : 0.25;
     const x = replay && replay.frames.length ? replay.frames[0][0] : 0;
+    if (replay && replay.torsos) {
+      this._applyFrame(this.time);
+      const middle = this._torsoPosition();
+      this.controls.target.set(middle.x, 0, height * 0.85);
+      this.camera.position.set(middle.x + 0.9 * size, -1.6 * size, height + 0.8 * size);
+      this.controls.update();
+      return;
+    }
     this.controls.target.set(x, 0, height * 0.85);
     this.camera.position.set(x + 0.75 * size, -1.45 * size, height + 0.45 * size);
     this.controls.update();
@@ -285,8 +309,14 @@ export class Viewer {
     }
   }
 
+  // What the camera follows: the torso, or the middle of all the racers
   _torsoPosition() {
-    return this.bodyGroups.length ? this.bodyGroups[0].position : new THREE.Vector3();
+    if (!this.bodyGroups.length) return new THREE.Vector3();
+    const torsos = this.replay && this.replay.torsos;
+    if (!torsos) return this.bodyGroups[0].position;
+    const middle = new THREE.Vector3();
+    for (const index of torsos) middle.add(this.bodyGroups[index].position);
+    return middle.divideScalar(torsos.length);
   }
 
   _loop() {
@@ -473,19 +503,22 @@ function heightsMesh(ground, style, texture, tile) {
   return mesh;
 }
 
-function textSprite(text, colour) {
+function textSprite(text, colour, alpha = 0.75) {
   const canvas = document.createElement("canvas");
-  canvas.width = 256; canvas.height = 64;
   const context = canvas.getContext("2d");
-  context.font = "600 36px Inter, system-ui, sans-serif";
+  const font = "600 36px Inter, system-ui, sans-serif";
+  context.font = font;
+  const width = Math.min(1024, Math.ceil(context.measureText(text).width) + 24);
+  canvas.width = width; canvas.height = 64;
+  context.font = font;
   context.textAlign = "center";
   context.textBaseline = "middle";
   context.fillStyle = colour;
-  context.globalAlpha = 0.75;
-  context.fillText(text, 128, 32);
+  context.globalAlpha = alpha;
+  context.fillText(text, width / 2, 32);
   const texture = new THREE.CanvasTexture(canvas);
   texture.colorSpace = THREE.SRGBColorSpace;
   const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: texture, depthWrite: false, transparent: true }));
-  sprite.scale.set(0.24, 0.06, 1);
+  sprite.scale.set(0.06 * width / 64, 0.06, 1);
   return sprite;
 }

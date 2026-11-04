@@ -79,6 +79,7 @@ const NAV = [
   { href: "#/", label: "Home", icon: icon.home, match: (path) => path === "" },
   { href: "#/new/creature", label: "New walker", icon: icon.plus, match: (path) => path.startsWith("new"), cta: true },
   { href: "#/walkers", label: "My walkers", icon: icon.walkers, match: (path) => path.startsWith("walker") },
+  { href: "#/race", label: "Race", icon: icon.flag, match: (path) => path.startsWith("race") },
   { href: "#/library", label: "Library", icon: icon.library, match: (path) => path.startsWith("library") },
   { href: "#/guide", label: "How it works", icon: icon.book, match: (path) => path.startsWith("guide") },
 ];
@@ -93,9 +94,9 @@ function renderSidebar(path) {
     h("nav", { class: "nav" },
       ...NAV.slice(0, 2).map((item) => navLink(item, path)),
       h("div", { class: "nav-label" }, "Your work"),
-      ...NAV.slice(2, 4).map((item) => navLink(item, path)),
+      ...NAV.slice(2, 5).map((item) => navLink(item, path)),
       h("div", { class: "nav-label" }, "Help"),
-      navLink(NAV[4], path)),
+      navLink(NAV[5], path)),
     h("div", { class: "sidebar-foot" },
       h("div", { id: "running" }),
       h("div", { class: "sidebar-tools" },
@@ -136,6 +137,7 @@ const PAGES = {
   walkers: () => import("./pages/walkers.js"),
   walker: () => import("./pages/walker.js"),
   library: () => import("./pages/library.js"),
+  race: () => import("./pages/race.js"),
   guide: () => import("./pages/guide.js"),
 };
 

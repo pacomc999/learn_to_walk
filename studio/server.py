@@ -158,6 +158,10 @@ class StudioHandler(BaseHTTPRequestHandler):
             return self._library(route, method, parts[1:])
         if route == "trainings":
             return self._trainings(method, parts[1:])
+        if route == "race" and method == "POST":
+            body = self.read_body()
+            return previews.race(body.get("ids") or [], body.get("world") or {}, body.get("speed"), body.get("height"),
+                                 int(body.get("seed", 1000)), float(body.get("seconds", 20)))
         raise ValueError("Unknown request.")
 
     def _previews(self, parts: list[str], body: dict):

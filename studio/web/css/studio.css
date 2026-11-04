@@ -554,6 +554,11 @@ textarea.input { height: auto; padding: 10px 12px; resize: vertical; }
 .score-value { text-align: right; font-weight: 650; font-variant-numeric: tabular-nums; color: var(--good); }
 .score-value.negative { color: var(--bad); }
 
+/* ---------- Race ---------- */
+
+.race-row { padding: 8px 10px; border: 1px solid var(--border); border-radius: 10px; }
+.place { width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; font-weight: 700; font-size: 13px; flex: none; }
+
 /* ---------- Build your own ---------- */
 
 .parts-tree { display: flex; flex-direction: column; gap: 2px; }
