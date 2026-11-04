@@ -555,6 +555,18 @@ textarea.input { height: auto; padding: 10px 12px; resize: vertical; }
 .score-value { text-align: right; font-weight: 650; font-variant-numeric: tabular-nums; color: var(--good); }
 .score-value.negative { color: var(--bad); }
 
+/* ---------- Inside the walk ---------- */
+
+.gait { margin-top: 14px; }
+.gait-canvas { width: 100%; display: block; margin: 12px 0 6px; }
+.muscles { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 6px 18px; margin-top: 8px; }
+.muscle { display: grid; grid-template-columns: 96px 1fr; align-items: center; gap: 8px; font-size: 12px; }
+.muscle-name { color: var(--text-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.muscle-track { position: relative; height: 8px; border-radius: 4px; background: var(--surface-2); }
+.muscle-track::after { content: ""; position: absolute; left: 50%; top: -2px; bottom: -2px; width: 1px; background: var(--border-strong); }
+.muscle-fill { position: absolute; top: 0; bottom: 0; left: 50%; width: 0; background: var(--accent); border-radius: 4px; }
+.muscle-fill.negative { background: #f59e0b; }
+
 /* ---------- Race ---------- */
 
 .race-row { padding: 8px 10px; border: 1px solid var(--border); border-radius: 10px; }

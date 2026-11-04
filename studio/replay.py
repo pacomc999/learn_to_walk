@@ -132,6 +132,8 @@ def record(env: WalkEnv, act=None, seed: int = 1000, seconds: float | None = Non
     extra_steps = round(keep_going_after_fall / env.control_seconds)
     step = 0
     frames.append(_frame(env))
+    contacts = [[int(touch) for touch in env._foot_contacts()]]
+    commands = [[0.0] * len(env.build.motors)]
     while step < limit:
         action = hold(observation) if act is None else act(observation)
         observation, reward, fell, _, info = env.step(action)
@@ -140,6 +142,8 @@ def record(env: WalkEnv, act=None, seed: int = 1000, seconds: float | None = Non
             total += reward
         if step % steps_per_frame == 0:
             frames.append(_frame(env))
+            contacts.append([int(touch) for touch in env._foot_contacts()])
+            commands.append([round(float(value), 2) for value in np.clip(action, -1, 1)])
         if fell and fell_at is None:
             fell_at = step
             if act is not None:
@@ -154,6 +158,8 @@ def record(env: WalkEnv, act=None, seed: int = 1000, seconds: float | None = Non
         "fps": REPLAY_FPS, "bodies": bodies, "shapes": shapes, "frames": frames,
         "ground": ground_patch(env, min(xs) - 1.5, max(xs) + 2.5, ground_half_width),
         "style": env.world.values["style"], "world": env.world.name, "animal": env.build.animal,
+        "feet": [foot.name for foot in env.build.feet], "motors": env.build.motor_names,
+        "contacts": contacts, "commands": commands,
         "size": env.build.size, "stand_height": env.scene.stand_height,
         "stats": {"distance": round(distance, 3), "seconds": round(seconds_walked, 2),
                   "fell": fell_at is not None, "target_speed": round(env.target_speed, 3),

@@ -34,15 +34,21 @@ The first start downloads the physics and learning libraries (about 1 GB), which
 | Stormy Crossing | Gusts of wind and rocks thrown from the side |
 | Rocky Canyon | Big flat-topped rocks of different heights |
 
-You also decide what the walker cares about: points for walking at the asked speed, for staying up, for saving energy, for walking straight, and a switchable penalty for leaning on its joint limits.
+You also design its **scoring**: points for moving forward (exactly at the asked speed, close to it, or as fast as possible), for staying up, for saving energy, for walking straight, a cost for falling, and optional style rules, each with an on/off switch and a strength: no leaning on joint limits, keep the body level, stand tall, smooth moves, lift its feet, face forward, steady ride. **Scoring at a glance** shows what standing still, walking, crouching and rushing are worth under your rules, and warns you about the traps (when standing still or falling on purpose pays better than walking). During training, a chart shows where its points come from.
 
 **3. Shape its brain.** Choose ready-made sizes or add and remove layers of thinking cells, pick how cells respond, decide what it can sense (its feet touching the ground, the ground ahead), and whether its left and right side share one mirrored way of thinking. A diagram shows the network as you change it.
 
 **4. Train and watch.** Pick a length (a quick taste, an evening, or overnight) and press Start. The walker practises in several worlds at once and takes a fixed exam every so often. The dashboard shows its progress in plain words and charts. You can watch its best walk in 3D and scroll through **every exam** to see how it grew up. Pause and continue at any time.
 
-**Test drive.** Take any trained walker into any world, even ones it never practised in, at any speed. A blue ring moves at the asked speed so you can see if it keeps up.
+**Test drive.** Take any trained walker into any world, even ones it never practised in, at any speed. A blue ring moves at the asked speed so you can see if it keeps up. Below the 3D view, **Inside the walk** shows when each foot touches the ground (its gait) and what the brain tells every muscle, moment by moment.
+
+**Race.** Put up to six trained walkers side by side in any world and see who gets furthest.
 
 **Teach a new world.** Start a new training from a walker's best brain, for example from flat ground onto the stairs.
+
+**Bring over your learn_to_walk ducks.** On My walkers, point the studio at your learn_to_walk folder and every catalogue duck with a kept brain becomes a walker here (its body, world and brain come along), ready to test drive in the new worlds, race, or teach a new world. They walk as well as they did there: Duck 3.3 takes the studio's exam with no falls, as in his catalogue card.
+
+**Pictures and videos.** Every 3D view has buttons to save a picture or record a video to share.
 
 ![Building your own creature](docs/images/builder.jpg)
 

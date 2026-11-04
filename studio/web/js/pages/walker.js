@@ -4,6 +4,7 @@ import { h, api, toast, fmtSteps, fmtNumber, fmtDuration, fmtWhen, pillForState,
 import { icon, animalArt, worldArt } from "../icons.js";
 import { Viewer } from "../viewer.js";
 import { lineChart, legend } from "../charts.js";
+import { GaitPanel } from "../gait.js";
 import { store, go } from "../app.js";
 
 const ACTIVE = ["starting", "training", "examining"];
@@ -126,6 +127,8 @@ function trainingTab(body, id, details, setup) {
     h("div", { class: "section-title" }, h("h2", {}, "Progress")), charts,
     h("div", { class: "section-title" }, h("h2", {}, "Training log")), h("div", { class: "log", id: "log" }));
   const viewer = new Viewer(viewerBox, { pace: true });
+  const gait = new GaitPanel(viewer);
+  viewerBox.parentElement.after(gait.element);
   viewer.showMessage("The first walk appears after the first exam, within a minute or two of starting.");
   let shown = null;
   let current = details;
@@ -141,6 +144,7 @@ function trainingTab(body, id, details, setup) {
       if (!response.ok) throw new Error("This replay is not there.");
       const replay = await response.json();
       viewer.load(replay);
+      gait.show(replay);
       const s = replay.stats;
       viewer.setChips([
         [name === "best" ? "Best walk so far" : `At ${fmtSteps(replay.steps)} steps`, s.fell ? `fell after ${fmtNumber(s.seconds, 1)} s` : `${fmtNumber(s.seconds, 0)} s without falling`],
@@ -269,10 +273,13 @@ async function driveTab(body, id, details, setup) {
   const values = () => ({ ...worldDefaults, ...chosen.values });
   const drive = { speed: null, height: null, seed: 1000, seconds: 20 };
 
-  const viewerBox = h("div", { class: "viewer-tall" });
+  const viewerBox = h("div", { class: "viewer-mid" });
   const panel = h("div", { class: "panel" });
-  body.append(h("div", { class: "workbench" }, panel, h("div", { class: "stage" }, viewerBox)));
+  const stage = h("div", { class: "stage" }, viewerBox);
+  body.append(h("div", { class: "workbench" }, panel, stage));
   const viewer = new Viewer(viewerBox, { pace: true });
+  const gait = new GaitPanel(viewer);
+  stage.append(gait.element);
 
   const gallery = h("div", { class: "picker", style: { gridTemplateColumns: "repeat(auto-fill, minmax(118px, 1fr))" } });
   const paintGallery = () => gallery.replaceChildren(...worlds.map((world) => h("button", { class: `pick ${world === chosen ? "on" : ""}`, onclick: () => {
@@ -309,6 +316,7 @@ async function driveTab(body, id, details, setup) {
         world: { ...chosen, values: { ...v, attempt_seconds: Math.max(v.attempt_seconds, drive.seconds) } }, speed: drive.speed,
         height: (drive.height || 0) / 100, seed: drive.seed, seconds: drive.seconds } });
       viewer.load(replay);
+      gait.show(replay);
       const s = replay.stats;
       viewer.setChips([["World", chosen.name], ["Result", s.fell ? `fell after ${fmtNumber(s.seconds, 1)} s` : `walked all ${fmtNumber(s.seconds, 0)} s`],
         ["Distance", `${fmtNumber(s.distance, 2)} m`], ["Speed", `${fmtNumber(s.average_speed, 2)} of ${fmtNumber(s.target_speed, 2)} m/s`]]);

@@ -69,6 +69,7 @@ export class Viewer {
 
     // Clicking a part (without dragging the view) tells onPick its name
     this.onPick = null;
+    this.onTime = null;  // called every frame with the playback time, for panels that follow the replay
     let downAt = null;
     this.renderer.domElement.addEventListener("pointerdown", (event) => { downAt = [event.clientX, event.clientY]; });
     this.renderer.domElement.addEventListener("pointerup", (event) => {
@@ -348,6 +349,7 @@ export class Viewer {
     this.sun.target.position.set(torso.x, torso.y, 0);
     this.controls.update();
     this.renderer.render(this.scene, this.camera);
+    if (this.onTime && this.replay) this.onTime(this.time);
   }
 
   _resize() {
