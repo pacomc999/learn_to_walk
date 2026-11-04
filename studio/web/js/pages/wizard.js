@@ -482,12 +482,13 @@ async function planStep(body, draft) {
     const measured = (catalog.system.speeds || {})[String(worlds)];
     const cores = catalog.system.cores || 4;
     const speed = measured || 260 * Math.min(worlds, cores) + 60;
-    const seconds = learning.million_steps * 1e6 / speed;
+    const totalMillion = learning.million_steps + (draft.course || []).reduce((sum, stage) => sum + stage.million_steps, 0);
+    const seconds = totalMillion * 1e6 / speed;
     const warn = worlds > cores ? h("div", { class: "callout warn", style: { marginTop: "10px" }, html: `${icon.info}<div>This computer has ${cores} processor cores. More worlds than cores will not go faster.</div>` }) : null;
     estimate.replaceChildren(h("div", { class: "stats" },
-      statCard("Practice", `${fmtNumber(learning.million_steps, 1)}M`, "steps in total"),
-      statCard("Practice time", fmtDuration(learning.million_steps * 1e6 * 0.02), "of simulated walking"),
-      statCard("Estimated time", `about ${fmtDuration(seconds)}`, measured ? "measured on this computer" : "a first guess, better after one run")), warn);
+      statCard("Practice", `${fmtNumber(totalMillion, 1)}M`, (draft.course || []).length ? `steps in ${draft.course.length + 1} stages` : "steps in total"),
+      statCard("Practice time", fmtDuration(totalMillion * 1e6 * 0.02), "of simulated walking"),
+      statCard("Estimated time", fmtDuration(seconds), measured ? "about, at the speed measured on this computer" : "a first guess, better after one run")), warn);
   };
 
   const presets = h("div", { class: "picker", style: { gridTemplateColumns: "repeat(3, 1fr)" } },
@@ -498,7 +499,38 @@ async function planStep(body, draft) {
       go("#/new/plan");
     } }, h("span", { class: "check", html: icon.check }), h("div", { class: "pick-name" }, preset.name), h("div", { class: "pick-desc" }, preset.description))));
 
-  const groups = settingGroups(catalog.learning_groups, learning, () => { draft.learningPreset = null; persist(); paintEstimate(); }, { open: ["length"], defaults: learningDefaults });
+  const groups = settingGroups(catalog.learning_groups, learning, () => { draft.learningPreset = null; persist(); paintEstimate(); paintCourse(); }, { open: ["length"], defaults: learningDefaults });
+
+  // A course: more worlds to practise in after this one, in order
+  const worldDefaults = Object.fromEntries(catalog.world_groups.flatMap((g) => g.settings.map((s) => [s.key, s.default])));
+  const courseWorlds = [...catalog.world_templates, ...(await api("worlds"))];
+  draft.course = draft.course || [];
+  const courseBox = h("div", { class: "stack", style: { gap: "8px" } });
+  const paintCourse = () => {
+    const rows = draft.course.map((stage, index) => {
+      const select = h("select", { class: "input" }, ...courseWorlds.map((w) => h("option", { value: w.id, selected: w.id === stage.world.id }, w.name)));
+      select.addEventListener("change", () => {
+        const w = courseWorlds.find((item) => item.id === select.value);
+        stage.world = { ...JSON.parse(JSON.stringify(w)), values: { ...worldDefaults, ...w.values } };
+        persist();
+      });
+      const steps = h("input", { class: "input", type: "number", min: 0.1, max: 100, step: 0.5, value: stage.million_steps, style: { width: "92px" } });
+      steps.addEventListener("change", () => { stage.million_steps = Math.max(0.1, Number(steps.value) || 2); persist(); paintEstimate(); });
+      return h("div", { class: "row" }, h("span", { class: "faint", style: { width: "64px", flex: "none" } }, `Stage ${index + 2}`), select, steps,
+        h("span", { class: "faint" }, "million"),
+        h("button", { class: "reset-link", title: "Remove this stage", html: icon.trash, onclick: () => { draft.course.splice(index, 1); persist(); paintCourse(); paintEstimate(); } }));
+    });
+    courseBox.replaceChildren(
+      h("div", { class: "row" }, h("span", { class: "faint", style: { width: "64px", flex: "none" } }, "Stage 1"),
+        h("span", { style: { fontWeight: 600 } }, `${draft.world.name}, ${fmtNumber(learning.million_steps, 1)} million steps`)),
+      ...rows,
+      draft.course.length < 5 ? h("button", { class: "btn small", style: { alignSelf: "flex-start" }, onclick: () => {
+        const w = courseWorlds[1] || courseWorlds[0];
+        draft.course.push({ world: { ...JSON.parse(JSON.stringify(w)), values: { ...worldDefaults, ...w.values } }, million_steps: 2 });
+        persist(); paintCourse(); paintEstimate();
+      }, html: `${icon.plus}<span>Add a stage</span>` }) : null);
+  };
+  paintCourse();
 
   // Starting from a brain that is already trained
   const trainings = (await api("trainings")).filter((t) => t.has_brain && t.creature.animal === draft.creature.animal);
@@ -513,6 +545,10 @@ async function planStep(body, draft) {
       h("div", {}, h("div", { class: "field-label", style: { marginBottom: "8px" } }, "How long"), presets),
       h("div", {}, h("div", { class: "field-label", style: { marginBottom: "6px" } }, "Start with"), startSelect,
         h("div", { class: "field-help" }, "Teach an old walker a new world: start from a trained brain of the same animal. It needs the same motors, senses and brain layers."))),
+    h("div", { class: "card card-pad stack", style: { gap: "10px", marginBottom: "12px" } },
+      h("div", {}, h("h3", {}, "Course"), h("div", { class: "faint", style: { fontSize: "12.5px" } },
+        "Optional: after its world, it moves on to more worlds, one after the other, with the same brain. Like school: flat ground first, then cobblestones, then stairs.")),
+      courseBox),
     groups);
 
   const animal = store.animal(draft.creature.animal);
@@ -525,7 +561,7 @@ async function planStep(body, draft) {
     try {
       const setup = await api("trainings", { method: "POST", body: {
         name: nameInput.value.trim() || defaultName(draft), creature: draft.creature, world: draft.world, brain: draft.brain,
-        learning: draft.learning, start_from: draft.start_from } });
+        learning: draft.learning, start_from: draft.start_from, course: draft.course || [] } });
       toast("Training started", "It first builds its practice worlds, then starts learning.", "good");
       draft.name = "";
       persist();

@@ -45,6 +45,7 @@ def create_training(request: dict) -> dict:
                      "id": creature.get("id")},
         "world": world.to_dict(), "brain": design, "learning": learning,
         "start_from": request.get("start_from") or None,
+        "course": _clean_course(request.get("course")),
     }
     if setup["start_from"]:
         _check_start_from(setup)
@@ -55,6 +56,20 @@ def create_training(request: dict) -> dict:
                                                  "message": "Starting", "updated": library.now()})
     start_process(training_id, resume=False)
     return setup
+
+
+# Course stages after the first world: each a world and its practice steps (at most five)
+def _clean_course(course) -> list[dict]:
+    stages = []
+    for stage in (course or [])[:5]:
+        if not isinstance(stage, dict):
+            continue
+        try:
+            million = min(max(float(stage.get("million_steps", 2.0)), 0.1), 100.0)
+        except (TypeError, ValueError):
+            million = 2.0
+        stages.append({"world": world_from_dict(stage.get("world") or {}).to_dict(), "million_steps": million})
+    return stages
 
 
 # A brain can only carry on in a body with the same motors and senses
@@ -109,11 +124,18 @@ def extend(training_id: str, extra_million: float) -> None:
     status = library.read_json(folder / "status.json", {}) or {}
     learning = clean_learning(setup.get("learning"))
     done = max(int(status.get("steps", 0)), 0)
-    learning["million_steps"] = round(done / 1e6 + extra_million, 3)
+    course = setup.get("course") or []
+    if course:  # the last stage of a course gets the extra practice
+        last_start = learning["million_steps"] * 1e6 + sum(stage["million_steps"] * 1e6 for stage in course[:-1])
+        course[-1]["million_steps"] = round(max(done - last_start, 0) / 1e6 + extra_million, 3)
+        total = last_start + course[-1]["million_steps"] * 1e6
+    else:
+        learning["million_steps"] = round(done / 1e6 + extra_million, 3)
+        total = learning["million_steps"] * 1e6
     setup["learning"] = learning
+    setup["course"] = course
     library.write_json(folder / "setup.json", setup)
-    status.update(total_steps=int(learning["million_steps"] * 1e6), state="starting", message="Training longer",
-                  updated=library.now())
+    status.update(total_steps=int(total), state="starting", message="Training longer", updated=library.now())
     library.write_json(folder / "status.json", status)
     start_process(training_id, resume=True)
 

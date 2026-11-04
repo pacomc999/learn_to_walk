@@ -109,3 +109,19 @@ def test_a_finished_session_can_train_longer(tmp_path, tiny, monkeypatch):
     manager.extend("walker", 0.5)
     setup = json.loads((folder / "setup.json").read_text())
     assert setup["learning"]["million_steps"] > 0.5 and started == [("walker", True)]
+
+
+def test_a_course_moves_through_its_stages(tmp_path, tiny, capsys):
+    folder = tmp_path / "course"
+    write_setup(folder, animal="duck", world_index=0)
+    setup = json.loads((folder / "setup.json").read_text())
+    setup["course"] = [{"world": builtin_worlds()[3].to_dict(), "million_steps": 0.002}]  # then rolling hills
+    (folder / "setup.json").write_text(json.dumps(setup))
+    train.run(folder, resume=False)
+    assert "Stage 2 of 2: Rolling Hills" in capsys.readouterr().out
+    status = json.loads((folder / "status.json").read_text())
+    assert status["state"] == "finished" and status["steps"] >= 4000 and status["stage"] == 1
+    exams = (folder / "exams.csv").read_text().splitlines()
+    assert exams[0].endswith("stage") and exams[-1].endswith(",1")
+    replay = json.loads((folder / "replays/best.json").read_text())
+    assert replay["ground"]["kind"] == "heights"  # the best walk is on the hills

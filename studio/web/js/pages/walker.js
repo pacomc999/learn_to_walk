@@ -36,7 +36,8 @@ export async function render(main, params) {
         html: animalArt(animal.key, setup.creature.values) }),
       h("div", {},
         h("div", { class: "row", style: { gap: "10px" } }, title, statePill),
-        h("div", { class: "sub" }, `${setup.creature.name || animal.name} · ${setup.world.name} · started ${fmtWhen(setup.created)}`))),
+        h("div", { class: "sub" }, `${setup.creature.name || animal.name} · ${(setup.course || []).length
+          ? `course: ${[setup.world.name, ...setup.course.map((stage) => stage.world.name)].join(" → ")}` : setup.world.name} · started ${fmtWhen(setup.created)}`))),
     actions));
 
   const tabs = h("div", { class: "tabs" },
@@ -208,7 +209,9 @@ function trainingTab(body, id, details, setup) {
       statCard("Last exam", last ? `${last.attempts - last.falls}<small>/ ${last.attempts} stayed up</small>` : "-",
         last ? `score ${fmtNumber(last.score)} points` : "the first exam comes right at the start", icon.target),
       statCard("Practice speed", speed ? `${fmtNumber(speed)}<small>steps/s</small>` : "-", `${setup.learning.parallel_worlds} worlds at once`, icon.speed),
-      setup.world.values.gradually_harder ? statCard("Ground height", `${fmtNumber((status.difficulty ?? 1) * 100)}<small>%</small>`, "of the tallest, rising as it learns", icon.stairs) : null].filter(Boolean));
+      (setup.course || []).length ? statCard("Stage", `${(status.stage || 0) + 1}<small>of ${setup.course.length + 1}</small>`,
+        status.stage_world || setup.world.name, icon.flag) : null,
+      setup.world.values.gradually_harder && !(setup.course || []).length ? statCard("Ground height", `${fmtNumber((status.difficulty ?? 1) * 100)}<small>%</small>`, "of the tallest, rising as it learns", icon.stairs) : null].filter(Boolean));
     story.replaceChildren(storyCallout(status, exams, progress));
 
     // Charts

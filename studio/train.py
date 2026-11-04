@@ -57,9 +57,9 @@ STEP_SIZE_RULE = {"target_change": 0.01, "factor": 1.5, "min": 1e-5, "max": 1e-2
 # How many exam replays to keep; older ones are thinned out evenly
 MOST_EXAM_REPLAYS = 30
 
-PROGRESS_HEADER = ["time", "steps", "score", "distance", "seconds", "fall_share", "steps_per_second", "difficulty"] + [
-    f"pts_{name}" for name in PART_NAMES]
-EXAM_HEADER = ["time", "steps", "score", "falls", "attempts", "distance", "quality", "speed_error"]
+PROGRESS_HEADER = ["time", "steps", "score", "distance", "seconds", "fall_share", "steps_per_second", "difficulty",
+                   "stage"] + [f"pts_{name}" for name in PART_NAMES]
+EXAM_HEADER = ["time", "steps", "score", "falls", "attempts", "distance", "quality", "speed_error", "stage"]
 
 
 # ---------- Files ----------
@@ -89,6 +89,9 @@ class Folder:
     def append_row(self, name: str, header: list[str], row: dict) -> None:
         target = self.path / name
         new = not target.exists()
+        if not new:  # a log from an older version keeps its own columns
+            with target.open(newline="", encoding="utf-8") as handle:
+                header = next(csv.reader(handle), header)
         try:
             with target.open("a", newline="", encoding="utf-8") as handle:
                 writer = csv.writer(handle)
@@ -137,9 +140,9 @@ def make_env(animal: str, creature_values: dict, world_data: dict, senses: dict)
                    info_keywords=("forward_distance", *[f"pts_{name}" for name in PART_NAMES]))
 
 
-def build_vec_env(setup: dict, senses: dict, worlds: int, seed: int, mirror) -> VecNormalize:
+def build_vec_env(setup: dict, senses: dict, worlds: int, seed: int, mirror, world_data: dict | None = None) -> VecNormalize:
     creature = setup["creature"]
-    factory = functools.partial(make_env, creature["animal"], creature["values"], setup["world"], senses)
+    factory = functools.partial(make_env, creature["animal"], creature["values"], world_data or setup["world"], senses)
     if worlds > 1:
         venv = SubprocVecEnv([factory] * worlds, start_method="spawn")
     else:
@@ -209,19 +212,41 @@ def best_walk_replay(model, vec_normalize, build, world, senses, scene) -> dict:
     return record(env, deterministic_actor(model, vec_normalize), seed=EXAM_FIRST_SEED)
 
 
+# ---------- Courses ----------
+
+# One stage of a course: a world and the step count where it ends
+class Stage:
+    def __init__(self, index: int, count: int, world: dict, start: int, end: int):
+        self.index, self.count, self.world, self.start, self.end = index, count, world, start, end
+
+
+# The stages of a session: its own world first, then any course stages, one after the other
+def course_stages(setup: dict, learning: dict) -> list[Stage]:
+    parts = [(setup["world"], learning["million_steps"])]
+    for stage in setup.get("course") or []:
+        parts.append((stage["world"], float(stage["million_steps"])))
+    stages, start = [], 0
+    for index, (world, million) in enumerate(parts):
+        end = start + int(million * 1_000_000)
+        stages.append(Stage(index, len(parts), world, start, end))
+        start = end
+    return stages
+
+
 # ---------- Callbacks ----------
 
 class SessionCallback(BaseCallback):
     """Everything that happens between lessons: progress, exams, difficulty, saving and stopping."""
 
     def __init__(self, folder: Folder, status: Status, vec_normalize, setup: dict, learning: dict, senses: dict,
-                 total_steps: int):
+                 total_steps: int, stage: "Stage | None" = None):
         super().__init__()
         self.folder, self.status, self.vec_normalize = folder, status, vec_normalize
         self.setup, self.learning, self.senses = setup, learning, senses
         self.total_steps = total_steps
+        self.stage = stage or Stage(0, 1, setup["world"], 0, total_steps)
         self.build = build_creature(setup["creature"]["animal"], setup["creature"]["values"])
-        self.world = world_from_dict(setup["world"])
+        self.world = world_from_dict(self.stage.world)
         self.scene = build_scene(self.build, self.world)
         self.exam_every = int(learning["exam_every"]) * 1000
         self.patience = int(learning["patience"])
@@ -241,7 +266,8 @@ class SessionCallback(BaseCallback):
         self.next_save = steps + 250_000
         self.clock_steps = steps
         self._set_difficulty()
-        self.status.update(state="training", message="Practising")
+        self.status.update(state="training", message="Practising", stage=self.stage.index,
+                           stages=self.stage.count, stage_world=self.world.name)
 
     def _on_step(self) -> bool:
         self.calls += 1
@@ -264,11 +290,12 @@ class SessionCallback(BaseCallback):
     def _on_rollout_end(self) -> None:
         self._log_progress()
 
-    # Gradually harder worlds: the bumps grow from flat to full height over the first half
+    # Gradually harder worlds: the bumps grow from flat to full height over the first half of the stage
     def _difficulty(self) -> float:
         if not self.world.values["gradually_harder"]:
             return 1.0
-        return float(min(1.0, self.num_timesteps / max(RAMP_SHARE * self.total_steps, 1)))
+        done = self.num_timesteps - self.stage.start
+        return float(min(1.0, max(done, 0) / max(RAMP_SHARE * (self.stage.end - self.stage.start), 1)))
 
     def _set_difficulty(self) -> None:
         self.training_env.env_method("set_difficulty", self._difficulty())
@@ -292,7 +319,7 @@ class SessionCallback(BaseCallback):
         speed = (self.num_timesteps - self.clock_steps) / max(now - self.clock, 1e-9)
         self.clock, self.clock_steps = now, self.num_timesteps
         row = {"time": datetime.now().isoformat(timespec="seconds"), "steps": self.num_timesteps,
-               "steps_per_second": round(speed), "difficulty": round(self._difficulty(), 3)}
+               "steps_per_second": round(speed), "difficulty": round(self._difficulty(), 3), "stage": self.stage.index}
         if episodes:
             row.update(score=round(float(np.mean([e["r"] for e in episodes])), 2),
                        distance=round(float(np.mean([e.get("forward_distance", 0.0) for e in episodes])), 3),
@@ -308,6 +335,7 @@ class SessionCallback(BaseCallback):
         self.status.update(state="examining", message="Taking an exam", steps=self.num_timesteps)
         result = take_exam(self.model, self.vec_normalize, self.build, self.world, self.senses, self.scene)
         row = {"time": datetime.now().isoformat(timespec="seconds"), "steps": self.num_timesteps,
+               "stage": self.stage.index,
                **{key: round(value, 3) if isinstance(value, float) else value for key, value in result.items()}}
         self.folder.append_row("exams.csv", EXAM_HEADER, row)
         replay = best_walk_replay(self.model, self.vec_normalize, self.build, self.world, self.senses, self.scene)
@@ -405,7 +433,8 @@ def run(path: Path, resume: bool) -> None:
     design = clean_design(setup.get("brain"))
     learning = clean_learning(setup.get("learning"))
     senses = design_senses(design)
-    total_steps = int(learning["million_steps"] * 1_000_000)
+    stages = course_stages(setup, learning)
+    total_steps = stages[-1].end
     status = Status(folder, total_steps)
     (folder.path / "stop.request").unlink(missing_ok=True)
     status.update(state="starting", message="Building the practice worlds", total_steps=total_steps)
@@ -417,8 +446,10 @@ def run(path: Path, resume: bool) -> None:
     seed = int(learning["seed"])
     torch.manual_seed(seed)
     torch.set_num_threads(max(1, min(2, os.cpu_count() or 1)))
-    venv = build_vec_env(setup, senses, worlds, seed, mirror)
     settings = ppo_settings(learning)
+    steps_done = int(status.data.get("steps") or 0) if resume else 0
+    current = next((stage for stage in stages if stage.end > steps_done), stages[-1])
+    venv = build_vec_env(setup, senses, worlds, seed + current.index, mirror, current.world)
 
     if resume and (folder.brain / "latest.zip").exists():
         saved = VecNormalize.load(str(folder.brain / "latest_scaling.pkl"), venv.venv)
@@ -435,14 +466,29 @@ def run(path: Path, resume: bool) -> None:
             print(f"A new brain with {sum(p.numel() for p in model.policy.parameters()):,} numbers to learn.",
                   flush=True)
 
-    callback = SessionCallback(folder, status, venv, setup, learning, senses, total_steps)
-    remaining = max(total_steps - model.num_timesteps, 0)
     keep_awake(True)
+    callback = None
     try:
-        if remaining:
-            model.learn(total_timesteps=remaining, callback=callback, reset_num_timesteps=False)
-        else:
-            callback.init_callback(model)  # nothing left to practise, but the final save and exam still need it
+        for stage in stages:
+            if stage.end <= model.num_timesteps and stage.index < len(stages) - 1:
+                continue  # already done
+            if stage.index != current.index:  # a new stage: new practice worlds, the same brain and scaling
+                print(f"Stage {stage.index + 1} of {len(stages)}: {world_from_dict(stage.world).name}.", flush=True)
+                new = build_vec_env(setup, senses, worlds, seed + stage.index, mirror, stage.world)
+                new.obs_rms, new.ret_rms = venv.obs_rms, venv.ret_rms
+                venv.close()
+                venv = new
+                model.set_env(venv)
+                current = stage
+                status.data.update(best_score=None, best_steps=None, best_quality=None, exams_without_best=0)
+            callback = SessionCallback(folder, status, venv, setup, learning, senses, total_steps, stage)
+            remaining = max(stage.end - model.num_timesteps, 0)
+            if remaining:
+                model.learn(total_timesteps=remaining, callback=callback, reset_num_timesteps=False)
+            else:
+                callback.init_callback(model)  # nothing left to practise, but the final save and exam still need it
+            if callback.stopped_by_request:
+                break
         callback.save("latest")
         if not callback.stopped_by_request:
             callback._examine()
