@@ -28,11 +28,15 @@ export async function render(main) {
   const trainings = await api("trainings");
   page.append(h("div", { class: "page-head" },
     h("div", {}, h("h1", {}, "My walkers"), h("div", { class: "sub" }, "Every creature you have trained, with how far along it is and how well it walks.")),
-    h("button", { class: "btn primary", onclick: () => go("#/new/creature"), html: `${icon.plus}<span>New walker</span>` })));
+    h("div", { class: "btn-row" },
+      h("button", { class: "btn", onclick: async () => (await import("./importer.js")).importDialog(), html: `${icon.folder}<span>Bring over learn_to_walk ducks</span>` }),
+      h("button", { class: "btn primary", onclick: () => go("#/new/creature"), html: `${icon.plus}<span>New walker</span>` }))));
   if (!trainings.length) {
     page.append(h("div", { class: "empty" }, h("div", { html: animalArt("puppy") }), h("div", { class: "t" }, "Nothing trained yet"),
       h("div", { class: "d" }, "Make a walker and start its training. It shows up here."),
-      h("button", { class: "btn primary", onclick: () => { store.resetDraft("duck"); go("#/new/creature"); } }, "Make a walker")));
+      h("div", { class: "btn-row", style: { justifyContent: "center" } },
+        h("button", { class: "btn", onclick: async () => (await import("./importer.js")).importDialog() }, "Bring over learn_to_walk ducks"),
+        h("button", { class: "btn primary", onclick: () => { store.resetDraft("duck"); go("#/new/creature"); } }, "Make a walker"))));
     return null;
   }
   const filters = ["All", "Training", "Finished", "Paused"];

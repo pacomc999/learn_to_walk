@@ -158,6 +158,8 @@ class StudioHandler(BaseHTTPRequestHandler):
             return self._library(route, method, parts[1:])
         if route == "trainings":
             return self._trainings(method, parts[1:])
+        if route == "import":
+            return self._import(method, parts[1:])
         if route == "race" and method == "POST":
             body = self.read_body()
             return previews.race(body.get("ids") or [], body.get("world") or {}, body.get("speed"), body.get("height"),
@@ -174,6 +176,18 @@ class StudioHandler(BaseHTTPRequestHandler):
         if kind == "brain":
             return previews.brain_facts(body.get("animal", "duck"), body.get("values") or {}, body.get("design"))
         raise ValueError("Unknown preview.")
+
+    def _import(self, method: str, parts: list[str]):
+        from studio import importer  # loads PyTorch, so only when needed
+        action = parts[0] if parts else ""
+        if action == "guess" and method == "GET":
+            return {"folder": next((str(path) for path in importer.likely_folders() if path.is_dir()), "")}
+        body = self.read_body()
+        if action == "list" and method == "POST":
+            return importer.find_ducks(str(body.get("folder") or ""))
+        if action == "duck" and method == "POST":
+            return {"id": importer.import_duck(str(body.get("folder") or ""))}
+        raise ValueError("Unknown request.")
 
     def _library(self, kind: str, method: str, parts: list[str]):
         if method == "GET" and not parts:
