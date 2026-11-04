@@ -99,6 +99,25 @@ def start_process(training_id: str, resume: bool) -> None:
         library.write_json(folder / "status.json", status)
 
 
+# More practice for a session: raise its total and carry on from its latest brain
+def extend(training_id: str, extra_million: float) -> None:
+    if is_running(training_id):
+        raise ValueError("It is still training. Pause it first, or wait until it finishes.")
+    extra_million = min(max(float(extra_million), 0.1), 100.0)
+    folder = library.training_folder(training_id)
+    setup = library.read_json(folder / "setup.json")
+    status = library.read_json(folder / "status.json", {}) or {}
+    learning = clean_learning(setup.get("learning"))
+    done = max(int(status.get("steps", 0)), 0)
+    learning["million_steps"] = round(done / 1e6 + extra_million, 3)
+    setup["learning"] = learning
+    library.write_json(folder / "setup.json", setup)
+    status.update(total_steps=int(learning["million_steps"] * 1e6), state="starting", message="Training longer",
+                  updated=library.now())
+    library.write_json(folder / "status.json", status)
+    start_process(training_id, resume=True)
+
+
 def request_stop(training_id: str) -> None:
     folder = library.training_folder(training_id)
     (folder / "stop.request").write_text("stop", encoding="utf-8")

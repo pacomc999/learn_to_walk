@@ -96,3 +96,16 @@ def test_a_trained_walker_can_take_a_challenge_level(tmp_path, tiny, monkeypatch
         level = next(c for c in challenges.CHALLENGES if c["key"] == challenge)["levels"][0]
         result = challenges.run_level("walker", challenge, level, keep_replay=True)
         assert result["replay"]["frames"] and isinstance(result["passed"], bool)
+
+
+def test_a_finished_session_can_train_longer(tmp_path, tiny, monkeypatch):
+    from studio import library, manager
+    monkeypatch.setattr(library, "LIBRARY", tmp_path)
+    folder = tmp_path / "trainings" / "walker"
+    write_setup(folder, animal="puppy", world_index=0)
+    train.run(folder, resume=False)
+    started = []
+    monkeypatch.setattr(manager, "start_process", lambda training_id, resume: started.append((training_id, resume)))
+    manager.extend("walker", 0.5)
+    setup = json.loads((folder / "setup.json").read_text())
+    assert setup["learning"]["million_steps"] > 0.5 and started == [("walker", True)]

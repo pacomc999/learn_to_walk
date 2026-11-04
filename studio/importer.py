@@ -20,7 +20,7 @@ from studio.brain import clean_design, design_senses, policy_for
 from studio.creatures import build_creature
 from studio.creatures.duck import FORCE, FORCE_MOTOR_BOOST, STIFFNESS
 from studio.env import WalkEnv
-from studio.learning import clean_learning
+from studio.learning import clean_learning, ppo_settings
 from studio.mirror import MirroredRunningMeanStd, mirror_tables
 from studio.worlds import world_from_dict
 
@@ -153,7 +153,8 @@ def import_duck(duck_folder: str) -> str:
     # The studio brain, with learn_to_walk's weights
     venv = DummyVecEnv([lambda: WalkEnv(build, world, senses)])
     policy, kwargs = policy_for(design, mirror.to_dict(), build.motor_type)
-    model = PPO(policy, venv, policy_kwargs=kwargs, device="cpu")
+    learning = clean_learning({"parallel_worlds": 8})
+    model = PPO(policy, venv, policy_kwargs=kwargs, device="cpu", **ppo_settings(learning))
     with zipfile.ZipFile(snapshot) as archive:
         weights = torch.load(io.BytesIO(archive.read("policy.pth")), map_location="cpu", weights_only=False)
         steps = json.loads(archive.read("data")).get("num_timesteps", 0)
@@ -174,7 +175,6 @@ def import_duck(duck_folder: str) -> str:
     name = f"{data.get('name', duck_dir.name)} (from learn_to_walk)"
     training_id = library.new_id(data.get("name", duck_dir.name))
     path = library.training_folder(training_id)
-    learning = clean_learning({"parallel_worlds": 8})
     setup = {"id": training_id, "name": name, "created": library.now(),
              "creature": {"animal": "duck", "name": data.get("name", "Duck"), "values": creature},
              "world": world.to_dict(), "brain": design, "learning": learning, "start_from": None,

@@ -233,6 +233,9 @@ class StudioHandler(BaseHTTPRequestHandler):
         if method == "POST" and action == "stop":
             manager.request_stop(training_id)
             return {"ok": True}
+        if method == "POST" and action == "extend":
+            manager.extend(training_id, float(self.read_body().get("million", 2.0)))
+            return {"ok": True}
         if method == "POST" and action == "continue":
             manager.start_process(training_id, resume=True)
             return {"ok": True}

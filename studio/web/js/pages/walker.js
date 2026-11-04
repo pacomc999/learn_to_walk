@@ -1,6 +1,6 @@
 // One walker: follow its training live, watch how it grew up, and take it for a test drive in any world.
 
-import { h, api, toast, fmtSteps, fmtNumber, fmtDuration, fmtWhen, pillForState, confirmDialog, askName, statCard, settingControl } from "../ui.js";
+import { h, api, toast, fmtSteps, fmtNumber, fmtDuration, fmtWhen, pillForState, confirmDialog, askName, statCard, settingControl, modal } from "../ui.js";
 import { icon, animalArt, worldArt } from "../icons.js";
 import { Viewer } from "../viewer.js";
 import { lineChart, legend } from "../charts.js";
@@ -56,6 +56,7 @@ export async function render(main, params) {
         : details.status.state !== "finished" || details.status.steps < details.status.total_steps
           ? h("button", { class: "btn primary", onclick: carryOn, html: `${icon.play}<span>Continue</span>` })
           : null,
+      !running && details.has_brain ? h("button", { class: "btn", onclick: trainLonger, html: `${icon.clock}<span>Train longer</span>` }) : null,
       details.has_brain ? h("button", { class: "btn", onclick: trainMore, html: `${icon.sparkle}<span>Teach a new world</span>` }) : null,
       h("button", { class: "btn ghost icon-btn", title: "Rename", onclick: rename, html: icon.edit }),
       h("button", { class: "btn ghost icon-btn danger", title: "Delete", onclick: remove, html: icon.trash })].filter(Boolean));
@@ -69,6 +70,19 @@ export async function render(main, params) {
     await api(`trainings/${id}/continue`, { method: "POST" });
     toast("Carrying on", "Training continues from where it stopped.", "good");
     refresh();
+  };
+  const trainLonger = async () => {
+    const input = h("input", { class: "input", type: "number", min: 0.1, max: 100, step: 0.5, value: 2 });
+    const answer = await modal({ title: "Train longer", text: "How many more million practice steps? It carries on from its latest brain, in the same world.", body: input,
+      actions: [{ label: "Cancel", kind: "ghost", value: null }, { label: "Train longer", kind: "primary", value: "go" }] });
+    if (answer !== "go") return;
+    try {
+      await api(`trainings/${id}/extend`, { method: "POST", body: { million: Number(input.value) || 2 } });
+      toast("Training longer", `${input.value} million more steps.`, "good");
+      refresh();
+    } catch (error) {
+      toast("Could not train longer", error.message, "bad");
+    }
   };
   const rename = async () => {
     const name = await askName("Rename this walker", "", setup.name);
