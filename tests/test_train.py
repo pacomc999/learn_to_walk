@@ -84,3 +84,15 @@ def test_a_new_session_can_start_from_another_walkers_brain(tmp_path, tiny, caps
     second_brain = WalkerBrain(second / "brain/latest.zip", second / "brain/latest_norm.npz")
     assert first_brain.mean.shape == second_brain.mean.shape
     assert json.loads((second / "status.json").read_text())["state"] == "finished"
+
+
+def test_a_trained_walker_can_take_a_challenge_level(tmp_path, tiny, monkeypatch):
+    from studio import challenges, library
+    monkeypatch.setattr(library, "LIBRARY", tmp_path)
+    folder = tmp_path / "trainings" / "walker"
+    write_setup(folder, animal="duck", world_index=0)
+    train.run(folder, resume=False)
+    for challenge in ("speed", "stones", "stairs", "ice", "backpack", "wind", "gravity"):
+        level = next(c for c in challenges.CHALLENGES if c["key"] == challenge)["levels"][0]
+        result = challenges.run_level("walker", challenge, level, keep_replay=True)
+        assert result["replay"]["frames"] and isinstance(result["passed"], bool)

@@ -158,6 +158,9 @@ class StudioHandler(BaseHTTPRequestHandler):
             return self._library(route, method, parts[1:])
         if route == "trainings":
             return self._trainings(method, parts[1:])
+        if route == "jobs" and len(parts) > 1:
+            from studio import challenges
+            return challenges.job_status(parts[1])
         if route == "import":
             return self._import(method, parts[1:])
         if route == "race" and method == "POST":
@@ -238,6 +241,15 @@ class StudioHandler(BaseHTTPRequestHandler):
             setup["name"] = str(self.read_body().get("name") or setup["name"]).strip()[:80]
             library.write_json(folder / "setup.json", setup)
             return {"ok": True}
+        if action == "challenges":
+            from studio import challenges
+            if method == "GET":
+                return challenges.saved_results(training_id) or {}
+            if method == "POST" and len(parts) > 2:  # one level, with its replay
+                body = self.read_body()
+                return challenges.run_level(training_id, parts[2], float(body.get("level")), keep_replay=True)
+            if method == "POST":
+                return {"job": challenges.start(training_id)}
         if method == "POST" and action == "watch":
             body = self.read_body()
             return previews.watch(training_id, body.get("world"), body.get("speed"), body.get("height"),

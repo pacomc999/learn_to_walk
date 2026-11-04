@@ -40,7 +40,7 @@ export async function render(main, params) {
     actions));
 
   const tabs = h("div", { class: "tabs" },
-    ...[["training", "Training"], ["drive", "Test drive"], ["recipe", "Recipe"]].map(([key, label]) =>
+    ...[["training", "Training"], ["drive", "Test drive"], ["report", "Report card"], ["recipe", "Recipe"]].map(([key, label]) =>
       h("button", { class: tab === key ? "on" : "", onclick: () => go(`#/walker/${id}/${key}`) }, label)));
   page.append(tabs);
   const body = h("div");
@@ -106,6 +106,7 @@ export async function render(main, params) {
   let view = null;
   if (tab === "drive") view = await driveTab(body, id, details, setup);
   else if (tab === "recipe") view = recipeTab(body, details, setup);
+  else if (tab === "report") view = await reportTab(body, id, details);
   else view = trainingTab(body, id, details, setup);
   const timer = setInterval(refresh, 3000);
   return () => { clearInterval(timer); if (view && view.dispose) view.dispose(); };
@@ -384,4 +385,87 @@ function describe(setting, value) {
   if (setting.kind === "choice") return (setting.choices.find((choice) => choice.value === value) || {}).label || String(value);
   if (setting.kind === "colour") return value;
   return String(value);
+}
+
+// ---------- The report card tab ----------
+
+const MEDAL_LOOK = {
+  gold: ["#f5b301", "Gold"], silver: ["#a8b3c2", "Silver"], bronze: ["#cd7f32", "Bronze"], none: ["var(--surface-3)", "No medal"],
+};
+
+export async function reportTab(body, id, details) {
+  if (!details.has_brain) {
+    body.append(h("div", { class: "empty" }, h("div", { class: "t" }, "No brain to test yet"),
+      h("div", { class: "d" }, "The report card needs the walker's best brain, saved after its first exam.")));
+    return null;
+  }
+  const viewerBox = h("div", { class: "viewer-mid" });
+  const cards = h("div", { class: "grid grid-auto", style: { marginTop: "16px" } });
+  const intro = h("div");
+  body.append(intro, viewerBox, cards);
+  const viewer = new Viewer(viewerBox, { pace: true });
+  viewer.showMessage("Click a level below to watch that attempt.");
+
+  const watchLevel = async (challenge, level) => {
+    viewer.setLoading(true);
+    try {
+      const result = await api(`trainings/${id}/challenges/${challenge.key}`, { method: "POST", body: { level: level.level } });
+      viewer.showMessage("");
+      viewer.load(result.replay);
+      viewer.setChips([[challenge.title, `${fmtNumber(level.level, 1)} ${challenge.unit}`],
+        ["Result", result.passed ? "passed" : result.fell ? `fell after ${fmtNumber(result.seconds, 1)} s` : "too slow"],
+        ["Speed", `${fmtNumber(result.average_speed, 2)} of ${fmtNumber(result.asked_speed, 2)} m/s`]]);
+    } catch (error) {
+      toast("Could not show that attempt", error.message, "bad");
+    } finally {
+      viewer.setLoading(false);
+    }
+  };
+
+  const paint = (results) => {
+    const challenges = results.challenges || [];
+    const medals = { gold: 0, silver: 0, bronze: 0 };
+    for (const challenge of challenges) if (medals[challenge.medal] !== undefined) medals[challenge.medal] += 1;
+    intro.replaceChildren(h("div", { class: "spread", style: { marginBottom: "14px" } },
+      h("div", {}, h("h2", {}, "Report card"), h("div", { class: "faint" },
+        challenges.length ? `Each level is one ${results.seconds}-second attempt. It passes by staying up and keeping at least 60% of the asked speed. Taken ${fmtWhen(results.date)}.`
+          : "Seven challenges, each a ladder of harder levels: speed, cobblestones, stairs, ice, a backpack, wind and other planets. It takes about a minute.")),
+      h("div", { class: "row" },
+        challenges.length ? h("div", { class: "row", style: { gap: "6px" } }, ...["gold", "silver", "bronze"].map((medal) =>
+          h("span", { class: "pill", style: { background: MEDAL_LOOK[medal][0], color: "#fff", border: 0 } }, `${medals[medal]} ${MEDAL_LOOK[medal][1].toLowerCase()}`))) : null,
+        runButton)));
+    cards.replaceChildren(...challenges.map((challenge) => h("div", { class: "card card-pad" },
+      h("div", { class: "spread" }, h("h3", {}, challenge.title),
+        h("span", { class: "medal", style: { background: MEDAL_LOOK[challenge.medal][0] }, title: MEDAL_LOOK[challenge.medal][1] }, challenge.medal === "none" ? "-" : "★")),
+      h("div", { class: "faint", style: { fontSize: "12.5px", margin: "2px 0 10px" } }, challenge.description),
+      h("div", { class: "levels" }, ...challenge.levels.map((level) => h("button", {
+        class: `level ${level.skipped ? "skipped" : level.passed ? "passed" : "failed"}`, disabled: level.skipped,
+        title: level.skipped ? "Not tried: an easier level was failed" : "Watch this attempt", onclick: () => watchLevel(challenge, level) },
+        `${+Number(level.level).toFixed(2)}`))),
+      h("div", { class: "faint", style: { fontSize: "12px", marginTop: "6px" } }, `${challenge.unit} · passed ${challenge.passed} of ${challenge.levels.length}`))));
+  };
+
+  const runButton = h("button", { class: "btn primary", html: `${icon.trophy}<span>Take the report card</span>` });
+  runButton.addEventListener("click", async () => {
+    runButton.disabled = true;
+    try {
+      const { job } = await api(`trainings/${id}/challenges`, { method: "POST" });
+      while (true) {
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+        const status = await api(`jobs/${job}`);
+        runButton.innerHTML = `<span class="spinner"></span><span>${Math.round(status.progress * 100)}% · ${status.message}</span>`;
+        if (status.state === "done") { paint(status.result); break; }
+        if (status.state === "error") { toast("The report card stopped", status.message, "bad"); break; }
+      }
+    } catch (error) {
+      toast("Could not start the report card", error.message, "bad");
+    } finally {
+      runButton.disabled = false;
+      runButton.innerHTML = `${icon.trophy}<span>Take it again</span>`;
+    }
+  });
+  const saved = await api(`trainings/${id}/challenges`);
+  if (saved.challenges) runButton.innerHTML = `${icon.trophy}<span>Take it again</span>`;
+  paint(saved);
+  return { dispose: () => viewer.dispose() };
 }
