@@ -158,6 +158,17 @@ class StudioHandler(BaseHTTPRequestHandler):
             return self._library(route, method, parts[1:])
         if route == "trainings":
             return self._trainings(method, parts[1:])
+        if route == "live":
+            from studio import live
+            body = self.read_body() if method == "POST" else {}
+            if method == "POST" and len(parts) == 1:
+                return live.start(library.safe_id(str(body.get("training", ""))), body.get("world"),
+                                  float(body.get("speed", 0.4)))
+            session = live.session(parts[1])
+            if method == "GET":
+                return session.frames_after(int(query.get("after", ["-1"])[0]))
+            session.command(body)
+            return {"ok": True}
         if route == "jobs" and len(parts) > 1:
             from studio import challenges
             return challenges.job_status(parts[1])

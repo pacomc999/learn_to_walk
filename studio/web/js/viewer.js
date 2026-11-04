@@ -202,7 +202,7 @@ export class Viewer {
     if (replay.style === "studio") return;  // the plain studio floor of the creature preview has no track
     const size = Math.max(replay.ground && replay.ground.kind === "lanes" ? 1 : replay.size || 1, 0.6);
     const xs = replay.frames.length ? replay.frames.map((frame) => frame[0]) : [0];
-    const last = Math.ceil(Math.max(...xs, 2) + 3);
+    const last = replay.marks_to ? Math.ceil(replay.marks_to) : Math.ceil(Math.max(...xs, 2) + 3);
     const lanes = replay.ground && replay.ground.kind === "lanes" ? replay.ground : null;
     const side = lanes ? lanes.count * lanes.lane / 2 + 0.15 : 0.6 * size;
     for (let metre = 0; metre <= last; metre++) {
@@ -247,7 +247,8 @@ export class Viewer {
     const replay = this.replay;
     const size = Math.max(replay ? replay.size || 1 : 1, 0.5);
     const height = replay ? replay.stand_height || 0.25 : 0.25;
-    const x = replay && replay.frames.length ? replay.frames[0][0] : 0;
+    let x = replay && replay.frames.length ? replay.frames[0][0] : 0;
+    if (this.live && this.bodyGroups.length) x = this.bodyGroups[0].position.x;
     if (replay && replay.torsos) {
       this._applyFrame(this.time);
       const middle = this._torsoPosition();
@@ -278,6 +279,27 @@ export class Viewer {
   }
 
   // ---------- Playing ----------
+
+  // ---------- Live mode: frames arrive while it plays ----------
+
+  startLive(header) {
+    this.options.loop = false;
+    this.load(header);
+    this.live = true;
+    this.playing = true;
+    if (this.playbar) this.playbar.hidden = true;
+  }
+
+  pushLive(frames) {
+    if (!this.replay || !frames.length) return;
+    this.replay.frames.push(...frames);
+    const keep = 750;
+    if (this.replay.frames.length > keep) {
+      const drop = this.replay.frames.length - keep;
+      this.replay.frames.splice(0, drop);
+      this.time = Math.max(0, this.time - drop / this.replay.fps);
+    }
+  }
 
   get duration() {
     return this.replay ? (this.replay.frames.length - 1) / this.replay.fps : 0;
@@ -325,10 +347,16 @@ export class Viewer {
     requestAnimationFrame(this._loop);
     const delta = Math.min(this.clock.getDelta(), 0.1);
     if (this.playing && this.replay) {
-      this.time += delta * this.speed;
-      if (this.time >= this.duration) {
-        if (this.options.loop) this.time = 0;
-        else { this.time = this.duration; this.playing = false; }
+      if (this.live) {
+        // Stay a little behind the newest frame, and jump ahead if the page fell far behind
+        this.time = Math.min(this.time + delta, this.duration);
+        if (this.time < this.duration - 0.6) this.time = this.duration - 0.15;
+      } else {
+        this.time += delta * this.speed;
+        if (this.time >= this.duration) {
+          if (this.options.loop) this.time = 0;
+          else { this.time = this.duration; this.playing = false; }
+        }
       }
       const before = this._torsoPosition().clone();
       this._applyFrame(this.time);
@@ -422,6 +450,7 @@ export class Viewer {
 
   _paintPlaybar(onlyTime = false) {
     if (!this.playbar) return;
+    if (this.live) { this.playbar.hidden = true; return; }
     const share = this.duration ? this.time / this.duration : 0;
     this.scrub.value = share;
     this.scrub.style.setProperty("--fill", `${share * 100}%`);

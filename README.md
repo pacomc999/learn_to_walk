@@ -42,6 +42,10 @@ You also design its **scoring**: points for moving forward (exactly at the asked
 
 **Test drive.** Take any trained walker into any world, even ones it never practised in, at any speed. A blue ring moves at the asked speed so you can see if it keeps up. Below the 3D view, **Inside the walk** shows when each foot touches the ground (its gait) and what the brain tells every muscle, moment by moment.
 
+**Live.** Let a trained walker go in real time: change the asked speed with a slider or the arrow keys, push it from the side and watch it recover, or try it in another world. learn_to_walk's drive tool, in the browser.
+
+**Report card.** Seven challenge ladders (speed, cobblestones, stairs, ice, a backpack, wind, other planets) that hand out medals, with every attempt to watch.
+
 **Race.** Put up to six trained walkers side by side in any world and see who gets furthest.
 
 **Teach a new world.** Start a new training from a walker's best brain, for example from flat ground onto the stairs.

@@ -40,7 +40,7 @@ export async function render(main, params) {
     actions));
 
   const tabs = h("div", { class: "tabs" },
-    ...[["training", "Training"], ["drive", "Test drive"], ["report", "Report card"], ["recipe", "Recipe"]].map(([key, label]) =>
+    ...[["training", "Training"], ["drive", "Test drive"], ["live", "Live"], ["report", "Report card"], ["recipe", "Recipe"]].map(([key, label]) =>
       h("button", { class: tab === key ? "on" : "", onclick: () => go(`#/walker/${id}/${key}`) }, label)));
   page.append(tabs);
   const body = h("div");
@@ -121,6 +121,7 @@ export async function render(main, params) {
   if (tab === "drive") view = await driveTab(body, id, details, setup);
   else if (tab === "recipe") view = recipeTab(body, details, setup);
   else if (tab === "report") view = await reportTab(body, id, details);
+  else if (tab === "live") view = await liveTab(body, id, details, setup);
   else view = trainingTab(body, id, details, setup);
   const timer = setInterval(refresh, 3000);
   return () => { clearInterval(timer); if (view && view.dispose) view.dispose(); };
@@ -482,4 +483,140 @@ export async function reportTab(body, id, details) {
   if (saved.challenges) runButton.innerHTML = `${icon.trophy}<span>Take it again</span>`;
   paint(saved);
   return { dispose: () => viewer.dispose() };
+}
+
+// ---------- The live tab ----------
+
+export async function liveTab(body, id, details, setup) {
+  if (!details.has_brain) {
+    body.append(h("div", { class: "empty" }, h("div", { class: "t" }, "No brain to drive yet"),
+      h("div", { class: "d" }, "Live mode needs the walker's best brain, saved after its first exam.")));
+    return null;
+  }
+  const catalog = store.catalog;
+  const worldDefaults = Object.fromEntries(catalog.world_groups.flatMap((group) => group.settings.map((s) => [s.key, s.default])));
+  const worlds = [{ ...setup.world, name: `${setup.world.name} (its own)` }, ...catalog.world_templates.filter((w) => w.id !== setup.world.id), ...(await api("worlds"))];
+  let world = worlds[0];
+  const own = setup.world.values;
+  let speed = Math.round((own.slowest_speed + own.fastest_speed) / 2 * 20) / 20;
+  let session = null;
+  let last = -1;
+  let falls = 0;
+  let timer = null;
+  let disposed = false;
+
+  const viewerBox = h("div", { class: "viewer-tall", tabindex: "0" });
+  const panel = h("div", { class: "panel" });
+  body.append(h("div", { class: "workbench" }, panel, h("div", { class: "stage" }, viewerBox)));
+  const viewer = new Viewer(viewerBox, { playbar: false });
+  viewer.showMessage("Press Start to let it walk in real time.");
+
+  const speedText = h("div", { class: "live-speed" });
+  const speedRange = h("input", { type: "range", min: 0, max: Math.max(2, own.fastest_speed * 1.6), step: 0.05, value: speed });
+  const paintSpeed = () => {
+    speedText.innerHTML = `${fmtNumber(speed, 2)}<small> m/s asked</small>`;
+    speedRange.value = speed;
+    speedRange.style.setProperty("--fill", `${speed / Number(speedRange.max) * 100}%`);
+  };
+  const setSpeed = (value) => {
+    speed = Math.max(0, Math.min(Number(speedRange.max), Math.round(value * 100) / 100));
+    paintSpeed();
+    if (session) api(`live/${session}`, { method: "POST", body: { speed } }).catch(() => {});
+  };
+  speedRange.addEventListener("input", () => setSpeed(Number(speedRange.value)));
+  const send = (command) => { if (session) api(`live/${session}`, { method: "POST", body: command }).catch(() => {}); };
+
+  const stats = h("div", { class: "stats", style: { gridTemplateColumns: "repeat(3, 1fr)" } });
+  const paintStats = (state) => stats.replaceChildren(
+    statCard("Going", `${fmtNumber(Math.max(0, state.speed), 2)}<small>m/s</small>`, `asked ${fmtNumber(state.asked, 2)}`),
+    statCard("Distance", `${fmtNumber(Math.max(0, state.x), 1)}<small>m</small>`, state.fallen ? "down, getting up..." : "since the last start"),
+    statCard("Falls", String(falls), "pushes and stumbles"));
+  paintStats({ speed: 0, asked: speed, x: 0, fallen: false });
+
+  const poll = async () => {
+    if (!session || disposed) return;
+    try {
+      const update = await api(`live/${session}?after=${last}`);
+      if (update.frames.length) {
+        viewer.pushLive(update.frames);
+        last = update.first + update.frames.length - 1;
+      }
+      falls += update.events.filter((event) => event === "fell").length;
+      paintStats(update.state);
+      if (!update.running) { stopLive(); viewer.showMessage("Live mode stopped. Press Start to go again."); return; }
+    } catch (error) {
+      stopLive();
+      viewer.showMessage(error.message);
+      return;
+    }
+    timer = setTimeout(poll, 100);
+  };
+
+  const startButton = h("button", { class: "btn primary big", style: { width: "100%" }, html: `${icon.play}<span>Start</span>` });
+  const startLive = async () => {
+    startButton.disabled = true;
+    viewer.setLoading(true);
+    try {
+      const header = await api("live", { method: "POST", body: { training: id, speed, world: { ...world, values: { ...worldDefaults, ...world.values } } } });
+      session = header.id;
+      last = 0;
+      falls = 0;
+      header.marks_to = header.floor_end || 60;
+      viewer.showMessage("");
+      viewer.startLive(header);
+      viewer.setChips([["World", world.name], ["Keys", "↑ ↓ speed · ← → push · R restart"]]);
+      startButton.innerHTML = `${icon.stop}<span>Stop</span>`;
+      viewerBox.focus();
+      poll();
+    } catch (error) {
+      toast("Live mode could not start", error.message, "bad");
+    } finally {
+      startButton.disabled = false;
+      viewer.setLoading(false);
+    }
+  };
+  const stopLive = () => {
+    if (session) send({ stop: true });
+    session = null;
+    clearTimeout(timer);
+    startButton.innerHTML = `${icon.play}<span>Start</span>`;
+  };
+  startButton.addEventListener("click", () => (session ? stopLive() : startLive()));
+
+  const keys = (event) => {
+    if (!session || ["INPUT", "SELECT", "TEXTAREA"].includes(document.activeElement.tagName) && document.activeElement !== speedRange) return;
+    const actions = { ArrowUp: () => setSpeed(speed + 0.1), ArrowDown: () => setSpeed(speed - 0.1), ArrowLeft: () => send({ push: "left" }),
+      ArrowRight: () => send({ push: "right" }), r: () => send({ restart: true }), R: () => send({ restart: true }) };
+    if (actions[event.key]) { event.preventDefault(); actions[event.key](); }
+  };
+  window.addEventListener("keydown", keys);
+
+  const worldSelect = h("select", { class: "input" }, ...worlds.map((w, index) => h("option", { value: String(index) }, w.name)));
+  worldSelect.addEventListener("change", () => { world = worlds[Number(worldSelect.value)]; if (session) { stopLive(); startLive(); } });
+
+  panel.append(
+    h("div", { class: "card card-pad stack", style: { gap: "12px", marginBottom: "12px" } },
+      h("div", {}, h("h3", {}, "Live"), h("div", { class: "faint", style: { fontSize: "12.5px" } }, "It walks in real time while you change the asked speed and push it around. Its brain decides every step, 50 times a second.")),
+      h("div", {}, h("div", { class: "field-label", style: { marginBottom: "6px" } }, "World"), worldSelect),
+      startButton),
+    h("div", { class: "card card-pad stack", style: { gap: "10px", marginBottom: "12px" } },
+      h("div", { class: "spread" }, h("h3", {}, "Asked speed"), speedText),
+      speedRange,
+      h("div", { class: "btn-row" },
+        h("button", { class: "btn small", onclick: () => setSpeed(0) }, "Stop"),
+        h("button", { class: "btn small", onclick: () => setSpeed(own.slowest_speed) }, "Slow"),
+        h("button", { class: "btn small", onclick: () => setSpeed((own.slowest_speed + own.fastest_speed) / 2) }, "Medium"),
+        h("button", { class: "btn small", onclick: () => setSpeed(own.fastest_speed) }, "Fast"))),
+    h("div", { class: "card card-pad stack", style: { gap: "10px", marginBottom: "12px" } },
+      h("h3", {}, "Mess with it"),
+      h("div", { class: "btn-row" },
+        h("button", { class: "btn", onclick: () => send({ push: "left" }) }, "Push from the left"),
+        h("button", { class: "btn", onclick: () => send({ push: "right" }) }, "Push from the right")),
+      h("div", { class: "btn-row" },
+        h("button", { class: "btn", onclick: () => send({ push: "front" }) }, "Push it back"),
+        h("button", { class: "btn", onclick: () => send({ push: "back" }) }, "Push it forward"),
+        h("button", { class: "btn ghost", onclick: () => send({ restart: true }), html: `${icon.restart}<span>Start again</span>` }))),
+    stats);
+  paintSpeed();
+  return { dispose: () => { disposed = true; stopLive(); window.removeEventListener("keydown", keys); viewer.dispose(); } };
 }
