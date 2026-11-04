@@ -376,11 +376,27 @@ def _new_model(design, mirror, venv, settings, seed, motor_type):
 
 def _start_from(model, venv, source: Path) -> None:
     model.set_parameters(str(source / "brain" / "best.zip"), exact_match=True, device="cpu")
+    # Keep the source brain's step size too: a trained brain has a small wobble, and a fresh, large step
+    # size would undo its training in a few lessons (as learn_to_walk does when starting from a brain)
+    rate = _saved_learning_rate(source / "brain" / "best.zip")
+    if rate:
+        model.learning_rate = rate
+        model._setup_lr_schedule()
     scaling = source / "brain" / "best_scaling.pkl"
     if scaling.exists():
         old = VecNormalize.load(str(scaling), venv.venv)
         venv.obs_rms = old.obs_rms
         venv.ret_rms = old.ret_rms
+
+
+def _saved_learning_rate(path: Path) -> float | None:
+    import zipfile
+    try:
+        with zipfile.ZipFile(path) as archive:
+            rate = json.loads(archive.read("data")).get("learning_rate")
+    except (OSError, KeyError, ValueError, zipfile.BadZipFile):
+        return None
+    return float(rate) if isinstance(rate, (int, float)) and rate > 0 else None
 
 
 def run(path: Path, resume: bool) -> None:

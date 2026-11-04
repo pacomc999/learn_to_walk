@@ -39,3 +39,7 @@ def test_duck_3_3_walks_as_well_as_in_learn_to_walk(tmp_path, monkeypatch):
     assert status["state"] == "finished"
     assert status["last_exam"]["falls"] == 0          # his card: exam 1188, falls 0 of 12
     assert status["best_quality"] > 85
+    # it keeps learn_to_walk's settled step size, so carrying on does not wreck it
+    import zipfile
+    with zipfile.ZipFile(library.training_folder(training_id) / "brain" / "latest.zip") as archive:
+        assert json.loads(archive.read("data"))["learning_rate"] == pytest.approx(1e-5)

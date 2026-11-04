@@ -157,9 +157,15 @@ def import_duck(duck_folder: str) -> str:
     model = PPO(policy, venv, policy_kwargs=kwargs, device="cpu", **ppo_settings(learning))
     with zipfile.ZipFile(snapshot) as archive:
         weights = torch.load(io.BytesIO(archive.read("policy.pth")), map_location="cpu", weights_only=False)
-        steps = json.loads(archive.read("data")).get("num_timesteps", 0)
+        saved = json.loads(archive.read("data"))
     model.policy.load_state_dict(weights, strict=True)
-    model.num_timesteps = int(steps)
+    model.num_timesteps = int(saved.get("num_timesteps", 0))
+    # The brain keeps its own step size (learn_to_walk's adaptive rate settles near 1e-5): with its small wobble,
+    # the default step size would wreck it within a few lessons
+    rate = saved.get("learning_rate")
+    if isinstance(rate, (int, float)) and rate > 0:
+        model.learning_rate = float(rate)
+        model._setup_lr_schedule()
 
     old = _read_scaling(snapshot.with_name(snapshot.stem + "_norm.pkl"))
     scaling = VecNormalize(venv, norm_obs=True, norm_reward=True)
