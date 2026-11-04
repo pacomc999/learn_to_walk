@@ -1,0 +1,9 @@
+{
+  "id": "frozen_lake",
+  "name": "Frozen Lake",
+  "description": "Flat, slippery ice. Feet slide unless every step is careful.",
+  "values": {
+    "ground_grip": 15,
+    "style": "snow"
+  }
+}

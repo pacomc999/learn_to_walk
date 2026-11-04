@@ -1,0 +1,13 @@
+{
+  "id": "stormy_crossing",
+  "name": "Stormy Crossing",
+  "description": "Flat ground with gusts of wind and the odd rock thrown from the side.",
+  "values": {
+    "wind": true,
+    "wind_strength": 25,
+    "rocks": true,
+    "rock_weight": 80,
+    "rock_every": 3.0,
+    "style": "night"
+  }
+}

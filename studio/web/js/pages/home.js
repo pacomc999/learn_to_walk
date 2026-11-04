@@ -1,0 +1,43 @@
+// Home: what the studio does, how to start, and the walkers made so far.
+
+import { h, api } from "../ui.js";
+import { icon, animalArt } from "../icons.js";
+import { store, go } from "../app.js";
+import { walkerCard } from "./walkers.js";
+
+export async function render(main) {
+  const page = h("div", { class: "page" });
+  main.append(page);
+  const trainings = await api("trainings");
+
+  page.append(h("div", { class: "hero" },
+    h("h1", {}, "Design a creature. Build its world. Watch it learn to walk."),
+    h("p", {}, "Nobody tells it how to move its legs. A small brain tries things, earns points for walking at the speed it is asked for, and slowly finds a gait of its own."),
+    h("div", { class: "btn-row" },
+      h("button", { class: "btn primary big", onclick: () => go("#/new/creature"), html: `${icon.plus}<span>Make a new walker</span>` }),
+      h("button", { class: "btn light big", onclick: () => go("#/guide"), html: `${icon.book}<span>How it works</span>` })),
+    h("div", { class: "hero-art", html: `<div style="display:flex;gap:6px;align-items:flex-end;height:100%">${animalArt("puppy").replace('class="animal"', 'style="height:150px"')}${animalArt("duck").replace('class="animal"', 'style="height:170px"')}</div>` })));
+
+  const steps = [
+    ["Design a creature", "A duck or a puppy, with longer legs, bigger feet or stronger muscles: every slider shows up in 3D."],
+    ["Pick its world", "Flat grass, cobblestones, hills, stairs, ice or the Moon. Or make your own."],
+    ["Shape its brain", "How many layers of thinking cells, what it can sense, and whether its left and right sides think alike."],
+    ["Train and watch", "It practises in many worlds at once. Follow the charts and watch its walk improve exam by exam."],
+  ];
+  page.append(h("div", { class: "section-title" }, h("h2", {}, "Four steps")),
+    h("div", { class: "steps-row" }, ...steps.map(([title, text], index) => h("div", { class: "card how" },
+      h("div", { class: "n" }, String(index + 1)), h("div", { class: "t" }, title), h("div", { class: "d" }, text)))));
+
+  page.append(h("div", { class: "section-title" }, h("h2", {}, "Your walkers"),
+    trainings.length ? h("a", { href: "#/walkers", class: "btn ghost small", html: `<span>See all</span>${icon.chevronRight}` }) : null));
+  if (!trainings.length) {
+    page.append(h("div", { class: "empty" },
+      h("div", { html: animalArt("duck").replace('class="animal"', 'class="animal" style="height:80px"') }),
+      h("div", { class: "t" }, "No walkers yet"),
+      h("div", { class: "d" }, "Your first one takes about two minutes to set up. The standard duck on flat ground is a great start."),
+      h("button", { class: "btn primary", onclick: () => { store.resetDraft("duck"); go("#/new/creature"); }, html: `${icon.plus}<span>Make my first walker</span>` })));
+  } else {
+    page.append(h("div", { class: "grid grid-auto" }, ...trainings.slice(0, 6).map(walkerCard)));
+  }
+  return null;
+}

@@ -1,0 +1,11 @@
+{
+  "id": "rocky_canyon",
+  "name": "Rocky Canyon",
+  "description": "Big flat-topped rocks of different heights, up to 4 cm, to step up and down.",
+  "values": {
+    "terrain": "blocks",
+    "terrain_height": 4.0,
+    "gradually_harder": true,
+    "style": "desert"
+  }
+}

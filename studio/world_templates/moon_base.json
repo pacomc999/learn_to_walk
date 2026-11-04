@@ -1,0 +1,11 @@
+{
+  "id": "moon_base",
+  "name": "Moon Base",
+  "description": "Low gravity and dusty craters. Every step turns into a little jump.",
+  "values": {
+    "terrain": "craters",
+    "terrain_height": 6.0,
+    "gravity": 1.62,
+    "style": "moon"
+  }
+}

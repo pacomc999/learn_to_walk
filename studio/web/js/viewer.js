@@ -1,0 +1,469 @@
+// The 3D viewer: shows a creature, its world and recorded walks (replays from the studio) with three.js.
+// The simulation's z axis points up, so the viewer works with z up too.
+
+import * as THREE from "three";
+import { OrbitControls } from "../vendor/OrbitControls.js";
+import { h } from "./ui.js";
+import { icon, STYLE_COLOURS } from "./icons.js";
+
+const SPEEDS = [0.25, 0.5, 1, 2];
+
+export class Viewer {
+  constructor(container, { playbar = true, follow = true, autoplay = true, loop = true, pace = false } = {}) {
+    this.container = container;
+    this.container.classList.add("viewer");
+    this.options = { playbar, autoplay, loop, pace };
+    this.follow = follow;
+    this.replay = null;
+    this.time = 0;
+    this.speed = 1;
+    this.playing = false;
+    this.disposed = false;
+    this.highlightTest = null;
+    this.bodyGroups = [];
+    this.meshes = [];
+
+    this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
+    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+    this.renderer.shadowMap.enabled = true;
+    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    this.renderer.outputColorSpace = THREE.SRGBColorSpace;
+    this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    this.renderer.toneMappingExposure = 1.05;
+    container.append(this.renderer.domElement);
+
+    this.scene = new THREE.Scene();
+    this.camera = new THREE.PerspectiveCamera(40, 1, 0.01, 200);
+    this.camera.up.set(0, 0, 1);
+    this.camera.position.set(1.2, -1.8, 0.8);
+    this.controls = new OrbitControls(this.camera, this.renderer.domElement);
+    this.controls.enableDamping = true;
+    this.controls.dampingFactor = 0.08;
+    this.controls.maxPolarAngle = Math.PI * 0.495;
+    this.controls.minDistance = 0.2;
+    this.controls.maxDistance = 30;
+    this.controls.target.set(0, 0, 0.2);
+
+    this.hemi = new THREE.HemisphereLight(0xffffff, 0x8a8f99, 1.1);
+    this.scene.add(this.hemi);
+    this.sun = new THREE.DirectionalLight(0xffffff, 2.2);
+    this.sun.castShadow = true;
+    this.sun.shadow.mapSize.set(2048, 2048);
+    this.sun.shadow.bias = -0.0004;
+    this.sun.shadow.normalBias = 0.01;
+    const box = this.sun.shadow.camera;
+    box.left = box.bottom = -2.5; box.right = box.top = 2.5; box.near = 0.1; box.far = 20;
+    this.scene.add(this.sun, this.sun.target);
+
+    this.world = new THREE.Group();
+    this.walker = new THREE.Group();
+    this.scene.add(this.world, this.walker);
+
+    this.overlay = h("div", { class: "viewer-overlay" });
+    this.tools = h("div", { class: "viewer-tools" });
+    this.message = h("div", { class: "viewer-message", hidden: true });
+    this.loading = h("div", { class: "loading-bar", hidden: true });
+    container.append(this.overlay, this.tools, this.message, this.loading);
+    this._buildTools();
+    if (playbar) this._buildPlaybar();
+
+    this.resizeObserver = new ResizeObserver(() => this._resize());
+    this.resizeObserver.observe(container);
+    this._resize();
+    this.clock = new THREE.Clock();
+    this._loop = this._loop.bind(this);
+    requestAnimationFrame(this._loop);
+  }
+
+  // ---------- Building the scene ----------
+
+  setLoading(on) { this.loading.hidden = !on; }
+
+  showMessage(text) {
+    this.message.hidden = !text;
+    this.message.textContent = text || "";
+  }
+
+  setChips(chips) {
+    this.overlay.replaceChildren(...chips.map(([key, value]) => h("div", { class: "chip" }, h("span", { class: "k" }, key), h("b", {}, value))));
+  }
+
+  banner(text, kind = "good", seconds = 4) {
+    if (this.bannerElement) this.bannerElement.remove();
+    if (!text) return;
+    this.bannerElement = h("div", { class: `viewer-banner ${kind}` }, text);
+    this.container.append(this.bannerElement);
+    if (seconds) setTimeout(() => this.bannerElement && this.bannerElement.remove(), seconds * 1000);
+  }
+
+  // Show a replay. keepCamera keeps the viewpoint (for live edits of the same creature)
+  load(replay, { keepCamera = false } = {}) {
+    const sameWorld = this.replay && this.replay.ground === replay.ground && this.replay.style === replay.style;
+    this.replay = replay;
+    this.time = 0;
+    this.showMessage("");
+    this._buildWalker(replay);
+    if (!keepCamera || !sameWorld) this._buildWorld(replay);
+    this._buildPace(replay);
+    this._applyFrame(0);
+    if (!keepCamera) this.frameCamera();
+    this.playing = this.options.autoplay && replay.frames.length > 1;
+    this._paintPlaybar();
+  }
+
+  _clearGroup(group) {
+    for (const child of [...group.children]) {
+      child.traverse((node) => {
+        if (node.geometry) node.geometry.dispose();
+        if (node.material) {
+          if (node.material.map) node.material.map.dispose();
+          node.material.dispose();
+        }
+      });
+      group.remove(child);
+    }
+  }
+
+  _buildWalker(replay) {
+    this._clearGroup(this.walker);
+    this.bodyGroups = replay.bodies.map(() => new THREE.Group());
+    this.bodyGroups.forEach((group) => this.walker.add(group));
+    this.meshes = [];
+    for (const shape of replay.shapes) {
+      const mesh = makeShape(shape);
+      if (!mesh) continue;
+      mesh.userData.name = shape.name || "";
+      mesh.userData.baseColour = mesh.material.color.clone();
+      this.bodyGroups[shape.body].add(mesh);
+      this.meshes.push(mesh);
+    }
+    this._paintHighlight();
+  }
+
+  _buildWorld(replay) {
+    this._clearGroup(this.world);
+    const style = STYLE_COLOURS[replay.style] || STYLE_COLOURS.meadow;
+    const dark = replay.style === "moon" || replay.style === "night";
+    this.container.style.background = `linear-gradient(180deg, ${style.sky[0]}, ${style.sky[1]})`;
+    this.scene.fog = new THREE.Fog(new THREE.Color(style.sky[1]), 8, 40);
+    this.hemi.intensity = dark ? 0.55 : 1.1;
+    this.sun.intensity = dark ? 1.4 : 2.2;
+    this.sun.color = new THREE.Color(dark ? 0xc8d4ff : 0xfff6e8);
+    const size = replay.size || 1;
+
+    // The endless plane around everything
+    const plane = new THREE.Mesh(new THREE.PlaneGeometry(400, 400), new THREE.MeshStandardMaterial({
+      color: new THREE.Color(style.ground), map: groundTexture(style, replay.style), roughness: 0.95,
+    }));
+    plane.material.map.repeat.set(400 / (0.5 * Math.max(size, 0.5)), 400 / (0.5 * Math.max(size, 0.5)));
+    plane.receiveShadow = true;
+    plane.position.z = replay.ground && replay.ground.kind === "heights" ? -0.0008 : 0;
+    this.world.add(plane);
+    if (replay.ground && replay.ground.kind === "heights") this.world.add(heightsMesh(replay.ground, style));
+    this._addMetreMarks(replay, style);
+  }
+
+  _addMetreMarks(replay, style) {
+    const size = Math.max(replay.size || 1, 0.6);
+    const xs = replay.frames.length ? replay.frames.map((frame) => frame[0]) : [0];
+    const last = Math.ceil(Math.max(...xs, 2) + 3);
+    const side = 0.6 * size;
+    for (let metre = 0; metre <= last; metre++) {
+      const post = new THREE.Mesh(new THREE.CylinderGeometry(0.008 * size, 0.008 * size, 0.12 * size, 8),
+        new THREE.MeshStandardMaterial({ color: metre === 0 ? 0x4f46e5 : 0xffffff, roughness: 0.6 }));
+      post.rotation.x = Math.PI / 2;
+      post.position.set(metre, side, 0.06 * size + this._groundHeight(replay, metre, side));
+      post.castShadow = true;
+      this.world.add(post);
+      if (metre % 1 === 0) {
+        const label = textSprite(metre === 0 ? "start" : `${metre} m`, replay.style === "moon" || replay.style === "night" ? "#ffffff" : "#1f2937");
+        label.position.set(metre, side, 0.16 * size + this._groundHeight(replay, metre, side));
+        label.scale.multiplyScalar(size);
+        this.world.add(label);
+      }
+    }
+  }
+
+  _groundHeight(replay, x, y) {
+    const ground = replay.ground;
+    if (!ground || ground.kind !== "heights") return 0;
+    const column = Math.round((x - ground.x0) / ground.step);
+    const row = Math.round((y - ground.y0) / ground.step);
+    if (column < 0 || row < 0 || column >= ground.cols || row >= ground.rows) return 0;
+    return ground.data[row * ground.cols + column] / 10000;
+  }
+
+  // A soft marker that moves at the asked speed, so you can see if the walker keeps up
+  _buildPace(replay) {
+    if (this.paceMarker) { this.scene.remove(this.paceMarker); this.paceMarker = null; }
+    if (!this.options.pace || !replay.stats || !replay.stats.target_speed) return;
+    const size = Math.max(replay.size || 1, 0.6);
+    const marker = new THREE.Mesh(new THREE.RingGeometry(0.06 * size, 0.08 * size, 40),
+      new THREE.MeshBasicMaterial({ color: 0x6366f1, transparent: true, opacity: 0.75, side: THREE.DoubleSide, depthWrite: false }));
+    marker.renderOrder = 2;
+    this.paceMarker = marker;
+    this.paceStart = replay.frames[0][0];
+    this.scene.add(marker);
+  }
+
+  frameCamera() {
+    const replay = this.replay;
+    const size = Math.max(replay ? replay.size || 1 : 1, 0.5);
+    const height = replay ? replay.stand_height || 0.25 : 0.25;
+    const x = replay && replay.frames.length ? replay.frames[0][0] : 0;
+    this.controls.target.set(x, 0, height * 0.85);
+    this.camera.position.set(x + 0.75 * size, -1.45 * size, height + 0.45 * size);
+    this.controls.update();
+  }
+
+  // ---------- Highlighting parts ----------
+
+  // test(name) says which shapes to highlight; null clears it
+  highlight(test) {
+    this.highlightTest = test;
+    this._paintHighlight();
+  }
+
+  _paintHighlight() {
+    for (const mesh of this.meshes) {
+      const on = this.highlightTest && this.highlightTest(mesh.userData.name);
+      mesh.material.emissive = new THREE.Color(on ? 0x6366f1 : 0x000000);
+      mesh.material.emissiveIntensity = on ? 0.55 : 0;
+    }
+  }
+
+  // ---------- Playing ----------
+
+  get duration() {
+    return this.replay ? (this.replay.frames.length - 1) / this.replay.fps : 0;
+  }
+
+  play() { if (this.replay && this.replay.frames.length > 1) { if (this.time >= this.duration) this.time = 0; this.playing = true; this._paintPlaybar(); } }
+  pause() { this.playing = false; this._paintPlaybar(); }
+  seek(seconds) { this.time = Math.max(0, Math.min(this.duration, seconds)); this._applyFrame(this.time); this._paintPlaybar(); }
+
+  _applyFrame(seconds) {
+    const replay = this.replay;
+    if (!replay || !replay.frames.length) return;
+    const position = Math.min(seconds * replay.fps, replay.frames.length - 1);
+    const index = Math.floor(position);
+    const blend = position - index;
+    const a = replay.frames[index];
+    const b = replay.frames[Math.min(index + 1, replay.frames.length - 1)];
+    const qa = new THREE.Quaternion(), qb = new THREE.Quaternion();
+    this.bodyGroups.forEach((group, body) => {
+      const o = body * 7;
+      group.position.set(
+        a[o] + (b[o] - a[o]) * blend, a[o + 1] + (b[o + 1] - a[o + 1]) * blend, a[o + 2] + (b[o + 2] - a[o + 2]) * blend);
+      qa.set(a[o + 4], a[o + 5], a[o + 6], a[o + 3]);
+      qb.set(b[o + 4], b[o + 5], b[o + 6], b[o + 3]);
+      group.quaternion.copy(qa.slerp(qb, blend));
+    });
+    if (this.paceMarker) {
+      const x = this.paceStart + replay.stats.target_speed * Math.min(seconds, replay.stats.seconds + 1);
+      this.paceMarker.position.set(x, 0, this._groundHeight(replay, x, 0) + 0.004);
+    }
+  }
+
+  _torsoPosition() {
+    return this.bodyGroups.length ? this.bodyGroups[0].position : new THREE.Vector3();
+  }
+
+  _loop() {
+    if (this.disposed) return;
+    requestAnimationFrame(this._loop);
+    const delta = Math.min(this.clock.getDelta(), 0.1);
+    if (this.playing && this.replay) {
+      this.time += delta * this.speed;
+      if (this.time >= this.duration) {
+        if (this.options.loop) this.time = 0;
+        else { this.time = this.duration; this.playing = false; }
+      }
+      const before = this._torsoPosition().clone();
+      this._applyFrame(this.time);
+      if (this.follow) {
+        const after = this._torsoPosition();
+        const shift = new THREE.Vector3(after.x - before.x, after.y - before.y, 0);
+        if (shift.length() < 1) {  // a jump back to the start moves the camera with the loop
+          this.camera.position.add(shift);
+          this.controls.target.add(shift);
+        } else {
+          this.frameCamera();
+        }
+      }
+      this._paintPlaybar(true);
+    }
+    const torso = this._torsoPosition();
+    this.sun.position.set(torso.x + 2, torso.y - 2.5, torso.z + 5);
+    this.sun.target.position.set(torso.x, torso.y, 0);
+    this.controls.update();
+    this.renderer.render(this.scene, this.camera);
+  }
+
+  _resize() {
+    const width = this.container.clientWidth || 300;
+    const height = this.container.clientHeight || 300;
+    this.renderer.setSize(width, height, false);
+    this.camera.aspect = width / height;
+    this.camera.updateProjectionMatrix();
+  }
+
+  // ---------- Buttons ----------
+
+  _buildTools() {
+    const follow = h("button", { class: `vbtn ${this.follow ? "on" : ""}`, title: "Follow the walker", html: icon.follow });
+    follow.addEventListener("click", () => { this.follow = !this.follow; follow.classList.toggle("on", this.follow); });
+    const reset = h("button", { class: "vbtn", title: "Reset the view", html: icon.camera, onclick: () => this.frameCamera() });
+    const full = h("button", { class: "vbtn", title: "Full screen", html: icon.expand, onclick: () => {
+      if (document.fullscreenElement) document.exitFullscreen(); else this.container.requestFullscreen();
+    } });
+    this.tools.append(follow, reset, full);
+  }
+
+  _buildPlaybar() {
+    this.playButton = h("button", { html: icon.play, title: "Play or pause", onclick: () => (this.playing ? this.pause() : this.play()) });
+    this.scrub = h("input", { type: "range", min: 0, max: 1, step: 0.001, value: 0 });
+    this.scrub.addEventListener("input", () => { this.pause(); this.seek(Number(this.scrub.value) * this.duration); });
+    this.timeText = h("span", { class: "time" }, "0.0 s");
+    this.speedButton = h("button", { class: "speed", title: "Playback speed", onclick: () => {
+      this.speed = SPEEDS[(SPEEDS.indexOf(this.speed) + 1) % SPEEDS.length];
+      this._paintPlaybar();
+    } }, "1x");
+    const restart = h("button", { html: icon.restart, title: "From the start", onclick: () => { this.seek(0); this.play(); if (this.follow) this.frameCamera(); } });
+    this.playbar = h("div", { class: "playbar" }, this.playButton, restart, this.scrub, this.timeText, this.speedButton);
+    this.container.append(this.playbar);
+  }
+
+  _paintPlaybar(onlyTime = false) {
+    if (!this.playbar) return;
+    const share = this.duration ? this.time / this.duration : 0;
+    this.scrub.value = share;
+    this.scrub.style.setProperty("--fill", `${share * 100}%`);
+    this.timeText.textContent = `${this.time.toFixed(1)} / ${this.duration.toFixed(1)} s`;
+    if (onlyTime) return;
+    this.playButton.innerHTML = this.playing ? icon.pause : icon.play;
+    this.speedButton.textContent = `${this.speed}x`;
+    this.playbar.hidden = !this.replay || this.replay.frames.length <= 1;
+  }
+
+  snapshot() {
+    this.renderer.render(this.scene, this.camera);
+    return this.renderer.domElement.toDataURL("image/png");
+  }
+
+  dispose() {
+    this.disposed = true;
+    this.resizeObserver.disconnect();
+    this._clearGroup(this.walker);
+    this._clearGroup(this.world);
+    this.controls.dispose();
+    this.renderer.dispose();
+    this.renderer.forceContextLoss();
+    this.container.replaceChildren();
+  }
+}
+
+// ---------- Shapes ----------
+
+function makeShape(shape) {
+  const [r, g, b] = shape.rgba;
+  const material = new THREE.MeshStandardMaterial({ color: new THREE.Color(r, g, b).convertSRGBToLinear(), roughness: 0.55, metalness: 0.02 });
+  const s = shape.size;
+  let geometry;
+  if (shape.type === "sphere") geometry = new THREE.SphereGeometry(s[0], 32, 20);
+  else if (shape.type === "ellipsoid") { geometry = new THREE.SphereGeometry(1, 40, 24); geometry.scale(s[0], s[1], s[2]); }
+  else if (shape.type === "capsule") { geometry = new THREE.CapsuleGeometry(s[0], 2 * s[1], 8, 20); geometry.rotateX(Math.PI / 2); }
+  else if (shape.type === "cylinder") { geometry = new THREE.CylinderGeometry(s[0], s[0], 2 * s[1], 28); geometry.rotateX(Math.PI / 2); }
+  else if (shape.type === "box") geometry = new THREE.BoxGeometry(2 * s[0], 2 * s[1], 2 * s[2]);
+  else return null;
+  const mesh = new THREE.Mesh(geometry, material);
+  mesh.position.set(...shape.pos);
+  mesh.quaternion.set(shape.quat[1], shape.quat[2], shape.quat[3], shape.quat[0]);
+  mesh.castShadow = true;
+  mesh.receiveShadow = true;
+  return mesh;
+}
+
+// ---------- Ground ----------
+
+function groundTexture(style, styleName) {
+  const canvas = document.createElement("canvas");
+  canvas.width = canvas.height = 128;
+  const context = canvas.getContext("2d");
+  context.fillStyle = "#ffffff";
+  context.fillRect(0, 0, 128, 128);
+  if (styleName === "street") {
+    context.fillStyle = "#e9e9e9";
+    for (let y = 0; y < 128; y += 32) for (let x = (y / 32) % 2 ? 16 : 0; x < 128; x += 32) context.fillRect(x + 1, y + 1, 30, 30);
+  } else if (styleName === "snow") {
+    context.fillStyle = "#f2f7fb";
+    context.fillRect(0, 0, 64, 64); context.fillRect(64, 64, 64, 64);
+  } else {
+    context.fillStyle = "#eeeeee";
+    context.fillRect(0, 0, 64, 64); context.fillRect(64, 64, 64, 64);
+    for (let i = 0; i < 300; i++) {
+      context.fillStyle = `rgba(0,0,0,${Math.random() * 0.05})`;
+      context.fillRect(Math.random() * 128, Math.random() * 128, 2, 2);
+    }
+  }
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
+  texture.colorSpace = THREE.SRGBColorSpace;
+  texture.anisotropy = 4;
+  return texture;
+}
+
+function heightsMesh(ground, style) {
+  const { rows, cols, step, x0, y0, data } = ground;
+  const geometry = new THREE.BufferGeometry();
+  const positions = new Float32Array(rows * cols * 3);
+  const colours = new Float32Array(rows * cols * 3);
+  let top = 1;
+  for (const value of data) top = Math.max(top, value);
+  const base = new THREE.Color(style.ground).convertSRGBToLinear();
+  const low = new THREE.Color(style.dark).convertSRGBToLinear();
+  const mixed = new THREE.Color();
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      const i = r * cols + c;
+      const z = data[i] / 10000;
+      positions.set([x0 + c * step, y0 + r * step, z], i * 3);
+      mixed.copy(low).lerp(base, Math.min(1, 0.35 + 0.75 * data[i] / top));
+      colours.set([mixed.r, mixed.g, mixed.b], i * 3);
+    }
+  }
+  const index = new Uint32Array((rows - 1) * (cols - 1) * 6);
+  let k = 0;
+  for (let r = 0; r < rows - 1; r++) {
+    for (let c = 0; c < cols - 1; c++) {
+      const a = r * cols + c, b = a + 1, d = a + cols, e = d + 1;
+      index.set([a, b, e, a, e, d], k);
+      k += 6;
+    }
+  }
+  geometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+  geometry.setAttribute("color", new THREE.BufferAttribute(colours, 3));
+  geometry.setIndex(new THREE.BufferAttribute(index, 1));
+  geometry.computeVertexNormals();
+  const mesh = new THREE.Mesh(geometry, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.9, flatShading: false }));
+  mesh.receiveShadow = true;
+  mesh.castShadow = true;
+  return mesh;
+}
+
+function textSprite(text, colour) {
+  const canvas = document.createElement("canvas");
+  canvas.width = 256; canvas.height = 64;
+  const context = canvas.getContext("2d");
+  context.font = "600 36px Inter, system-ui, sans-serif";
+  context.textAlign = "center";
+  context.textBaseline = "middle";
+  context.fillStyle = colour;
+  context.globalAlpha = 0.75;
+  context.fillText(text, 128, 32);
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: texture, depthWrite: false, transparent: true }));
+  sprite.scale.set(0.24, 0.06, 1);
+  return sprite;
+}

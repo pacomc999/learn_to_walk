@@ -1,0 +1,10 @@
+{
+  "id": "running_track",
+  "name": "Running Track",
+  "description": "Flat ground, but the walker is asked for speeds up to a run.",
+  "values": {
+    "slowest_speed": 0.2,
+    "fastest_speed": 1.5,
+    "style": "desert"
+  }
+}

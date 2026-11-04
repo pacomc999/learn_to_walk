@@ -1,0 +1,11 @@
+{
+  "id": "grand_staircase",
+  "name": "Grand Staircase",
+  "description": "Flights of steps up and down, each step up to 3 cm high.",
+  "values": {
+    "terrain": "stairs",
+    "terrain_height": 3.0,
+    "gradually_harder": true,
+    "style": "street"
+  }
+}

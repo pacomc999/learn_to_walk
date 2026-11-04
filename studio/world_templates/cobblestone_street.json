@@ -1,0 +1,10 @@
+{
+  "id": "cobblestone_street",
+  "name": "Cobblestone Street",
+  "description": "Square cobblestones and gentle bumps up to 3 cm. Every step lands a little differently.",
+  "values": {
+    "terrain": "cobblestones",
+    "terrain_height": 3.0,
+    "style": "street"
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "id": "rolling_hills",
+  "name": "Rolling Hills",
+  "description": "Long, smooth hills to climb up and walk down, up to 25 cm tall.",
+  "values": {
+    "terrain": "hills",
+    "terrain_height": 25.0,
+    "gradually_harder": true
+  }
+}
