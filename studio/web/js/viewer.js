@@ -173,7 +173,12 @@ export class Viewer {
     plane.receiveShadow = true;
     plane.position.z = replay.ground && replay.ground.kind === "heights" ? -0.0008 : 0;
     this.world.add(plane);
-    if (replay.ground && replay.ground.kind === "heights") this.world.add(heightsMesh(replay.ground, style));
+    if (replay.ground && replay.ground.kind === "heights") {
+      const texture = plane.material.map.clone();
+      texture.repeat.set(1, 1);
+      texture.needsUpdate = true;
+      this.world.add(heightsMesh(replay.ground, style, texture, 0.5 * Math.max(size, 0.5)));
+    }
     this._addMetreMarks(replay, style);
   }
 
@@ -428,11 +433,12 @@ function groundTexture(style, styleName) {
   return texture;
 }
 
-function heightsMesh(ground, style) {
+function heightsMesh(ground, style, texture, tile) {
   const { rows, cols, step, x0, y0, data } = ground;
   const geometry = new THREE.BufferGeometry();
   const positions = new Float32Array(rows * cols * 3);
   const colours = new Float32Array(rows * cols * 3);
+  const uvs = new Float32Array(rows * cols * 2);
   let top = 1;
   for (const value of data) top = Math.max(top, value);
   const base = new THREE.Color(style.ground).convertSRGBToLinear();
@@ -443,7 +449,8 @@ function heightsMesh(ground, style) {
       const i = r * cols + c;
       const z = data[i] / 10000;
       positions.set([x0 + c * step, y0 + r * step, z], i * 3);
-      mixed.copy(low).lerp(base, Math.min(1, 0.35 + 0.75 * data[i] / top));
+      uvs.set([(x0 + c * step) / tile, (y0 + r * step) / tile], i * 2);
+      mixed.copy(low).lerp(base, Math.min(1, 0.85 + 0.15 * data[i] / top));
       colours.set([mixed.r, mixed.g, mixed.b], i * 3);
     }
   }
@@ -458,9 +465,10 @@ function heightsMesh(ground, style) {
   }
   geometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
   geometry.setAttribute("color", new THREE.BufferAttribute(colours, 3));
+  geometry.setAttribute("uv", new THREE.BufferAttribute(uvs, 2));
   geometry.setIndex(new THREE.BufferAttribute(index, 1));
   geometry.computeVertexNormals();
-  const mesh = new THREE.Mesh(geometry, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.9, flatShading: false }));
+  const mesh = new THREE.Mesh(geometry, new THREE.MeshStandardMaterial({ vertexColors: true, map: texture, roughness: 0.95 }));
   mesh.receiveShadow = true;
   return mesh;
 }

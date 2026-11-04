@@ -172,6 +172,7 @@ export function settingControl(setting, value, onChange, { defaultValue = settin
       const share = (current - setting.minimum) / (setting.maximum - setting.minimum || 1);
       range.style.setProperty("--fill", `${Math.max(0, Math.min(1, share)) * 100}%`);
       box.value = settingText(setting, current);
+      box.style.width = `${Math.max(7, box.value.length + 2)}ch`;
       showReset(current);
     };
     const set = (current, notify = true) => {

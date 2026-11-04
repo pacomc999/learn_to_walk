@@ -120,12 +120,13 @@ function trainingTab(body, id, details, setup) {
   const viewer = new Viewer(viewerBox, { pace: true });
   viewer.showMessage("The first walk appears after the first exam, within a minute or two of starting.");
   let shown = null;
+  let current = details;
   let lastBest = null;
   let lastReplayCount = -1;
 
   const showReplay = async (name) => {
     shown = name;
-    paintMoments(details);
+    paintMoments(current);
     viewer.setLoading(true);
     try {
       const response = await fetch(`/api/trainings/${id}/replay/${name}`);
@@ -161,6 +162,7 @@ function trainingTab(body, id, details, setup) {
     h("div", { class: "bar" }, h("div", { style: { width: `${Math.max(0, Math.min(100, quality || 0))}%` } })));
 
   const update = (data) => {
+    current = data;
     const status = data.status;
     const progress = data.progress;
     const exams = data.exams;
@@ -228,7 +230,7 @@ function storyCallout(status, exams, progress) {
   let kind = "", text = "";
   if (state === "error") { kind = "bad"; text = `<b>Training stopped with a problem.</b> ${status.message || ""} The log below has the details.`; }
   else if (state === "starting") text = "<b>Getting ready.</b> Building the practice worlds and a fresh brain. This takes a few seconds.";
-  else if (state === "interrupted" || state === "stopped") { kind = "warn"; text = `<b>Paused.</b> ${status.message || ""}`; }
+  else if (state === "interrupted" || state === "stopped") { kind = "warn"; text = `<b>Paused.</b> ${(status.message || "").replace(/^Paused\.\s*/, "")}`; }
   else if (state === "finished") { kind = "good"; text = `<b>Done.</b> ${status.message || ""} Its best walk covered ${fmtNumber(status.best_quality)}% of the asked distance. Try the Test drive tab to see it in other worlds.`; }
   else if (!last || status.steps < 300000) text = "<b>Flailing about.</b> At first the brain knows nothing, so it tries random moves and falls a lot. Falling quickly is normal for a while.";
   else if (seconds < 3) text = "<b>Learning to stay up.</b> Most attempts still end in a fall within a few seconds. The first real steps usually come after one to two million steps.";

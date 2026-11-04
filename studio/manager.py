@@ -220,14 +220,26 @@ def details(training_id: str) -> dict | None:
     if not setup:
         return None
     replays = sorted(path.stem for path in (folder / "replays").glob("exam_*.json"))
+    status = status_of(training_id)
+    _remember_speed(setup, status)
     # Every value filled in, so the page never meets a missing one
     setup["brain"] = clean_design(setup.get("brain"))
     setup["learning"] = clean_learning(setup.get("learning"))
     setup["world"] = world_from_dict(setup.get("world") or {}).to_dict()
-    return {"setup": setup, "status": status_of(training_id), "progress": read_rows(folder / "progress.csv"),
+    return {"setup": setup, "status": status, "progress": read_rows(folder / "progress.csv"),
             "exams": read_rows(folder / "exams.csv"), "replays": replays,
             "has_best": (folder / "replays" / "best.json").exists(),
             "has_brain": (folder / "brain" / "best.zip").exists(), "log": _log_tail(folder / "log.txt")}
+
+
+# Keep this computer's measured practice speed, so the Training plan can estimate how long a run takes
+def _remember_speed(setup: dict, status: dict) -> None:
+    speed = status.get("steps_per_second") or 0
+    if status.get("state") == "training" and speed > 0 and status.get("steps", 0) > 50_000:
+        worlds = int(clean_learning(setup.get("learning"))["parallel_worlds"])
+        known = library.system_facts().get("speeds", {}).get(str(worlds))
+        if known is None or abs(known - speed) > 0.1 * known:
+            library.remember_speed(worlds, speed)
 
 
 def _log_tail(path: Path, lines: int = 40) -> str:

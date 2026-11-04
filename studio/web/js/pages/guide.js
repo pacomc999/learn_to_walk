@@ -17,6 +17,16 @@ const SECTIONS = [
     "Practice includes random tries, which is how it discovers new moves, so practice scores are noisy. Every so often it takes an exam: the same attempts each time, at speeds spread over the asked range, with no randomness. The exam decides which brain is the best so far, and every exam is recorded as a 3D replay, so you can watch it grow up.",
     "\"How well it walks\" is the share of the asked distance it covered in the exam. 100% means it kept up with the asked speed for the whole attempt without falling.",
   ]],
+  ["Muscles: direct or springy", [
+    "Direct muscles (the standard) push with exactly the force the brain asks for, and let the joint swing freely when it asks for none, like real muscles. This is how the newest learn_to_walk ducks move. With nothing to hold it up, a new creature collapses at first: the brain has to learn to carry its own weight.",
+    "Springy muscles pull each joint toward an angle the brain picks, like a spring. They hold the body up from the very first moment, so learning starts easier, but the movements end up stiffer and more robotic.",
+    "With direct muscles, resting a joint against its end stop holds the body up for free. Walkers love this trick and learn odd crouches. The world setting \"Penalty for joints at their limits\" (on by default) takes a few points away for it. Switch it off to see what they do without it, or raise it carefully: when the penalty costs more than walking earns, walkers learn to fall on purpose.",
+  ]],
+  ["Build your own", [
+    "Choose \"Build your own\" on the Creature step. Start from a ready-made body (a four-legged table, a two-legged stick walker, a six-legged bug, a one-legged hopper) or from just a body, then attach parts: sticks, balls and plates. Click a part in the list or in the 3D view to change it.",
+    "Each part hangs on its parent and is joined to it by a joint: fixed, swinging forward and back, swinging sideways, twisting, or a hip that swings both ways. Every moving joint gets a muscle. Turn on \"Mirrored pair\" and the part gets a twin on the other side, with everything that hangs on it. Mirrored creatures can use the symmetric brain; lopsided ones get a free brain.",
+    "Mark the parts that touch the ground with \"Feels the ground\", so the brain knows when they land. Use the drop test to check that the muscles are strong enough to hold the body up.",
+  ]],
   ["The brain", [
     "The brain has layers of thinking cells. Each cell adds up what the layer before it says, with its own weights, and passes on a response. More layers and more cells can learn more complicated moves but need more practice. The standard brain (two layers of 256) taught the learn_to_walk ducks.",
     "The symmetric brain shares one way of thinking between the left and right side, mirrored. Animals are left/right symmetric, so this saves the brain from learning everything twice, and walking gaits with alternating legs appear much sooner.",
