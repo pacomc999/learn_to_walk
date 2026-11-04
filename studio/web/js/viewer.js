@@ -67,6 +67,20 @@ export class Viewer {
     this._buildTools();
     if (playbar) this._buildPlaybar();
 
+    // Clicking a part (without dragging the view) tells onPick its name
+    this.onPick = null;
+    let downAt = null;
+    this.renderer.domElement.addEventListener("pointerdown", (event) => { downAt = [event.clientX, event.clientY]; });
+    this.renderer.domElement.addEventListener("pointerup", (event) => {
+      if (!downAt || !this.onPick || Math.hypot(event.clientX - downAt[0], event.clientY - downAt[1]) > 4) return;
+      const box = this.renderer.domElement.getBoundingClientRect();
+      const pointer = new THREE.Vector2(((event.clientX - box.left) / box.width) * 2 - 1, -((event.clientY - box.top) / box.height) * 2 + 1);
+      const ray = new THREE.Raycaster();
+      ray.setFromCamera(pointer, this.camera);
+      const hit = ray.intersectObjects(this.meshes, false)[0];
+      this.onPick(hit ? hit.object.userData.name : null);
+    });
+
     this.resizeObserver = new ResizeObserver(() => this._resize());
     this.resizeObserver.observe(container);
     this._resize();
@@ -164,6 +178,7 @@ export class Viewer {
   }
 
   _addMetreMarks(replay, style) {
+    if (replay.style === "studio") return;  // the plain studio floor of the creature preview has no track
     const size = Math.max(replay.size || 1, 0.6);
     const xs = replay.frames.length ? replay.frames.map((frame) => frame[0]) : [0];
     const last = Math.ceil(Math.max(...xs, 2) + 3);

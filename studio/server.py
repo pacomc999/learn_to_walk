@@ -18,7 +18,7 @@ from urllib.parse import parse_qs, urlparse
 from studio import library, manager, previews
 from studio.brain import SETTING_GROUPS as BRAIN_GROUPS
 from studio.brain import default_design
-from studio.creatures import ANIMALS
+from studio.creatures import ANIMALS, custom
 from studio.creatures.kit import default_values
 from studio.learning import SETTING_GROUPS as LEARNING_GROUPS
 from studio.learning import default_learning
@@ -55,9 +55,13 @@ LEARNING_PRESETS = [
 def catalog() -> dict:
     animals = []
     for module in ANIMALS.values():
-        animals.append({"key": module.KEY, "name": module.NAME, "description": module.DESCRIPTION,
-                        "groups": [group.to_dict() for group in module.SETTING_GROUPS],
-                        "defaults": default_values(module.SETTING_GROUPS)})
+        entry = {"key": module.KEY, "name": module.NAME, "description": module.DESCRIPTION,
+                 "groups": [group.to_dict() for group in module.SETTING_GROUPS],
+                 "defaults": default_values(module.SETTING_GROUPS)}
+        if module is custom:
+            entry["defaults"]["body"] = custom.default_body()
+            entry["templates"] = [{"key": key, **template} for key, template in custom.TEMPLATES.items()]
+        animals.append(entry)
     return {
         "animals": animals,
         "world_groups": [group.to_dict() for group in WORLD_GROUPS],

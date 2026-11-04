@@ -5,6 +5,7 @@ import { icon, animalArt, worldArt } from "../icons.js";
 import { Viewer } from "../viewer.js";
 import { store, go } from "../app.js";
 import { networkDiagram } from "./network.js";
+import { builderPanel } from "./builder.js";
 
 const STEPS = [
   { key: "creature", title: "Creature", sub: "Body, legs and muscles" },
@@ -140,8 +141,12 @@ async function creatureStep(body, draft) {
       viewer.load(preview, { keepCamera: !reframe && viewer.lastAnimal === draft.creature.animal });
       viewer.lastAnimal = draft.creature.animal;
       const facts = preview.facts;
-      viewer.setChips([["Weight", `${fmtNumber(facts.mass_kg, 2)} kg`], ["Height", `${fmtNumber(facts.height_cm, 0)} cm`],
-        ["Motors", String(facts.motors)], ["Feet", String(facts.feet)], ["Strongest muscle", `${fmtNumber(facts.strongest_motor_nm, 1)} N m`]]);
+      const chips = [["Weight", `${fmtNumber(facts.mass_kg, 2)} kg`], ["Height", `${fmtNumber(facts.height_cm, 0)} cm`],
+        ["Motors", String(facts.motors)], ["Feels the ground with", `${facts.feet} part${facts.feet === 1 ? "" : "s"}`],
+        ["Strongest muscle", `${fmtNumber(facts.strongest_motor_nm, 1)} N m`]];
+      if (draft.creature.animal === "custom") chips.push(["Symmetric brain", facts.symmetric_ok ? "possible" : "not possible (lopsided)"]);
+      viewer.setChips(chips);
+      if (!facts.motors) viewer.banner("No motors yet: give a part a joint so the brain has something to move.", "bad", 0);
       viewer.banner("");
     } catch (error) {
       toast("Could not build this creature", error.message, "bad");
@@ -158,8 +163,8 @@ async function creatureStep(body, draft) {
       viewer.load(replay, { keepCamera: true });
       viewer.lastAnimal = draft.creature.animal;
       const stats = replay.stats;
-      if (stats.stood) viewer.banner("It stands steady with its muscles holding still.", "good", 6);
-      else viewer.banner(`It falls over after ${fmtNumber(stats.seconds, 1)} s. Learning can still fix that, or try stronger muscles or bigger feet.`, "bad", 8);
+      if (stats.stood) viewer.banner("It stands: its muscles are strong enough to hold its pose.", "good", 6);
+      else viewer.banner(`It falls over after ${fmtNumber(stats.seconds, 1)} s holding its pose. Learning may still fix that, or try stronger muscles or a wider stance.`, "bad", 8);
     } catch (error) {
       toast("The drop test failed", error.message, "bad");
     } finally {
@@ -174,7 +179,8 @@ async function creatureStep(body, draft) {
     const colours = on ? draft.creature.values : option.defaults;
     picker.append(h("button", { class: `pick ${on ? "on" : ""}`, onclick: () => {
       if (option.key === draft.creature.animal) return;
-      draft.creature = { animal: option.key, name: `My ${option.name.toLowerCase()}`, values: { ...option.defaults }, id: null };
+      draft.creature = { animal: option.key, name: option.key === "custom" ? "My creation" : `My ${option.name.toLowerCase()}`,
+        values: JSON.parse(JSON.stringify(option.defaults)), id: null };
       persist();
       go("#/new/creature");
     } },
@@ -194,7 +200,7 @@ async function creatureStep(body, draft) {
   savedSelect.addEventListener("change", () => {
     const item = saved.find((entry) => entry.id === savedSelect.value);
     if (!item) return;
-    draft.creature = { animal: item.animal, name: item.name, values: { ...animal.defaults, ...item.values }, id: item.id };
+    draft.creature = { animal: item.animal, name: item.name, values: { ...JSON.parse(JSON.stringify(animal.defaults)), ...item.values }, id: item.id };
     persist();
     go("#/new/creature");
   });
@@ -209,6 +215,8 @@ async function creatureStep(body, draft) {
       toast(`Applied "${idea.name}"`, "Every slider can still be changed.");
     } }, idea.name)));
 
+  const isCustom = animal.key === "custom";
+  const builder = isCustom ? builderPanel(draft.creature, animal, viewer, (now) => { persist(); if (now) refresh(true); else refreshSoon(); }) : null;
   const groups = settingGroups(animal.groups, draft.creature.values, () => { persist(); refreshSoon(); }, {
     open: ["size", "legs"], defaults: animal.defaults,
     onHover: (key) => {
@@ -235,15 +243,17 @@ async function creatureStep(body, draft) {
       h("div", { class: "grid grid-2", style: { gap: "10px" } },
         h("div", {}, h("div", { class: "field-label", style: { marginBottom: "6px" } }, "Name"), nameInput),
         h("div", {}, h("div", { class: "field-label", style: { marginBottom: "6px" } }, "From your library"), savedSelect)),
-      h("div", {}, h("div", { class: "field-label", style: { marginBottom: "8px" } }, "Quick ideas"), ideas),
+      isCustom ? null : h("div", {}, h("div", { class: "field-label", style: { marginBottom: "8px" } }, "Quick ideas"), ideas),
       h("div", { class: "btn-row" },
         h("button", { class: "btn small", onclick: () => saveCreature(false), html: `${icon.save}<span>${draft.creature.id ? "Save changes" : "Save to library"}</span>` }),
         draft.creature.id ? h("button", { class: "btn small ghost", onclick: () => saveCreature(true), html: `${icon.copy}<span>Save as new</span>` }) : null,
-        h("button", { class: "btn small ghost", onclick: () => {
-          draft.creature.values = { ...animal.defaults };
+        isCustom ? null : h("button", { class: "btn small ghost", onclick: () => {
+          draft.creature.values = JSON.parse(JSON.stringify(animal.defaults));
           persist();
           go("#/new/creature");
         }, html: `${icon.reset}<span>All standard</span>` }))),
+    builder ? builder.element : null,
+    builder ? h("div", { style: { height: "12px" } }) : null,
     groups);
 
   await refresh(true);
@@ -353,6 +363,10 @@ async function brainStep(body, draft) {
         statCard("Thinking cells", String(brain.layers.reduce((a, b) => a + b, 0)), `${brain.layers.length} layer${brain.layers.length > 1 ? "s" : ""}`),
         statCard("Commands out", String(info.outputs), "one per motor"),
         statCard("Judge", fmtNumber(info.weights.judge), "numbers in the judge network"));
+      if (!info.symmetric_ok && brain.values.symmetric) {
+        explain.replaceChildren(h("div", { class: "callout warn", html: `${icon.info}<div><b>This creature is lopsided</b>: it has parts off the middle line without a mirrored twin, so its brain cannot be left/right symmetric. It will get a free brain instead. Make those parts mirrored pairs (or put them on the middle line) to use the symmetric one.</div>` }));
+        return;
+      }
       explain.replaceChildren(h("div", { class: `callout ${brain.values.symmetric ? "good" : ""}`, html: `${icon.info}<div>${brain.values.symmetric
         ? `<b>Symmetric brain.</b> One network thinks for the left side and, looking at the world mirrored, for the right side. The ${info.left_motors} motors of each side share what they learn${info.middle_motors ? `, and the ${info.middle_motors} middle motor${info.middle_motors > 1 ? "s" : ""} (neck, tail) combine both views` : ""}. Walking gaits come much sooner.`
         : "<b>Free brain.</b> Every motor has its own outputs and the two sides learn separately. Slower to learn, but it can find lopsided ways to move."}</div>` }));
@@ -522,7 +536,9 @@ async function planStep(body, draft) {
         h("div", {}, h("div", { class: "faint", style: { fontSize: "12px" } }, "Creature"), h("h3", {}, draft.creature.name || animal.name)),
         h("button", { class: "btn small ghost", style: { marginLeft: "auto" }, onclick: () => go("#/new/creature") }, "Change")),
       h("dl", { class: "kv" }, h("dt", {}, "Animal"), h("dd", {}, animal.name),
-        h("dt", {}, "Changed settings"), h("dd", {}, String(changedCount(draft.creature.values, animal.defaults))))),
+        ...(animal.key === "custom"
+          ? [h("dt", {}, "Parts"), h("dd", {}, String(draft.creature.values.body.parts.length + 1))]
+          : [h("dt", {}, "Changed settings"), h("dd", {}, String(changedCount(draft.creature.values, animal.defaults)))]))),
     h("div", { class: "card card-pad summary-card" },
       h("div", { class: "icon-head" }, h("div", { class: "art", style: { overflow: "hidden" }, html: worldArt(values) }),
         h("div", {}, h("div", { class: "faint", style: { fontSize: "12px" } }, "World"), h("h3", {}, draft.world.name)),
@@ -547,5 +563,5 @@ function defaultName(draft) {
 }
 
 function changedCount(values, defaults) {
-  return Object.keys(defaults).filter((key) => values[key] !== defaults[key]).length;
+  return Object.keys(defaults).filter((key) => key !== "body" && values[key] !== defaults[key]).length;
 }

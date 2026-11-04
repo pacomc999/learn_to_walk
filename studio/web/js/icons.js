@@ -102,7 +102,25 @@ function puppyArt(c = {}) {
   </svg>`;
 }
 
+function customArt(values = {}) {
+  const body = (values && values.body) || {};
+  const torso = (body.torso && body.torso.colour) || "#f59e0b";
+  const parts = body.parts || [];
+  const leg = (parts[0] && parts[0].colour) || "#4f46e5";
+  const tip = (parts[1] && parts[1].colour) || leg;
+  return `<svg class="animal" viewBox="0 0 120 100" xmlns="http://www.w3.org/2000/svg">
+    <ellipse cx="60" cy="94" rx="36" ry="4" fill="rgba(0,0,0,0.12)"/>
+    <path d="M34 52 L28 70 M86 52 L92 70 M46 54 L44 70 M74 54 L76 70" stroke="${leg}" stroke-width="6" stroke-linecap="round"/>
+    <path d="M28 70 L30 88 M92 70 L90 88 M44 70 L42 88 M76 70 L78 88" stroke="${tip}" stroke-width="5" stroke-linecap="round"/>
+    <g fill="#fff" stroke="#1f2937" stroke-width="1.5"><circle cx="28" cy="70" r="3.5"/><circle cx="92" cy="70" r="3.5"/><circle cx="44" cy="70" r="3.5"/><circle cx="76" cy="70" r="3.5"/></g>
+    <rect x="24" y="36" width="72" height="20" rx="5" fill="${torso}"/>
+    <circle cx="86" cy="43" r="3" fill="#1f2937"/>
+    <path d="M60 36 L60 26" stroke="#1f2937" stroke-width="2"/><circle cx="60" cy="24" r="3" fill="#ef4444"/>
+  </svg>`;
+}
+
 export function animalArt(key, colours) {
+  if (key === "custom") return customArt(colours);
   return key === "puppy" ? puppyArt(colours) : duckArt(colours);
 }
 

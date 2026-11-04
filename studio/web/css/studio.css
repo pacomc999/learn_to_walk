@@ -342,7 +342,7 @@ textarea.input { height: auto; padding: 10px 12px; resize: vertical; }
 .viewer-tall { height: calc(100vh - 260px); min-height: 460px; }
 .viewer-mid { height: 480px; }
 .viewer-overlay { position: absolute; left: 14px; top: 14px; display: flex; gap: 8px; flex-wrap: wrap; pointer-events: none;
-  right: 14px; }
+  right: 140px; }
 .viewer-overlay .chip { pointer-events: auto; }
 .chip { background: rgba(255, 255, 255, 0.86); backdrop-filter: blur(8px); border: 1px solid rgba(0, 0, 0, 0.06);
   color: #111827; border-radius: 10px; padding: 6px 10px; font-size: 12.5px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08); }
@@ -540,6 +540,24 @@ textarea.input { height: auto; padding: 10px 12px; resize: vertical; }
 .spinner { width: 16px; height: 16px; border-radius: 50%; border: 2px solid currentColor; border-right-color: transparent;
   animation: spin 0.7s linear infinite; display: inline-block; }
 @keyframes spin { to { transform: rotate(360deg); } }
+
+/* ---------- Build your own ---------- */
+
+.parts-tree { display: flex; flex-direction: column; gap: 2px; }
+.part-row { display: flex; align-items: center; gap: 10px; padding: 7px 8px 7px 10px; border-radius: 9px; cursor: pointer;
+  border: 1px solid transparent; position: relative; }
+.part-row:hover { background: var(--surface-2); }
+.part-row.on { background: var(--accent-soft); border-color: var(--accent); }
+.part-row .swatch { width: 12px; height: 12px; border-radius: 4px; flex: none; box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.12); }
+.part-text { min-width: 0; flex: 1; }
+.part-name { font-weight: 580; font-size: 13.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.part-meta { font-size: 11.5px; color: var(--text-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.part-actions { display: flex; gap: 2px; opacity: 0; transition: opacity 0.15s; }
+.part-row:hover .part-actions, .part-row.on .part-actions { opacity: 1; }
+.edit-section { margin-top: 14px; }
+.edit-title { font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.07em; color: var(--text-3); font-weight: 650;
+  padding-bottom: 2px; border-bottom: 1px solid var(--border); }
+.edit-section .field:first-of-type { border-top: 0; }
 
 /* ---------- Smaller screens ---------- */
 

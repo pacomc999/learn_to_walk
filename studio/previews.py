@@ -54,7 +54,7 @@ def creature_facts(build, scene) -> dict:
             "feet": len(build.feet), "motor_names": build.motor_names,
             "motor_groups": sorted({motor.group for motor in build.motors}),
             "strongest_motor_nm": round(strongest, 2),
-            "senses": observation_size(build, {"feet": True, "ground": False}),
+            "senses": observation_size(build, {"feet": True, "ground": False}), "symmetric_ok": build.symmetric_ok,
             "senses_with_eyes": observation_size(build, {"feet": True, "ground": True}),
             "joint_ranges_deg": {joint.name: round(float(np.degrees(joint.range[1])), 1) for joint in joints}}
 

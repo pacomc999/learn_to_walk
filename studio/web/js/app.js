@@ -21,7 +21,7 @@ export const store = {
     const world = this.catalog.world_templates[0];
     return {
       name: "",
-      creature: { animal: animal.key, name: `My ${animal.name.toLowerCase()}`, values: { ...animal.defaults }, id: null },
+      creature: { animal: animal.key, name: animal.key === "custom" ? "My creation" : `My ${animal.name.toLowerCase()}`, values: JSON.parse(JSON.stringify(animal.defaults)), id: null },
       world: JSON.parse(JSON.stringify(world)),
       brain: JSON.parse(JSON.stringify(this.catalog.brain_default)),
       brainPreset: "standard",
@@ -36,7 +36,7 @@ export const store = {
       const saved = JSON.parse(localStorage.getItem(DRAFT_KEY) || "null");
       if (saved && saved.creature && saved.world && saved.brain && saved.learning) {
         const animal = this.animal(saved.creature.animal);
-        saved.creature.values = { ...animal.defaults, ...saved.creature.values };
+        saved.creature.values = { ...JSON.parse(JSON.stringify(animal.defaults)), ...saved.creature.values };
         saved.learning = { ...this.catalog.learning_default, ...saved.learning };
         this.draft = saved;
         return;
