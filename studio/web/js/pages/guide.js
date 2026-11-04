@@ -27,6 +27,16 @@ const SECTIONS = [
     "Each part hangs on its parent and is joined to it by a joint: fixed, swinging forward and back, swinging sideways, twisting, or a hip that swings both ways. Every moving joint gets a muscle. Turn on \"Mirrored pair\" and the part gets a twin on the other side, with everything that hangs on it. Mirrored creatures can use the symmetric brain; lopsided ones get a free brain.",
     "Mark the parts that touch the ground with \"Feels the ground\", so the brain knows when they land. Use the drop test to check that the muscles are strong enough to hold the body up.",
   ]],
+  ["Designing the scoring", [
+    "The World step lets you rewrite the rules of the game. Forward points can follow three shapes: exactly the asked speed (the most points at that speed, fewer when slower or faster), close to the asked speed (a gentler bell curve), or as fast as possible. Then come staying up, saving energy, walking straight and a cost for falling.",
+    "Style rules add opinions about how it should move: keep the body level, stand tall, smooth moves, lift its feet, face forward, a steady ride and no leaning on joint limits. Each has a switch and a strength. Small strengths nudge; big ones can take over and teach odd habits.",
+    "Scoring at a glance does the sums for you: what standing still, walking, a crouched walk and rushing are worth per second, and warnings when a trap opens up. During training, the chart \"Where its points come from\" shows which rules it is actually earning or paying.",
+  ]],
+  ["Watching, testing and racing", [
+    "Every exam is recorded in 3D. On a walker's page you can scroll through them to watch it grow up, and the panel Inside the walk shows its gait (when each foot is on the ground) and what the brain tells every muscle.",
+    "The Test drive tab sends a trained walker into any world at any speed, and the Report card runs seven challenge ladders (speed, cobblestones, stairs, ice, a backpack, wind, other planets) and hands out medals. Race puts up to six walkers side by side. Every 3D view can save a picture or record a video.",
+    "Your learn_to_walk ducks can come along: on My walkers, Bring over learn_to_walk ducks reads your catalogue and turns every duck with a kept brain into a walker here.",
+  ]],
   ["The brain", [
     "The brain has layers of thinking cells. Each cell adds up what the layer before it says, with its own weights, and passes on a response. More layers and more cells can learn more complicated moves but need more practice. The standard brain (two layers of 256) taught the learn_to_walk ducks.",
     "The symmetric brain shares one way of thinking between the left and right side, mirrored. Animals are left/right symmetric, so this saves the brain from learning everything twice, and walking gaits with alternating legs appear much sooner.",

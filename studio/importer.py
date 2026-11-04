@@ -32,12 +32,6 @@ SETTING = {"neck": "neck_strength", "hip": "hip_strength", "knee": "knee_strengt
 
 # ---------- Finding the ducks ----------
 
-# Where a learn_to_walk folder usually is: next to the studio, or in the home folder
-def likely_folders() -> list[Path]:
-    home = Path.home()
-    return [library.PROJECT_ROOT.parent / "learn_to_walk", home / "learn_to_walk", home / "Documents" / "learn_to_walk",
-            home / "Desktop" / "learn_to_walk", home / "source" / "repos" / "learn_to_walk"]
-
 
 def find_ducks(folder: str) -> list[dict]:
     root = Path(folder).expanduser()

@@ -205,7 +205,8 @@ def summary(training_id: str) -> dict | None:
             "creature_values": setup["creature"].get("values", {}),
             "world": {"name": setup["world"].get("name"), "id": setup["world"].get("id"),
                       "style": setup["world"].get("values", {}).get("style")},
-            "status": status_of(training_id), "has_brain": (folder / "brain" / "best.zip").exists()}
+            "status": status_of(training_id), "has_brain": (folder / "brain" / "best.zip").exists(),
+            "imported": bool(setup.get("imported_from"))}
 
 
 def list_trainings() -> list[dict]:

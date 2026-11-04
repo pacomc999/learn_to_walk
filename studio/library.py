@@ -112,6 +112,14 @@ def delete_training(training_id: str) -> None:
         shutil.rmtree(path, ignore_errors=True)
 
 
+# Where a learn_to_walk folder usually is: next to the studio, or in the home folder
+def likely_learn_to_walk_folders() -> list[Path]:
+    home = Path.home()
+    return [PROJECT_ROOT.parent / "learn_to_walk", home / "learn_to_walk", home / "Documents" / "learn_to_walk",
+            home / "Desktop" / "learn_to_walk", home / "source" / "repos" / "learn_to_walk",
+            home / "Documents" / "GitHub" / "learn_to_walk"]
+
+
 # Measured practice speed of this computer, so the page can estimate how long training takes
 def system_facts() -> dict:
     return read_json(LIBRARY / "system.json", {}) or {}

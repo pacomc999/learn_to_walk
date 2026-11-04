@@ -181,10 +181,11 @@ class StudioHandler(BaseHTTPRequestHandler):
         raise ValueError("Unknown preview.")
 
     def _import(self, method: str, parts: list[str]):
-        from studio import importer  # loads PyTorch, so only when needed
         action = parts[0] if parts else ""
         if action == "guess" and method == "GET":
-            return {"folder": next((str(path) for path in importer.likely_folders() if path.is_dir()), "")}
+            found = [path for path in library.likely_learn_to_walk_folders() if (path / "duck_catalogue").is_dir()]
+            return {"folder": str(found[0]) if found else ""}
+        from studio import importer  # loads PyTorch, so only when needed
         body = self.read_body()
         if action == "list" and method == "POST":
             return importer.find_ducks(str(body.get("folder") or ""))

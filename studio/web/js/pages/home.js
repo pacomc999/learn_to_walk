@@ -18,6 +18,16 @@ export async function render(main) {
       h("button", { class: "btn light big", onclick: () => go("#/guide"), html: `${icon.book}<span>How it works</span>` })),
     h("div", { class: "hero-art", html: `<div style="display:flex;gap:6px;align-items:flex-end;height:100%">${animalArt("puppy").replace('class="animal"', 'style="height:150px"')}${animalArt("duck").replace('class="animal"', 'style="height:170px"')}</div>` })));
 
+  // A learn_to_walk folder nearby, and none of its ducks brought over yet: offer it
+  const guess = await api("import/guess").catch(() => ({ folder: "" }));
+  if (guess.folder && !trainings.some((t) => t.imported)) {
+    page.append(h("div", { class: "callout", style: { marginTop: "16px", alignItems: "center" } },
+      h("div", { style: { width: "36px", height: "28px", flex: "none" }, html: animalArt("duck").replace('class="animal"', 'style="width:36px;height:28px"') }),
+      h("div", { style: { flex: 1 } }, h("b", {}, "Your learn_to_walk ducks are here. "),
+        `Found ${guess.folder}. Bring the trained ducks over to test drive them in the new worlds, race them or teach them new tricks.`),
+      h("button", { class: "btn small primary", onclick: async () => (await import("./importer.js")).importDialog() }, "Bring them over")));
+  }
+
   const steps = [
     ["Design a creature", "A duck or a puppy, with longer legs, bigger feet or stronger muscles: every slider shows up in 3D."],
     ["Pick its world", "Flat grass, cobblestones, hills, stairs, ice or the Moon. Or make your own."],
