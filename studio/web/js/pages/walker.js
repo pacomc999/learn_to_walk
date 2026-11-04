@@ -163,6 +163,7 @@ function trainingTab(body, id, details, setup) {
       const replay = await response.json();
       viewer.load(replay);
       gait.show(replay);
+      if (name === "best") saveThumbnail(id, viewer, replay);
       const s = replay.stats;
       viewer.setChips([
         [name === "best" ? "Best walk so far" : `At ${fmtSteps(replay.steps)} steps`, s.fell ? `fell after ${fmtNumber(s.seconds, 1)} s` : `${fmtNumber(s.seconds, 0)} s without falling`],
@@ -250,6 +251,23 @@ function trainingTab(body, id, details, setup) {
   };
   update(details);
   return { update, dispose: () => viewer.dispose() };
+}
+
+// A picture of the best walk for the walker's card, taken once it is under way (once per best brain)
+function saveThumbnail(id, viewer, replay) {
+  const key = `walk-studio-thumb-${id}`;
+  const stamp = `${replay.steps}`;
+  try { if (localStorage.getItem(key) === stamp) return; } catch { /* fine */ }
+  setTimeout(async () => {
+    if (viewer.disposed || viewer.replay !== replay) return;
+    const playing = viewer.playing;
+    viewer.seek(Math.min(0.6, viewer.duration));  // near the start, standing, framed by the camera
+    const blob = await viewer.thumbnail();
+    if (playing) viewer.play();
+    if (!blob) return;
+    await fetch(`/api/trainings/${id}/thumbnail`, { method: "POST", headers: { "Content-Type": "image/jpeg" }, body: blob });
+    try { localStorage.setItem(key, stamp); } catch { /* fine */ }
+  }, 400);
 }
 
 function chartCard(title, description, series, options) {

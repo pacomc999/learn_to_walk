@@ -466,6 +466,31 @@ export class Viewer {
     return this.renderer.domElement.toDataURL("image/png");
   }
 
+  // A small JPEG of the view as a data address, for saved library items
+  thumbnailUrl(width = 320, height = 200) {
+    return this._thumbnailCanvas(width, height).toDataURL("image/jpeg", 0.8);
+  }
+
+  _thumbnailCanvas(width, height) {
+    this.renderer.render(this.scene, this.camera);
+    const source = this.renderer.domElement;
+    const canvas = document.createElement("canvas");
+    canvas.width = width; canvas.height = height;
+    const context = canvas.getContext("2d");
+    const scale = Math.max(width / source.width, height / source.height);
+    const w = source.width * scale, h = source.height * scale;
+    context.fillStyle = "#dfe7ef";
+    context.fillRect(0, 0, width, height);
+    context.drawImage(source, (width - w) / 2, (height - h) / 2, w, h);
+    return canvas;
+  }
+
+  // A small JPEG of the view, framed on the walker, for cards (resolves to a Blob)
+  thumbnail(width = 480, height = 300) {
+    const canvas = this._thumbnailCanvas(width, height);
+    return new Promise((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.82));
+  }
+
   dispose() {
     if (this.recorder) this.recorder.stop();
     this.disposed = true;

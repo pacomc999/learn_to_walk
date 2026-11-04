@@ -29,7 +29,7 @@ export async function render(main) {
   }
 
   const steps = [
-    ["Design a creature", "A duck or a puppy, with longer legs, bigger feet or stronger muscles: every slider shows up in 3D."],
+    ["Design a creature", "A duck, a puppy or your own creation of sticks and motors. Every slider and part shows up in 3D."],
     ["Pick its world", "Flat grass, cobblestones, hills, stairs, ice or the Moon. Or make your own."],
     ["Shape its brain", "How many layers of thinking cells, what it can sense, and whether its left and right sides think alike."],
     ["Train and watch", "It practises in many worlds at once. Follow the charts and watch its walk improve exam by exam."],

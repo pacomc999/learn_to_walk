@@ -9,9 +9,12 @@ export function walkerCard(training) {
   const style = STYLE_COLOURS[training.world.style] || STYLE_COLOURS.meadow;
   const share = status.total_steps ? Math.min(1, (status.steps || 0) / status.total_steps) : 0;
   return h("div", { class: "card walker-card", onclick: () => go(`#/walker/${training.id}`) },
-    h("div", { class: "top", style: { background: `linear-gradient(180deg, ${style.sky[0]}, ${style.sky[1]} 70%, ${style.ground} 70%)` } },
-      h("div", { html: animalArt(training.creature.animal, training.creature_values) }),
-      pillForState(status.state)),
+    training.thumbnail
+      ? h("div", { class: "top", style: { background: `center / cover no-repeat url(/api/trainings/${training.id}/thumbnail?v=${training.thumbnail})` } },
+        pillForState(status.state))
+      : h("div", { class: "top", style: { background: `linear-gradient(180deg, ${style.sky[0]}, ${style.sky[1]} 70%, ${style.ground} 70%)` } },
+        h("div", { html: animalArt(training.creature.animal, training.creature_values) }),
+        pillForState(status.state)),
     h("div", { class: "bottom" },
       h("div", { class: "name" }, training.name),
       h("div", { class: "meta" }, h("span", {}, training.world.name), h("span", {}, "·"), h("span", {}, fmtWhen(training.created))),
@@ -50,8 +53,8 @@ export async function render(main) {
   page.append(h("div", { class: "page-head" },
     h("div", {}, h("h1", {}, "My walkers"), h("div", { class: "sub" }, "Every creature you have trained, with how far along it is and how well it walks.")),
     h("div", { class: "btn-row" },
-      h("button", { class: "btn", onclick: openShared, html: `${icon.open}<span>Open a shared walker</span>` }),
-      h("button", { class: "btn", onclick: async () => (await import("./importer.js")).importDialog(), html: `${icon.folder}<span>Bring over learn_to_walk ducks</span>` }),
+      h("button", { class: "btn", onclick: openShared, html: `${icon.open}<span>Open a shared walker</span>`, title: "Open a .walker file someone shared" }),
+      h("button", { class: "btn", onclick: async () => (await import("./importer.js")).importDialog(), html: `${icon.folder}<span>From learn_to_walk</span>`, title: "Bring over the trained ducks of a learn_to_walk folder" }),
       h("button", { class: "btn primary", onclick: () => go("#/new/creature"), html: `${icon.plus}<span>New walker</span>` }))));
   if (!trainings.length) {
     page.append(h("div", { class: "empty" }, h("div", { html: animalArt("puppy") }), h("div", { class: "t" }, "Nothing trained yet"),

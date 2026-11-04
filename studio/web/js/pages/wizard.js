@@ -3,7 +3,7 @@
 import { h, api, toast, debounce, settingGroups, fmtNumber, fmtDuration, fmtSteps, askName, svg, clear } from "../ui.js";
 import { icon, animalArt, worldArt } from "../icons.js";
 import { Viewer } from "../viewer.js";
-import { store, go } from "../app.js";
+import { store, go, askForNotifications } from "../app.js";
 import { networkDiagram } from "./network.js";
 import { builderPanel } from "./builder.js";
 import { scoringGlance } from "./scoring.js";
@@ -229,7 +229,8 @@ async function creatureStep(body, draft) {
   const saveCreature = async (asNew) => {
     const name = await askName(asNew || !draft.creature.id ? "Save this creature" : "Save changes", "It goes into your library, so you can use it again later.", draft.creature.name);
     if (!name) return;
-    const item = await api("creatures", { method: "POST", body: { id: asNew ? null : draft.creature.id, name, animal: draft.creature.animal, values: draft.creature.values } });
+    const item = await api("creatures", { method: "POST", body: { id: asNew ? null : draft.creature.id, name, animal: draft.creature.animal,
+      values: draft.creature.values, thumbnail: viewer.thumbnailUrl() } });
     draft.creature.id = item.id;
     draft.creature.name = item.name;
     nameInput.value = item.name;
@@ -302,7 +303,7 @@ async function worldStep(body, draft) {
     h("div", { class: "field-label" }, title),
     h("div", { class: "picker", style: { gridTemplateColumns: "repeat(auto-fill, minmax(124px, 1fr))" } },
       ...items.map((world) => h("button", { class: `pick ${world.id === draft.world.id ? "on" : ""}`, title: world.description, onclick: () => {
-        draft.world = JSON.parse(JSON.stringify({ ...world, values: { ...worldDefaults, ...world.values } }));
+        draft.world = JSON.parse(JSON.stringify({ ...world, thumbnail: undefined, values: { ...worldDefaults, ...world.values } }));
         if (!templates.includes(world)) draft.world.builtin = false;
         persist();
         go("#/new/world");
@@ -324,7 +325,7 @@ async function worldStep(body, draft) {
   const saveWorld = async () => {
     const name = await askName("Save this world", "It goes into your library, so you can use it again.", draft.world.name);
     if (!name) return;
-    const item = await api("worlds", { method: "POST", body: { ...draft.world, name } });
+    const item = await api("worlds", { method: "POST", body: { ...draft.world, name, thumbnail: viewer.thumbnailUrl() } });
     draft.world = item;
     persist();
     nameText.textContent = item.name;
@@ -556,6 +557,7 @@ async function planStep(body, draft) {
   const values = draft.world.values;
   const startButton = h("button", { class: "btn primary big", style: { width: "100%" }, html: `${icon.play}<span>Start training</span>` });
   startButton.addEventListener("click", async () => {
+    askForNotifications();
     startButton.disabled = true;
     startButton.innerHTML = `<span class="spinner"></span><span>Starting...</span>`;
     try {

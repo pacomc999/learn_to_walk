@@ -253,6 +253,16 @@ class StudioHandler(BaseHTTPRequestHandler):
             if found is None:
                 raise ValueError("That training was not found.")
             return found
+        if action == "thumbnail":
+            path = library.training_folder(training_id) / "thumbnail.jpg"
+            if method == "POST":
+                data = self.read_bytes()
+                if len(data) > 2_000_000 or not data.startswith(b"\xff\xd8"):
+                    raise ValueError("That is not a small JPEG picture.")
+                path.write_bytes(data)
+                return {"ok": True}
+            self.send_file(path, "image/jpeg")
+            return None
         if method == "GET" and action == "share":
             from studio import sharing
             body, filename = sharing.pack(training_id)

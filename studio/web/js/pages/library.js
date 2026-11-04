@@ -66,8 +66,11 @@ function card(kind, item) {
     toast("Deleted", item.name);
     go(`#/library/${kind}`);
   };
+  const picture = typeof item.thumbnail === "string" && item.thumbnail.startsWith("data:image/jpeg") ? item.thumbnail : null;
   return h("div", { class: "card walker-card", onclick: use },
-    h("div", { class: "top", style: { background: "var(--surface-2)", overflow: "hidden" }, html: art }),
+    picture
+      ? h("div", { class: "top", style: { background: `center / cover no-repeat url(${picture})` } })
+      : h("div", { class: "top", style: { background: "var(--surface-2)", overflow: "hidden" }, html: art }),
     h("div", { class: "bottom" },
       h("div", { class: "spread" }, h("div", { class: "name" }, item.name),
         h("button", { class: "btn ghost icon-btn small danger", title: "Delete", onclick: remove, html: icon.trash })),

@@ -8,7 +8,7 @@ from pathlib import PurePosixPath
 from studio import library
 
 # What goes into a .walker file: the recipe, the results and the brains (never the log or stop files)
-SHARED_FILES = ["setup.json", "status.json", "progress.csv", "exams.csv", "challenges.json"]
+SHARED_FILES = ["setup.json", "status.json", "progress.csv", "exams.csv", "challenges.json", "thumbnail.jpg"]
 SHARED_FOLDERS = ["brain", "replays"]
 MOST_BYTES = 300 * 1024 * 1024
 

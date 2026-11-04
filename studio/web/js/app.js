@@ -112,7 +112,7 @@ function navLink(item, path) {
 function paintRunning() {
   const box = document.getElementById("running");
   if (!box) return;
-  const running = store.trainings.filter((t) => ["starting", "training", "examining"].includes(t.status.state));
+  const running = store.trainings.filter((t) => ACTIVE_STATES.includes(t.status.state));
   box.replaceChildren(...running.slice(0, 2).map((t) => {
     const share = t.status.total_steps ? Math.min(1, (t.status.steps || 0) / t.status.total_steps) : 0;
     return h("div", { class: "running-card", onclick: () => { location.hash = `#/walker/${t.id}`; } },
@@ -122,11 +122,47 @@ function paintRunning() {
   }));
 }
 
+const ACTIVE_STATES = ["starting", "training", "examining"];
+
 async function pollTrainings() {
   try {
+    const before = Object.fromEntries(store.trainings.map((t) => [t.id, t.status.state]));
     store.trainings = await api("trainings");
     paintRunning();
+    paintTitle();
+    for (const training of store.trainings) {
+      const was = before[training.id];
+      if (ACTIVE_STATES.includes(was) && ["finished", "error"].includes(training.status.state)) announce(training);
+    }
   } catch { /* the server may be restarting */ }
+}
+
+// The tab title shows how far a running training is, so it can be followed from another tab
+function paintTitle() {
+  const running = store.trainings.find((t) => ACTIVE_STATES.includes(t.status.state));
+  if (!running) { document.title = "Walk Studio"; return; }
+  const share = running.status.total_steps ? Math.min(1, (running.status.steps || 0) / running.status.total_steps) : 0;
+  document.title = `(${Math.round(share * 100)}%) ${running.name} · Walk Studio`;
+}
+
+// A training finished: a message in the page, and a notification if the browser allows them
+function announce(training) {
+  const good = training.status.state === "finished";
+  const quality = training.status.best_quality;
+  const text = good ? `Its best walk covered ${Math.round(quality || 0)}% of the asked distance.` : training.status.message || "";
+  toast(good ? `${training.name} finished training` : `${training.name} stopped with a problem`, text, good ? "good" : "bad");
+  try {
+    if ("Notification" in window && Notification.permission === "granted") {
+      const note = new Notification(good ? `${training.name} finished training` : `${training.name} stopped`, { body: text });
+      note.onclick = () => { window.focus(); location.hash = `#/walker/${training.id}`; };
+    }
+  } catch { /* notifications are optional */ }
+}
+
+export function askForNotifications() {
+  try {
+    if ("Notification" in window && Notification.permission === "default") Notification.requestPermission();
+  } catch { /* optional */ }
 }
 
 // ---------- Router ----------

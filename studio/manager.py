@@ -247,7 +247,8 @@ def summary(training_id: str) -> dict | None:
             "world": {"name": setup["world"].get("name"), "id": setup["world"].get("id"),
                       "style": setup["world"].get("values", {}).get("style")},
             "status": status_of(training_id), "has_brain": (folder / "brain" / "best.zip").exists(),
-            "imported": bool(setup.get("imported_from"))}
+            "imported": bool(setup.get("imported_from")),
+            "thumbnail": int((folder / "thumbnail.jpg").stat().st_mtime) if (folder / "thumbnail.jpg").exists() else None}
 
 
 def list_trainings() -> list[dict]:
