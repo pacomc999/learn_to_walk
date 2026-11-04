@@ -8,6 +8,14 @@ import { store, go } from "../app.js";
 
 const ACTIVE = ["starting", "training", "examining"];
 
+// The parts of the score, as the world screen names them
+const PART_LABELS = [
+  ["speed", "Moving forward", "#6366f1"], ["alive", "Staying on its feet", "#10b981"], ["energy", "Energy", "#f59e0b"],
+  ["straight", "Drifting", "#0ea5e9"], ["fall", "Falling", "#ef4444"], ["end_stops", "Joint limits", "#a855f7"],
+  ["level", "Tilting", "#14b8a6"], ["crouch", "Crouching", "#84cc16"], ["smooth", "Jerky moves", "#ec4899"],
+  ["feet", "Lifting feet", "#22c55e"], ["heading", "Turning away", "#64748b"], ["ride", "Bouncing", "#f97316"],
+];
+
 export async function render(main, params) {
   const id = params[0];
   const tab = params[1] || "training";
@@ -192,11 +200,16 @@ function trainingTab(body, id, details, setup) {
     ];
     const lengthSeries = [{ name: "Seconds per attempt", colour: "#0ea5e9", points: progress.map((row) => [row.steps, row.seconds]), fill: true }];
     const fallSeries = [{ name: "Attempts that fell", colour: "#ef4444", points: progress.map((row) => [row.steps, row.fall_share === null ? null : row.fall_share * 100]), fill: true }];
+    const partSeries = PART_LABELS.map(([key, label, colour]) => ({ name: label, colour,
+      points: progress.map((row) => [row.steps, row[`pts_${key}`]]) }))
+      .filter((s) => s.points.some((p) => p[1] !== null && p[1] !== undefined && Math.abs(p[1]) > 0.05));
     charts.replaceChildren(
       chartCard("How well it walks", "In each exam: how much of the asked distance it covered without help.", qualitySeries, { yMin: 0, yMax: 100, yFormat: (v) => `${fmtNumber(v)}%` }),
       chartCard("Points", "What it is learning to collect. Practice includes its random tries; the exam does not.", scoreSeries, {}),
       chartCard("Staying up", "How long a practice attempt lasts before it falls or time runs out.", lengthSeries, { yMin: 0 }),
-      chartCard("Falls", "The share of practice attempts that end in a fall.", fallSeries, { yMin: 0, yMax: 100, yFormat: (v) => `${fmtNumber(v)}%` }));
+      chartCard("Falls", "The share of practice attempts that end in a fall.", fallSeries, { yMin: 0, yMax: 100, yFormat: (v) => `${fmtNumber(v)}%` }),
+      partSeries.length ? h("div", { style: { gridColumn: "1 / -1" } }, chartCard("Where its points come from",
+        "Points per practice attempt from each part of the score. Above zero it earns them, below zero it pays them.", partSeries, {})) : null);
     const log = document.getElementById("log");
     if (log) { log.textContent = data.log || "Nothing yet."; }
 

@@ -22,18 +22,33 @@ function niceTicks(low, high, count = 5) {
   return ticks;
 }
 
-export function lineChart(series, { height = 220, yFormat = (v) => fmtNumber(v, Math.abs(v) < 10 ? 1 : 0), xFormat = fmtSteps,
-  yMin = null, yMax = null, xLabel = "practice steps", band = null } = {}) {
+// The chart is drawn at its real width (so text never stretches) and redrawn when that width changes
+export function lineChart(series, options = {}) {
   const wrap = h("div", { class: "chart" });
-  const all = series.flatMap((s) => s.points).filter((p) => p[1] !== null && isFinite(p[1]));
+  const all = series.flatMap((s) => s.points).filter((p) => p[1] !== null && p[1] !== undefined && isFinite(p[1]));
   if (all.length < 1) {
     wrap.append(h("div", { class: "chart-empty" }, "Waiting for the first numbers..."));
     return wrap;
   }
-  const width = 640;
+  let drawnWidth = 0;
+  const draw = () => {
+    const width = Math.max(240, Math.round(wrap.clientWidth || 640));
+    if (Math.abs(width - drawnWidth) < 2) return;
+    drawnWidth = width;
+    wrap.replaceChildren(...drawChart(series, all, width, options));
+  };
+  const observer = new ResizeObserver(() => { if (!wrap.isConnected) { observer.disconnect(); return; } draw(); });
+  observer.observe(wrap);
+  requestAnimationFrame(draw);
+  return wrap;
+}
+
+function drawChart(series, all, width, { height = 220, yFormat = (v) => fmtNumber(v, Math.abs(v) < 10 ? 1 : 0), xFormat = fmtSteps,
+  yMin = null, yMax = null, xLabel = "practice steps", band = null } = {}) {
   const pad = { left: 48, right: 14, top: 12, bottom: 28 };
   let x0 = Math.min(...all.map((p) => p[0])), x1 = Math.max(...all.map((p) => p[0]));
-  if (x0 === x1) x1 = x0 + 1;
+  const singleX = x0 === x1;
+  if (singleX) x1 = x0 + 1;
   let y0 = yMin ?? Math.min(...all.map((p) => p[1])), y1 = yMax ?? Math.max(...all.map((p) => p[1]));
   if (y0 === y1) { y0 -= 1; y1 += 1; }
   const yTicks = niceTicks(y0, y1, 4);
@@ -41,7 +56,7 @@ export function lineChart(series, { height = 220, yFormat = (v) => fmtNumber(v, 
   const X = (x) => pad.left + (x - x0) / (x1 - x0) * (width - pad.left - pad.right);
   const Y = (y) => pad.top + (1 - (y - y0) / (y1 - y0)) * (height - pad.top - pad.bottom);
 
-  const svg = el("svg", { viewBox: `0 0 ${width} ${height}`, preserveAspectRatio: "none", style: `height:${height}px` });
+  const svg = el("svg", { viewBox: `0 0 ${width} ${height}`, width, height, style: `height:${height}px` });
   const grid = el("g", { class: "grid" });
   const axis = el("g", { class: "axis" });
   for (const tick of yTicks) {
@@ -50,7 +65,7 @@ export function lineChart(series, { height = 220, yFormat = (v) => fmtNumber(v, 
     label.textContent = yFormat(tick);
     axis.append(label);
   }
-  for (const tick of niceTicks(x0, x1, 5)) {
+  for (const tick of singleX ? [x0] : niceTicks(x0, x1, Math.max(2, Math.round(width / 130)))) {
     if (tick < x0 || tick > x1) continue;
     const label = el("text", { x: X(tick), y: height - 8, "text-anchor": "middle" });
     label.textContent = xFormat(tick);
@@ -76,9 +91,10 @@ export function lineChart(series, { height = 220, yFormat = (v) => fmtNumber(v, 
   const cross = el("line", { y1: pad.top, y2: height - pad.bottom, stroke: "var(--text-3)", "stroke-dasharray": "3 3", visibility: "hidden" });
   svg.append(cross);
   const tip = h("div", { class: "tip", hidden: true });
-  wrap.append(svg, tip);
+  const parts = [svg, tip];
   svg.addEventListener("mousemove", (event) => {
     const box = svg.getBoundingClientRect();
+    if (!box.width) return;
     const x = x0 + ((event.clientX - box.left) / box.width * width - pad.left) / (width - pad.left - pad.right) * (x1 - x0);
     const lines = [];
     let nearestX = null;
@@ -99,7 +115,7 @@ export function lineChart(series, { height = 220, yFormat = (v) => fmtNumber(v, 
     tip.style.top = "8px";
   });
   svg.addEventListener("mouseleave", () => { tip.hidden = true; cross.setAttribute("visibility", "hidden"); });
-  return wrap;
+  return parts;
 }
 
 export function legend(series) {
