@@ -104,7 +104,7 @@ def watch(training_id: str, world_data: dict | None, speed: float | None, height
     env = WalkEnv(build, world, senses, target_speed=speed, terrain_height=float(height))
     brain = _brain(training_id)
     replay = record(env, brain.act, seed=int(seed), seconds=seconds, keep_going_after_fall=2.0,
-                    ground_half_width=ground_half_width)
+                    ground_half_width=ground_half_width, brain=None if ground_half_width else brain)
     replay["name"] = setup.get("name", "")
     replay["creature_name"] = setup["creature"].get("name") or animal(setup["creature"]["animal"]).NAME
     return replay

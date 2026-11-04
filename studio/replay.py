@@ -15,6 +15,9 @@ from studio.env import WalkEnv
 # Frames per second of a replay: every second control step (the walker is controlled 50 times a second)
 REPLAY_FPS = 25
 
+# How many cells of each hidden layer a replay keeps, for showing the brain at work
+CELL_SAMPLE = 24
+
 GEOM_KINDS = {
     int(mujoco.mjtGeom.mjGEOM_SPHERE): "sphere", int(mujoco.mjtGeom.mjGEOM_CAPSULE): "capsule",
     int(mujoco.mjtGeom.mjGEOM_ELLIPSOID): "ellipsoid", int(mujoco.mjtGeom.mjGEOM_BOX): "box",
@@ -39,9 +42,35 @@ class WalkerBrain:
             self.clip = float(scaling["clip"])
 
     def act(self, observation: np.ndarray) -> np.ndarray:
-        scaled = np.clip((observation - self.mean) / np.sqrt(self.var + 1e-8), -self.clip, self.clip)
-        action, _ = self.model.predict(scaled.astype(np.float32)[None, :], deterministic=True)
+        action, _ = self.model.predict(self._scaled(observation)[None, :], deterministic=True)
         return action[0]
+
+    def _scaled(self, observation: np.ndarray) -> np.ndarray:
+        return np.clip((observation - self.mean) / np.sqrt(self.var + 1e-8), -self.clip, self.clip).astype(np.float32)
+
+    # The brain's cells right now: a sample of each hidden layer (for the "watch it think" panel)
+    def cells(self, observation: np.ndarray) -> list[list[float]]:
+        return policy_cells(self.model.policy, self._scaled(observation))
+
+
+# A sample of every hidden layer's cells for one (scaled) observation
+def policy_cells(policy, scaled: np.ndarray, sample: int = CELL_SAMPLE) -> list[list[float]]:
+    import torch
+    features = torch.as_tensor(np.asarray(scaled, dtype=np.float32).reshape(1, -1))
+    extractor = policy.mlp_extractor
+    with torch.no_grad():
+        if hasattr(extractor, "actor_trunk"):          # the symmetric brain: the real view [s, Ms]
+            value, trunk = extractor._views(features)[:1], extractor.actor_trunk
+        else:                                          # the free brain
+            value, trunk = policy.extract_features(features, policy.pi_features_extractor), extractor.policy_net
+        layers = []
+        for module in trunk:
+            value = module(value)
+            if not isinstance(module, torch.nn.Linear):
+                row = value[0].numpy()
+                picks = np.linspace(0, len(row) - 1, min(sample, len(row))).round().astype(int)
+                layers.append([round(float(v), 2) for v in row[picks]])
+    return layers
 
 
 # Save the sense scaling of a VecNormalize next to a brain
@@ -135,7 +164,7 @@ def ground_patch(env: WalkEnv, x_from: float, x_to: float, y_half: float | None 
 
 # Run one attempt and record it. act(observation) picks the motor commands; None holds the pose
 def record(env: WalkEnv, act=None, seed: int = 1000, seconds: float | None = None,
-           keep_going_after_fall: float = 1.0, ground_half_width: float | None = None) -> dict:
+           keep_going_after_fall: float = 1.0, ground_half_width: float | None = None, brain=None) -> dict:
     observation, _ = env.reset(seed=seed)
     bodies, shapes = scene_shapes(env)
     steps_per_frame = round(50 / REPLAY_FPS)
@@ -147,6 +176,7 @@ def record(env: WalkEnv, act=None, seed: int = 1000, seconds: float | None = Non
     frames.append(_frame(env))
     contacts = [[int(touch) for touch in env._foot_contacts()]]
     commands = [[0.0] * len(env.build.motors)]
+    cells = [brain.cells(observation)] if brain is not None else None
     while step < limit:
         action = hold(observation) if act is None else act(observation)
         observation, reward, fell, _, info = env.step(action)
@@ -157,6 +187,8 @@ def record(env: WalkEnv, act=None, seed: int = 1000, seconds: float | None = Non
             frames.append(_frame(env))
             contacts.append([int(touch) for touch in env._foot_contacts()])
             commands.append([round(float(value), 2) for value in np.clip(action, -1, 1)])
+            if cells is not None:
+                cells.append(brain.cells(observation))
         if fell and fell_at is None:
             fell_at = step
             if act is not None:
@@ -172,7 +204,7 @@ def record(env: WalkEnv, act=None, seed: int = 1000, seconds: float | None = Non
         "ground": ground_patch(env, min(xs) - 1.5, max(xs) + 2.5, ground_half_width),
         "style": env.world.values["style"], "world": env.world.name, "animal": env.build.animal,
         "feet": [foot.name for foot in env.build.feet], "motors": env.build.motor_names,
-        "contacts": contacts, "commands": commands,
+        "contacts": contacts, "commands": commands, "cells": cells,
         "size": env.build.size, "stand_height": env.scene.stand_height,
         "stats": {"distance": round(distance, 3), "seconds": round(seconds_walked, 2),
                   "fell": fell_at is not None, "target_speed": round(env.target_speed, 3),

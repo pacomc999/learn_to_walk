@@ -15,10 +15,14 @@ export class GaitPanel {
     this.element = h("div", { class: "card card-pad gait", hidden: true });
     this.canvas = h("canvas", { class: "gait-canvas" });
     this.bars = h("div", { class: "muscles" });
+    this.brainCanvas = h("canvas", { class: "brain-canvas" });
+    this.brainBox = h("div", { class: "brain-box" }, h("div", { class: "field-label", style: { fontSize: "12.5px", marginBottom: "4px" } }, "Its brain at work"),
+      h("div", { class: "faint", style: { fontSize: "11.5px", marginBottom: "6px" } }, "A sample of the thinking cells of each layer: orange is firing one way, blue the other."),
+      this.brainCanvas);
     this.element.append(
       h("div", { class: "spread" }, h("div", {}, h("h3", {}, "Inside the walk"),
-        h("div", { class: "faint", style: { fontSize: "12.5px" } }, "Top: when each foot touches the ground (its rhythm, or gait). Bottom: what the brain tells every muscle at this moment."))),
-      this.canvas, this.bars);
+        h("div", { class: "faint", style: { fontSize: "12.5px" } }, "When each foot touches the ground (its rhythm, or gait), what its brain is doing, and what it tells every muscle at this moment."))),
+      this.canvas, h("div", { class: "inside-grid" }, this.brainBox, h("div", {}, h("div", { class: "field-label", style: { fontSize: "12.5px", marginBottom: "8px" } }, "Muscle commands"), this.bars)));
     viewer.onTime = (time) => this.paint(time);
     this.lastIndex = -1;
   }
@@ -36,7 +40,40 @@ export class GaitPanel {
         h("div", { class: "muscle-track" }, fill));
     }));
     this.lastIndex = -1;
+    this.brainBox.hidden = !(replay.cells && replay.cells.length);
     this.drawBase();
+  }
+
+  // The brain: columns of cells (each hidden layer's sample), then the muscles; colour shows each cell's value
+  drawBrain(index) {
+    const replay = this.replay;
+    if (!replay.cells || !replay.cells.length) return;
+    const layers = [...(replay.cells[index] || replay.cells[0]), replay.commands[index] || []];
+    const ratio = window.devicePixelRatio || 1;
+    const width = Math.max(220, this.brainCanvas.clientWidth || 320);
+    const rows = Math.max(...layers.map((layer) => layer.length));
+    const height = Math.min(260, rows * 10 + 16);
+    if (this.brainCanvas.width !== width * ratio) {
+      this.brainCanvas.width = width * ratio;
+      this.brainCanvas.height = height * ratio;
+      this.brainCanvas.style.height = `${height}px`;
+    }
+    const context = this.brainCanvas.getContext("2d");
+    context.setTransform(ratio, 0, 0, ratio, 0, 0);
+    context.clearRect(0, 0, width, height);
+    const xs = layers.map((_, i) => 14 + (width - 28) * i / Math.max(1, layers.length - 1));
+    const ys = layers.map((layer) => layer.map((_, j) => 8 + (height - 16) * (layer.length === 1 ? 0.5 : j / (layer.length - 1))));
+    context.strokeStyle = "rgba(99, 102, 241, 0.06)";
+    for (let c = 0; c < layers.length - 1; c++) {
+      for (const y1 of ys[c]) for (const y2 of ys[c + 1]) { context.beginPath(); context.moveTo(xs[c], y1); context.lineTo(xs[c + 1], y2); context.stroke(); }
+    }
+    layers.forEach((layer, c) => layer.forEach((value, j) => {
+      const v = Math.max(-1, Math.min(1, value));
+      context.fillStyle = v >= 0 ? `rgba(245, 158, 11, ${0.15 + 0.85 * v})` : `rgba(59, 130, 246, ${0.15 - 0.85 * v})`;
+      context.beginPath();
+      context.arc(xs[c], ys[c][j], c === layers.length - 1 ? 4.5 : 3.6, 0, Math.PI * 2);
+      context.fill();
+    }));
   }
 
   // The footfall pattern of the whole replay, drawn once
@@ -84,6 +121,7 @@ export class GaitPanel {
     const x = left + (index / replay.contacts.length) * (width - left - 4);
     context.fillStyle = "#111827";
     context.fillRect(x - 1, 0, 2, height);
+    this.drawBrain(index);
     const commands = replay.commands[index] || [];
     commands.forEach((value, i) => {
       const fill = this.barElements[i];

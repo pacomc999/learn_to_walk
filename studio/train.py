@@ -40,7 +40,7 @@ from studio.creatures import build_creature  # noqa: E402
 from studio.env import PART_NAMES, WalkEnv, observation_size  # noqa: E402
 from studio.learning import clean_learning, ppo_settings  # noqa: E402
 from studio.mirror import MirroredRunningMeanStd, mirror_tables  # noqa: E402
-from studio.replay import record, replace_file, save_scaling  # noqa: E402
+from studio.replay import policy_cells, record, replace_file, save_scaling  # noqa: E402
 from studio.scene import build_scene  # noqa: E402
 from studio.worlds import world_from_dict  # noqa: E402
 
@@ -209,7 +209,18 @@ def best_walk_replay(model, vec_normalize, build, world, senses, scene) -> dict:
     speed = float(np.mean(world.speed_range))
     height = world.tallest * 0.75 if world.values["mixed_heights"] else world.tallest
     env = WalkEnv(build, world, senses, target_speed=speed, terrain_height=height, scene=scene)
-    return record(env, deterministic_actor(model, vec_normalize), seed=EXAM_FIRST_SEED)
+    return record(env, deterministic_actor(model, vec_normalize), seed=EXAM_FIRST_SEED,
+                  brain=_CellReader(model, vec_normalize))
+
+
+# Reads the brain's cells during a recording, with the scaling training uses
+class _CellReader:
+    def __init__(self, model, vec_normalize):
+        self.model, self.vec_normalize = model, vec_normalize
+
+    def cells(self, observation):
+        scaled = self.vec_normalize.normalize_obs(np.asarray(observation, dtype=np.float32)[None, :])[0]
+        return policy_cells(self.model.policy, scaled)
 
 
 # ---------- Courses ----------
