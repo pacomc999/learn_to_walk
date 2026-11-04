@@ -19,7 +19,8 @@ SETTING_GROUPS = (
     SettingGroup("length", "How long", "More practice usually means better walking. Training stops early by "
                  "itself if it stops getting better.", (
         number("million_steps", "Practice steps", "One step is a fiftieth of a second of practice in one world. "
-               "A first wobbly walk often comes after 1 to 2 million.", 3.0, 0.1, 100.0, 0.1, "million"),
+               "With springy muscles a first wobbly walk often comes after 1 to 2 million; with direct muscles "
+               "learn_to_walk's Duck 4 needed about 2.5 million.", 5.0, 0.1, 100.0, 0.1, "million"),
         number("parallel_worlds", "Worlds at once", "How many copies of the world practise side by side. Use about "
                "as many as your computer has processor cores.", 8, 1, 32, 1, ""),
         number("patience", "Patience", "Stop when this many exams in a row bring no new best. 0 never stops "

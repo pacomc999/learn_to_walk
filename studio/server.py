@@ -43,12 +43,12 @@ BRAIN_PRESETS = [
 
 # Ready-made training lengths for the Training plan screen
 LEARNING_PRESETS = [
-    {"id": "taste", "name": "Quick taste", "description": "About 10 to 20 minutes. Enough to see the first "
-     "steps, not a good walk.", "values": {"million_steps": 1.0, "patience": 0}},
-    {"id": "evening", "name": "An evening", "description": "About an hour. Usually a steady walk on easy ground.",
-     "values": {"million_steps": 4.0, "patience": 12}},
-    {"id": "overnight", "name": "Overnight", "description": "Several hours. For hard worlds and polished gaits.",
-     "values": {"million_steps": 20.0, "patience": 20}},
+    {"id": "taste", "name": "Quick taste", "description": "About 15 to 30 minutes. Enough to see it try, rarely "
+     "a real walk.", "values": {"million_steps": 1.0, "patience": 0}},
+    {"id": "evening", "name": "An evening", "description": "One to two hours. Usually a steady walk on easy "
+     "ground.", "values": {"million_steps": 5.0, "patience": 12}},
+    {"id": "overnight", "name": "Overnight", "description": "Several hours. For hard worlds, courses and polished "
+     "gaits.", "values": {"million_steps": 20.0, "patience": 20}},
 ]
 
 
