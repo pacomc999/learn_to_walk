@@ -8,10 +8,10 @@ from studio.terrain import SHAPES, capacity, floor_layout, ground_heights
 from studio.worlds import builtin_worlds, world_from_dict
 
 
-def test_there_are_nine_builtin_worlds_with_unique_ids():
+def test_there_are_eleven_builtin_worlds_with_unique_ids():
     worlds = builtin_worlds()
-    assert len(worlds) == 9
-    assert len({world.id for world in worlds}) == 9
+    assert len(worlds) == 11
+    assert len({world.id for world in worlds}) == 11
     assert worlds[0].id == "flat_meadow"
 
 

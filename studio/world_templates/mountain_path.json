@@ -1,0 +1,12 @@
+{
+  "id": "mountain_path",
+  "name": "Mountain Path",
+  "description": "Long, even climbs and descents of up to 12 cm per metre, with flat tops.",
+  "values": {
+    "terrain": "slopes",
+    "terrain_height": 12,
+    "gradually_harder": true,
+    "mixed_heights": true,
+    "style": "snow"
+  }
+}

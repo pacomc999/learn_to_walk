@@ -20,6 +20,8 @@ TERRAINS = (
     ("stairs", "Stairs"),
     ("craters", "Craters"),
     ("blocks", "Rocky blocks"),
+    ("hurdles", "Hurdles"),
+    ("slopes", "Mountain slopes"),
 )
 
 STYLES = (
@@ -39,8 +41,9 @@ def number(key, label, help, default, minimum, maximum, step, unit, depends="") 
 SETTING_GROUPS = (
     SettingGroup("ground", "Ground", "What the walker stands on.", (
         Setting("terrain", "Kind of ground", "choice", "flat", "The shape of the ground.", choices=TERRAINS),
-        number("terrain_height", "Tallest bumps", "How tall the bumps, stones, hills or steps get. 0 is flat.",
-               3.0, 0.0, 40.0, 0.5, "cm"),
+        number("terrain_height", "Tallest bumps", "How tall the bumps, stones, hills, steps or hurdles get. For "
+               "mountain slopes: how many centimetres the path climbs per metre. 0 is flat.", 3.0, 0.0, 40.0, 0.5,
+               "cm"),
         switch("mixed_heights", "Mix of heights", "Each practice attempt picks a height from flat up to the "
                "tallest, so the walker meets easy and hard ground. Off: always the tallest."),
         switch("gradually_harder", "Gradually harder", "Start on flat ground and raise the bumps step by step "
@@ -180,4 +183,5 @@ def builtin_worlds() -> list[World]:
 
 # The order of the built-in worlds on the page
 _ORDER = {"flat_meadow": 0, "cobblestone_street": 1, "running_track": 2, "rolling_hills": 3, "grand_staircase": 4,
-          "frozen_lake": 5, "moon_base": 6, "stormy_crossing": 7, "rocky_canyon": 8}
+          "frozen_lake": 5, "moon_base": 6, "stormy_crossing": 7, "rocky_canyon": 8, "hurdle_track": 9,
+          "mountain_path": 10}

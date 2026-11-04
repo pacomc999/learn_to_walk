@@ -29,7 +29,7 @@ def call(base, path, body=None, method=None):
 def test_catalog_lists_animals_worlds_and_settings(studio):
     catalog = call(studio, "catalog")
     assert [animal["key"] for animal in catalog["animals"]] == ["duck", "puppy", "custom"]
-    assert len(catalog["world_templates"]) == 9
+    assert len(catalog["world_templates"]) == 11
     assert catalog["brain_default"]["layers"] == [256, 256]
 
 

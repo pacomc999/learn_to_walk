@@ -20,7 +20,11 @@ COBBLE_SHAPE = {
 }
 
 # How finely each terrain is sampled, in metres. Small stones need small cells, hills do not
-CELL_SIZES = {"cobblestones": 0.005, "blocks": 0.01, "stairs": 0.01, "craters": 0.01, "hills": 0.02}
+CELL_SIZES = {"cobblestones": 0.005, "blocks": 0.01, "stairs": 0.01, "craters": 0.01, "hills": 0.02, "hurdles": 0.01,
+              "slopes": 0.02}
+
+# Slopes: climbs and descents this long (metres); their height is terrain height per metre of slope
+SLOPE_LENGTH = 5.0
 
 # The most steps a flight of stairs climbs, so the floor model can hold the highest landing
 MOST_STEPS = 6
@@ -69,7 +73,11 @@ def floor_layout(terrain: str, fastest_speed: float, seconds: float, size: float
 
 # The tallest point a terrain can reach when its bumps are `tallest` metres (stairs pile up)
 def capacity(terrain: str, tallest: float) -> float:
-    return tallest * MOST_STEPS if terrain == "stairs" else tallest
+    if terrain == "stairs":
+        return tallest * MOST_STEPS
+    if terrain == "slopes":
+        return tallest * SLOPE_LENGTH
+    return tallest
 
 
 # Scale values so the lowest becomes 0 and the highest becomes 1
@@ -172,7 +180,43 @@ def blocks(rng, layout: FloorLayout) -> np.ndarray:
     return heights[row_block[:, None], column_block[None, :]]
 
 
-SHAPES = {"cobblestones": cobblestones, "hills": hills, "stairs": stairs, "craters": craters, "blocks": blocks}
+# Low bars across the path to step over, about a metre apart, after a flat run-up
+def hurdles(rng, layout: FloorLayout) -> np.ndarray:
+    x = layout.column_x
+    profile = np.zeros_like(x)
+    position = STAIRS_RUN_UP
+    while position < layout.x_max:
+        width = rng.uniform(0.03, 0.06)
+        profile[(x >= position) & (x < position + width)] = rng.uniform(0.6, 1.0)
+        position += rng.uniform(0.8, 1.3)
+    return np.tile(profile, (layout.rows, 1))
+
+
+# Long even climbs and descents with flat tops, like a mountain path. The height setting is the rise per metre
+def slopes(rng, layout: FloorLayout) -> np.ndarray:
+    x = layout.column_x
+    profile = np.zeros_like(x)
+    position, level = STAIRS_RUN_UP, 0.0
+    while position < layout.x_max:
+        length = rng.uniform(0.6, 1.0) * SLOPE_LENGTH
+        inside = (x >= position) & (x < position + length)
+        profile[inside] = level + (x[inside] - position) / SLOPE_LENGTH
+        position += length
+        level += length / SLOPE_LENGTH
+        flat = rng.uniform(0.8, 1.5)
+        profile[(x >= position) & (x < position + flat)] = level
+        position += flat
+        inside = (x >= position) & (x < position + length)
+        profile[inside] = level - (x[inside] - position) / SLOPE_LENGTH
+        position += length
+        level = max(level - length / SLOPE_LENGTH, 0.0)
+        profile[x >= position] = level
+        position += rng.uniform(0.8, 1.5)
+    return np.tile(np.clip(profile, 0.0, 1.0), (layout.rows, 1))
+
+
+SHAPES = {"cobblestones": cobblestones, "hills": hills, "stairs": stairs, "craters": craters, "blocks": blocks,
+          "hurdles": hurdles, "slopes": slopes}
 
 
 # Heights in metres for one attempt: the terrain's shape scaled to this attempt's tallest bumps.

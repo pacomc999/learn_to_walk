@@ -158,6 +158,12 @@ function terrainPath(terrain, height) {
     }
     return d + " L120 100 L0 100 Z";
   }
+  if (terrain === "hurdles") {
+    let d = `M0 ${base}`;
+    for (let x = 14; x < 120; x += 22) d += ` L${x} ${base} L${x} ${base - 8 * h - 2} L${x + 3} ${base - 8 * h - 2} L${x + 3} ${base}`;
+    return d + ` L120 ${base} L120 100 L0 100 Z`;
+  }
+  if (terrain === "slopes") return `M0 ${base} L10 ${base} L40 ${base - 30 * h} L52 ${base - 30 * h} L82 ${base} L92 ${base} L120 ${base - 26 * h} L120 100 L0 100 Z`;
   if (terrain === "craters") return `M0 ${base - 4} L20 ${base - 4} Q 25 ${base - 9} 30 ${base - 4} Q 42 ${base + 8} 54 ${base - 4} Q 58 ${base - 9} 62 ${base - 4} L80 ${base - 4} Q 84 ${base - 8} 88 ${base - 4} Q 96 ${base + 5} 104 ${base - 4} L120 ${base - 4} L120 100 L0 100 Z`;
   return `M0 ${base} L120 ${base} L120 100 L0 100 Z`;
 }

@@ -1,0 +1,12 @@
+{
+  "id": "hurdle_track",
+  "name": "Hurdle Track",
+  "description": "Low bars across the track, about a metre apart. Each one needs a proper step over it.",
+  "values": {
+    "terrain": "hurdles",
+    "terrain_height": 2.5,
+    "gradually_harder": true,
+    "mixed_heights": true,
+    "style": "desert"
+  }
+}
