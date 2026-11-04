@@ -353,6 +353,20 @@ def save_brain(model, vec_normalize, folder: Folder, which: str) -> None:
     save_scaling(vec_normalize, folder.brain / f"{which}_norm.npz")
 
 
+# ---------- Keeping the computer awake ----------
+
+# Windows flags that keep the computer from going to sleep while training runs (learn_to_walk's keep_awake)
+KEEP_AWAKE_FLAGS = 0x80000000 | 0x00000001  # ES_CONTINUOUS | ES_SYSTEM_REQUIRED
+NORMAL_SLEEP_FLAGS = 0x80000000              # ES_CONTINUOUS alone allows sleep again
+
+
+def keep_awake(on: bool) -> None:
+    if sys.platform != "win32":
+        return
+    import ctypes
+    ctypes.windll.kernel32.SetThreadExecutionState(KEEP_AWAKE_FLAGS if on else NORMAL_SLEEP_FLAGS)
+
+
 # ---------- The session ----------
 
 def _new_model(design, mirror, venv, settings, seed, motor_type):
@@ -407,6 +421,7 @@ def run(path: Path, resume: bool) -> None:
 
     callback = SessionCallback(folder, status, venv, setup, learning, senses, total_steps)
     remaining = max(total_steps - model.num_timesteps, 0)
+    keep_awake(True)
     try:
         if remaining:
             model.learn(total_timesteps=remaining, callback=callback, reset_num_timesteps=False)
@@ -419,6 +434,7 @@ def run(path: Path, resume: bool) -> None:
         status.update(state=state, message=message, steps=model.num_timesteps)
         print(message, flush=True)
     finally:
+        keep_awake(False)
         venv.close()
 
 

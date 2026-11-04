@@ -231,11 +231,36 @@ class StudioHandler(BaseHTTPRequestHandler):
         raise ValueError("Unknown request.")
 
 
+# Whether a Walk Studio already answers on this port (started in another window)
+def _studio_answers(port: int) -> bool:
+    import urllib.request
+    try:
+        with urllib.request.urlopen(f"http://127.0.0.1:{port}/api/catalog", timeout=2) as response:
+            return b"world_templates" in response.read(200000)
+    except OSError:
+        return False
+
+
 def serve(port: int = DEFAULT_PORT, open_browser: bool = True) -> None:
-    server = ThreadingHTTPServer(("127.0.0.1", port), StudioHandler)
+    server = None
+    for candidate in range(port, port + 10):
+        try:
+            server = ThreadingHTTPServer(("127.0.0.1", candidate), StudioHandler)
+            port = candidate
+            break
+        except OSError:
+            if _studio_answers(candidate):
+                print(f"Walk Studio is already running at http://127.0.0.1:{candidate}/ (opening it).", flush=True)
+                if open_browser:
+                    webbrowser.open(f"http://127.0.0.1:{candidate}/")
+                return
+    if server is None:
+        raise SystemExit("No free port for Walk Studio (tried 10). Close other programs and try again.")
     address = f"http://127.0.0.1:{port}/"
     print(f"Walk Studio is running at {address}", flush=True)
-    print("Keep this window open while you use the studio. Close it (or press Ctrl+C) to stop.", flush=True)
+    print("Keep this window open while you use the studio. Press Ctrl+C to close it and pause any training;",
+          flush=True)
+    print("closing the window instead leaves a running training going in the background.", flush=True)
     if open_browser:
         threading.Timer(0.8, lambda: webbrowser.open(address)).start()
     try:

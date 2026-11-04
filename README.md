@@ -14,7 +14,7 @@ You need **Python 3.12** (from [python.org](https://www.python.org/downloads/); 
 - **macOS:** double-click `Start Walk Studio.command` (the first time, right-click it and choose Open).
 - **Linux:** run `./start_studio.sh`.
 
-The first start downloads the physics and learning libraries (about 1 GB), which takes a few minutes. After that it starts in seconds. Your browser opens the studio at `http://127.0.0.1:8770`. Keep the small black window open while you use it; closing it pauses any training (you can continue later).
+The first start downloads the physics and learning libraries (about 1 GB), which takes a few minutes. After that it starts in seconds. Your browser opens the studio at `http://127.0.0.1:8770`. Keep the small black window open while you use the studio. A training that is running carries on in the background even if you close the window, and keeps the computer from going to sleep; start the studio again to follow it or pause it.
 
 ## What you can do
 

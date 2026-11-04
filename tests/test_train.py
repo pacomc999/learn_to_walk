@@ -66,3 +66,21 @@ def test_a_stop_request_pauses_the_session(tmp_path, tiny):
     status = json.loads((folder / "status.json").read_text())
     assert status["state"] == "stopped"
     assert (folder / "brain/latest.zip").exists()
+
+
+def test_a_new_session_can_start_from_another_walkers_brain(tmp_path, tiny, capsys):
+    first = tmp_path / "first"
+    write_setup(first, animal="duck", world_index=0)
+    train.run(first, resume=False)
+    second = tmp_path / "second"
+    write_setup(second, animal="duck", world_index=3)  # rolling hills
+    setup = json.loads((second / "setup.json").read_text())
+    setup["start_from"] = "first"
+    (second / "setup.json").write_text(json.dumps(setup))
+    capsys.readouterr()
+    train.run(second, resume=False)
+    assert "Starting from the best brain of first" in capsys.readouterr().out
+    first_brain = WalkerBrain(first / "brain/best.zip", first / "brain/best_norm.npz")
+    second_brain = WalkerBrain(second / "brain/latest.zip", second / "brain/latest_norm.npz")
+    assert first_brain.mean.shape == second_brain.mean.shape
+    assert json.loads((second / "status.json").read_text())["state"] == "finished"
