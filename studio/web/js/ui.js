@@ -254,6 +254,10 @@ export function settingGroups(groups, values, onChange, { open = [], onHover, de
     const dot = h("span", { class: "changed-dot", hidden: true });
     const markChanged = () => {
       dot.hidden = !group.settings.some((setting) => values[setting.key] !== (setting.key in defaults ? defaults[setting.key] : setting.default));
+      // A setting that depends on a switch only shows while the switch is on
+      for (const setting of group.settings) {
+        if (setting.depends && controls[setting.key]) controls[setting.key].hidden = !values[setting.depends];
+      }
     };
     for (const setting of group.settings) {
       const standard = setting.key in defaults ? defaults[setting.key] : setting.default;
@@ -263,6 +267,7 @@ export function settingGroups(groups, values, onChange, { open = [], onHover, de
         onChange(setting.key, value);
       }, { defaultValue: standard, onHover });
       controls[setting.key] = control;
+      if (setting.depends) control.classList.add("dependent");
       body.append(control);
     }
     const card = h("div", { class: `group ${open.includes(group.key) ? "open" : ""}` },

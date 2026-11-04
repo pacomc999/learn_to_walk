@@ -32,8 +32,8 @@ STYLES = (
 )
 
 
-def number(key, label, help, default, minimum, maximum, step, unit) -> Setting:
-    return Setting(key, label, "number", default, help, minimum, maximum, step, unit)
+def number(key, label, help, default, minimum, maximum, step, unit, depends="") -> Setting:
+    return Setting(key, label, "number", default, help, minimum, maximum, step, unit, depends=depends)
 
 
 SETTING_GROUPS = (
@@ -61,20 +61,54 @@ SETTING_GROUPS = (
     )),
     SettingGroup("reward", "What it cares about", "Points the walker earns or loses every moment. Learning is "
                  "the search for more points, so these shape how it walks.", (
-        number("speed_points", "Walking at the asked speed", "Points for moving forward at the asked speed. The "
-               "main goal.", 3.0, 0.0, 10.0, 0.1, "points"),
+        Setting("speed_shape", "How speed is scored", "choice", "target",
+                "Exactly the asked speed: the most points at the asked speed, fewer for going slower or faster "
+                "(learn_to_walk's rule). Close to the asked speed: a gentler bell curve around it. As fast as "
+                "possible: more speed is always better, the asked speed is ignored.",
+                choices=(("target", "Exactly the asked speed"), ("bell", "Close to the asked speed"),
+                         ("faster", "As fast as possible"))),
+        number("speed_points", "Moving forward", "Points for moving forward (see above). The main goal.", 3.0, 0.0,
+               10.0, 0.1, "points"),
         number("alive_points", "Staying on its feet", "Points for every moment without falling. Too many and it "
                "learns to just stand still.", 0.2, 0.0, 2.0, 0.05, "points"),
         number("energy_cost", "Saving energy", "Points lost per joule the muscles use. Higher gives calmer, more "
                "efficient walking; too high and it barely moves.", 1.5, 0.0, 10.0, 0.1, "points"),
         number("straight_cost", "Walking straight", "Points lost per metre of drifting off the straight line.",
                0.5, 0.0, 5.0, 0.1, "points"),
-        switch("end_stops", "Penalty for joints at their limits", "Lose points for resting joints against their "
-               "end stops (the last 5% of their range). With direct muscles, leaning on the stops holds the body up "
-               "for free, so walkers learn odd crouches without this. Learn_to_walk's Duck 4 used it."),
-        number("end_stop_cost", "Joint limit penalty strength", "Points lost per joint fully at its limit, every "
-               "moment. 0.05 is gentle; at 0.2 the duck preferred falling on purpose.", 0.05, 0.0, 0.5, 0.01,
-               "points"),
+        number("fall_cost", "Falling", "Points lost once, when it falls. Falling already ends the attempt and its "
+               "points, so this is extra.", 0.0, 0.0, 200.0, 5.0, "points"),
+    )),
+    SettingGroup("rules", "Style rules", "Optional extra rules for how it should walk. Each one can be switched "
+                 "on and given a strength. Small strengths nudge; big ones can take over.", (
+        switch("end_stops", "No leaning on joint limits", "Lose points for resting joints against their end stops "
+               "(the last 5% of their range). With direct muscles, leaning on the stops holds the body up for free, "
+               "so walkers learn odd crouches without this. Learn_to_walk's Duck 4 used it."),
+        number("end_stop_cost", "Strength", "Points lost per joint fully at its limit, every moment. 0.05 is "
+               "gentle; at 0.2 the duck preferred falling on purpose.", 0.05, 0.0, 0.5, 0.01, "points",
+               "end_stops"),
+        switch("level_body", "Keep the body level", "Lose points for tilting the body forward, back or sideways.",
+               default=False),
+        number("level_cost", "Strength", "Points lost each moment when tipped fully on its side; less for "
+               "smaller tilts.", 0.5, 0.0, 5.0, 0.05, "points", "level_body"),
+        switch("no_crouch", "Stand tall", "Lose points for letting the body sink below its standing height.",
+               default=False),
+        number("crouch_cost", "Strength", "Points lost each moment when the body is on the ground; less for a "
+               "small crouch.", 1.0, 0.0, 10.0, 0.1, "points", "no_crouch"),
+        switch("smooth_moves", "Smooth moves", "Lose points for sudden changes in the muscle commands. Gives "
+               "calmer, less jittery motion.", default=False),
+        number("smooth_cost", "Strength", "Points lost for a muscle flipping from one end to the other in one "
+               "moment.", 0.2, 0.0, 5.0, 0.05, "points", "smooth_moves"),
+        switch("lift_feet", "Lift its feet", "Points for every step where a foot was in the air for longer than a "
+               "quarter of a second. Encourages real steps instead of shuffling.", default=False),
+        number("lift_points", "Strength", "Points per tenth of a second a foot spent in the air beyond a quarter "
+               "of a second, given when it lands.", 1.0, 0.0, 10.0, 0.1, "points", "lift_feet"),
+        switch("face_forward", "Face forward", "Lose points for turning away from the walking direction.",
+               default=False),
+        number("heading_cost", "Strength", "Points lost each moment per radian turned away.", 0.3, 0.0, 5.0, 0.05,
+               "points", "face_forward"),
+        switch("steady_ride", "Steady ride", "Lose points for bouncing the body up and down.", default=False),
+        number("bounce_cost", "Strength", "Points lost per (metre per second) squared of up and down speed.", 0.5,
+               0.0, 10.0, 0.1, "points", "steady_ride"),
     )),
     SettingGroup("extras", "Surprises", "Things that happen to the walker while it practises.", (
         switch("rocks", "Thrown rocks", "Stones are thrown at the walker from the side.", default=False),

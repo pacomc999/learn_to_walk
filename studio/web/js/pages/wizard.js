@@ -6,6 +6,7 @@ import { Viewer } from "../viewer.js";
 import { store, go } from "../app.js";
 import { networkDiagram } from "./network.js";
 import { builderPanel } from "./builder.js";
+import { scoringGlance } from "./scoring.js";
 
 const STEPS = [
   { key: "creature", title: "Creature", sub: "Body, legs and muscles" },
@@ -264,11 +265,14 @@ async function creatureStep(body, draft) {
 
 async function worldStep(body, draft) {
   const panel = h("div", { class: "panel" });
-  const stageBox = h("div", { class: "viewer-tall" });
+  const stageBox = h("div", { class: "viewer-mid" });
+  const glance = h("div");
   const stage = h("div", { class: "stage" }, stageBox,
     h("div", { class: "btn-row", style: { marginTop: "12px", justifyContent: "space-between" } },
       h("button", { class: "btn", onclick: () => show(), html: `${icon.restart}<span>New ground</span>` }),
-      h("span", { class: "faint" }, "Your creature stands in the world with its muscles holding still.")));
+      h("span", { class: "faint" }, "Your creature stands in the world with its muscles holding still.")),
+    glance);
+  const paintGlance = () => glance.replaceChildren(scoringGlance(draft.world.values));
   body.append(h("div", { class: "workbench" }, panel, stage));
   const viewer = new Viewer(stageBox, { autoplay: true, loop: false });
   const catalog = store.catalog;
@@ -308,11 +312,13 @@ async function worldStep(body, draft) {
         h("div", { class: "pick-name", style: { fontSize: "13px" } }, world.name)))));
 
   const description = h("p", { class: "muted", style: { fontSize: "13px" } }, draft.world.description || "");
-  const groups = settingGroups(catalog.world_groups, draft.world.values, () => {
+  const groupOf = (key) => (catalog.world_groups.find((group) => group.settings.some((s) => s.key === key)) || {}).key;
+  const groups = settingGroups(catalog.world_groups, draft.world.values, (key) => {
     if (draft.world.builtin) { draft.world.builtin = false; draft.world.id = null; draft.world.name = `${draft.world.name} (changed)`; nameText.textContent = draft.world.name; }
     persist();
-    showSoon();
-  }, { open: ["ground", "task"], defaults: worldDefaults });
+    paintGlance();
+    if (!["reward", "rules"].includes(groupOf(key))) showSoon();
+  }, { open: ["ground", "task", "reward"], defaults: worldDefaults });
 
   const nameText = h("h3", {}, draft.world.name);
   const saveWorld = async () => {
@@ -334,6 +340,7 @@ async function worldStep(body, draft) {
       description),
     groups);
 
+  paintGlance();
   await show();
   return () => viewer.dispose();
 }

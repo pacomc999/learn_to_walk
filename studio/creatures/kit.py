@@ -24,6 +24,7 @@ class Setting:
     step: float = 1.0         # numbers only
     unit: str = ""            # numbers only, for example "%" or "kg"
     choices: tuple = ()       # choices only: (value, label) pairs
+    depends: str = ""         # the key of a switch: this setting only matters (and shows) when it is on
 
     # The setting as plain data for the web page
     def to_dict(self) -> dict:
@@ -33,6 +34,8 @@ class Setting:
             data.update(minimum=self.minimum, maximum=self.maximum, step=self.step, unit=self.unit)
         if self.kind == "choice":
             data["choices"] = [{"value": value, "label": label} for value, label in self.choices]
+        if self.depends:
+            data["depends"] = self.depends
         return data
 
 

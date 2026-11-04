@@ -37,7 +37,7 @@ from stable_baselines3.common.vec_env import DummyVecEnv, SubprocVecEnv, VecNorm
 
 from studio.brain import clean_design, design_for_body, design_senses, policy_for  # noqa: E402
 from studio.creatures import build_creature  # noqa: E402
-from studio.env import WalkEnv, observation_size  # noqa: E402
+from studio.env import PART_NAMES, WalkEnv, observation_size  # noqa: E402
 from studio.learning import clean_learning, ppo_settings  # noqa: E402
 from studio.mirror import MirroredRunningMeanStd, mirror_tables  # noqa: E402
 from studio.replay import record, save_scaling  # noqa: E402
@@ -57,7 +57,8 @@ STEP_SIZE_RULE = {"target_change": 0.01, "factor": 1.5, "min": 1e-5, "max": 1e-2
 # How many exam replays to keep; older ones are thinned out evenly
 MOST_EXAM_REPLAYS = 30
 
-PROGRESS_HEADER = ["time", "steps", "score", "distance", "seconds", "fall_share", "steps_per_second", "difficulty"]
+PROGRESS_HEADER = ["time", "steps", "score", "distance", "seconds", "fall_share", "steps_per_second", "difficulty"] + [
+    f"pts_{name}" for name in PART_NAMES]
 EXAM_HEADER = ["time", "steps", "score", "falls", "attempts", "distance", "quality", "speed_error"]
 
 
@@ -134,7 +135,8 @@ class Status:
 def make_env(animal: str, creature_values: dict, world_data: dict, senses: dict) -> Monitor:
     build = build_creature(animal, creature_values)
     world = world_from_dict(world_data)
-    return Monitor(WalkEnv(build, world, senses), info_keywords=("forward_distance",))
+    return Monitor(WalkEnv(build, world, senses),
+                   info_keywords=("forward_distance", *[f"pts_{name}" for name in PART_NAMES]))
 
 
 def build_vec_env(setup: dict, senses: dict, worlds: int, seed: int, mirror) -> VecNormalize:
@@ -298,6 +300,8 @@ class SessionCallback(BaseCallback):
                        distance=round(float(np.mean([e.get("forward_distance", 0.0) for e in episodes])), 3),
                        seconds=round(float(np.mean([e["l"] for e in episodes])) * 0.02, 2),
                        fall_share=round(float(np.mean([e["l"] < self.max_steps for e in episodes])), 3))
+            for name in PART_NAMES:  # where the points came from, per attempt
+                row[f"pts_{name}"] = round(float(np.mean([e.get(f"pts_{name}", 0.0) for e in episodes])), 2)
         self.folder.append_row("progress.csv", PROGRESS_HEADER, row)
         self.status.update(steps=self.num_timesteps, steps_per_second=round(speed), difficulty=row["difficulty"],
                            state="training", message="Practising")

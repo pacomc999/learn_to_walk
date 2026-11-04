@@ -541,6 +541,19 @@ textarea.input { height: auto; padding: 10px 12px; resize: vertical; }
   animation: spin 0.7s linear infinite; display: inline-block; }
 @keyframes spin { to { transform: rotate(360deg); } }
 
+/* ---------- Scoring ---------- */
+
+.field.dependent { margin-left: 12px; padding-left: 14px; border-left: 2px solid var(--accent-soft); border-top: 0; }
+.score-bars { display: flex; flex-direction: column; gap: 8px; }
+.score-row { display: grid; grid-template-columns: 190px 1fr 64px; align-items: center; gap: 10px; font-size: 13px; }
+.score-label { color: var(--text-2); }
+.score-track { position: relative; height: 10px; background: var(--surface-2); border-radius: 6px; }
+.score-track::after { content: ""; position: absolute; left: 50%; top: -3px; bottom: -3px; width: 1px; background: var(--border-strong); }
+.score-fill { position: absolute; top: 0; bottom: 0; background: var(--good); border-radius: 6px; }
+.score-fill.negative { background: var(--bad); }
+.score-value { text-align: right; font-weight: 650; font-variant-numeric: tabular-nums; color: var(--good); }
+.score-value.negative { color: var(--bad); }
+
 /* ---------- Build your own ---------- */
 
 .parts-tree { display: flex; flex-direction: column; gap: 2px; }

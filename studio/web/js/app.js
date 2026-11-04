@@ -22,7 +22,7 @@ export const store = {
     return {
       name: "",
       creature: { animal: animal.key, name: animal.key === "custom" ? "My creation" : `My ${animal.name.toLowerCase()}`, values: JSON.parse(JSON.stringify(animal.defaults)), id: null },
-      world: JSON.parse(JSON.stringify(world)),
+      world: { ...JSON.parse(JSON.stringify(world)), values: { ...Object.fromEntries(this.catalog.world_groups.flatMap((g) => g.settings.map((s) => [s.key, s.default]))), ...world.values } },
       brain: JSON.parse(JSON.stringify(this.catalog.brain_default)),
       brainPreset: "standard",
       learning: { ...this.catalog.learning_default, parallel_worlds: Math.max(1, Math.min(8, (this.catalog.system.cores || 4))) },
@@ -38,6 +38,9 @@ export const store = {
         const animal = this.animal(saved.creature.animal);
         saved.creature.values = { ...JSON.parse(JSON.stringify(animal.defaults)), ...saved.creature.values };
         saved.learning = { ...this.catalog.learning_default, ...saved.learning };
+        const worldDefaults = Object.fromEntries(this.catalog.world_groups.flatMap((g) => g.settings.map((s) => [s.key, s.default])));
+        saved.world.values = { ...worldDefaults, ...saved.world.values };
+        saved.brain.values = { ...this.catalog.brain_default.values, ...saved.brain.values };
         this.draft = saved;
         return;
       }

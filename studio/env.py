@@ -39,6 +39,13 @@ ROCK_LIFETIME = 1.0
 
 OBSERVATION_LIMIT = 1e6
 
+# Every part of the score, in the order the charts show them
+PART_NAMES = ["speed", "alive", "energy", "straight", "fall", "end_stops", "level", "crouch", "smooth", "feet",
+              "heading", "ride"]
+
+# A foot must be in the air this long, in seconds, before its landing earns "lift its feet" points
+AIR_TIME_GOAL = 0.25
+
 # The senses a brain can have switched on
 DEFAULT_SENSES = {"feet": True, "ground": False}
 
@@ -91,6 +98,11 @@ class WalkEnv(gymnasium.Env):
         self.gust_until = -1.0
         self.gust_force = np.zeros(3)
         self.rock_hits = 0
+
+        # Score keeping: the previous command (smooth moves), each foot's time in the air, the attempt's totals
+        self.previous_action = np.zeros(len(build.motors))
+        self.air_time = np.zeros(len(build.feet))
+        self.episode_parts = dict.fromkeys(PART_NAMES, 0.0)
 
         motor_count = len(build.motors)
         self.action_space = gymnasium.spaces.Box(-1.0, 1.0, (motor_count,), dtype=np.float32)
@@ -161,6 +173,9 @@ class WalkEnv(gymnasium.Env):
         self.gust_force[:] = 0.0
         self.data.xfrc_applied[:] = 0.0
         self.rock_hits = 0
+        self.previous_action = np.zeros(len(self.build.motors))
+        self.air_time = np.zeros(len(self.build.feet))
+        self.episode_parts = dict.fromkeys(PART_NAMES, 0.0)
         return self._observation(), self._info({})
 
     # A coin flip picks the leading leg of each pair
@@ -228,7 +243,8 @@ class WalkEnv(gymnasium.Env):
         x = float(self.data.qpos[0]) if finite else 0.0
         return {"x_position": x, "y_position": float(self.data.qpos[1]) if finite else 0.0,
                 "forward_distance": x - self.start_x if finite else 0.0, "reward_parts": reward_parts,
-                "target_speed": self.target_speed, "rock_hits": self.rock_hits}
+                "target_speed": self.target_speed, "rock_hits": self.rock_hits,
+                **{f"pts_{name}": value for name, value in self.episode_parts.items()}}
 
     # ---------- Moving ----------
 
@@ -253,8 +269,10 @@ class WalkEnv(gymnasium.Env):
         energy = self._simulate()
         self._extras_after_step()
         self.step_count += 1
-        reward, parts = self._reward(x_before, energy)
         terminated = self._fallen()
+        reward, parts = self._reward(x_before, energy, action, terminated)
+        for name, value in parts.items():
+            self.episode_parts[name] += value
         truncated = self.step_count >= self.max_steps
         return self._observation(), reward, terminated, truncated, self._info(parts)
 
@@ -265,20 +283,62 @@ class WalkEnv(gymnasium.Env):
 
     # ---------- Points ----------
 
-    def _reward(self, x_before: float, energy: float) -> tuple[float, dict]:
+    def _reward(self, x_before: float, energy: float, action: np.ndarray, fell: bool) -> tuple[float, dict]:
         if not self._finite():
             return 0.0, {}
         values = self.world.values
         speed = (float(self.data.qpos[0]) - x_before) / self.control_seconds
         parts = {
-            "speed": values["speed_points"] * (self.target_speed - abs(speed - self.target_speed)),
+            "speed": values["speed_points"] * self._speed_score(speed),
             "alive": values["alive_points"],
             "energy": -values["energy_cost"] * energy,
             "straight": -values["straight_cost"] * abs(float(self.data.qpos[1])),
         }
+        if fell and values["fall_cost"]:
+            parts["fall"] = -values["fall_cost"]
         if values["end_stops"] and values["end_stop_cost"]:
             parts["end_stops"] = -values["end_stop_cost"] * self._end_stop_closeness()
+        if values["level_body"]:
+            parts["level"] = -values["level_cost"] * (1.0 - max(self.torso_up(), 0.0))
+        if values["no_crouch"]:
+            parts["crouch"] = -values["crouch_cost"] * max(0.0, 1.0 - self.torso_height() / self.scene.stand_height)
+        if values["smooth_moves"]:
+            change = (action - self.previous_action) / 2.0  # 1 for a flip from one end to the other
+            parts["smooth"] = -values["smooth_cost"] * float(np.mean(change ** 2))
+        self.previous_action = np.array(action, dtype=float)
+        if values["lift_feet"]:
+            parts["feet"] = values["lift_points"] * self._landings()
+        if values["face_forward"]:
+            parts["heading"] = -values["heading_cost"] * abs(self._heading())
+        if values["steady_ride"]:
+            parts["ride"] = -values["bounce_cost"] * float(self.data.qvel[2]) ** 2
         return float(sum(parts.values())), parts
+
+    # The share of the speed points earned at this speed, by the world's rule
+    def _speed_score(self, speed: float) -> float:
+        target = self.target_speed
+        shape = self.world.values["speed_shape"]
+        if shape == "faster":
+            return speed
+        if shape == "bell":
+            width = max(0.25 * target, 0.05)
+            return target * float(np.exp(-((speed - target) / width) ** 2))
+        return target - abs(speed - target)
+
+    # "Lift its feet": for each foot that just landed, its time in the air beyond the goal (tenths of a second)
+    def _landings(self) -> float:
+        touching = np.array(self._foot_contacts()) > 0
+        earned = 0.0
+        if self.target_speed > 0:
+            landed = touching & (self.air_time > 0)
+            earned = float(np.sum(np.clip(self.air_time[landed] - AIR_TIME_GOAL, 0.0, 0.5))) * 10
+        self.air_time = np.where(touching, 0.0, self.air_time + self.control_seconds)
+        return earned
+
+    # How far the body has turned away from the walking direction, in radians
+    def _heading(self) -> float:
+        w, x, y, z = self.data.qpos[3:7]
+        return float(np.arctan2(2 * (w * z + x * y), 1 - 2 * (y * y + z * z)))
 
     # Each joint counts 0 until it enters the last 5% of its range, rising to 1 at the stop
     def _end_stop_closeness(self) -> float:
