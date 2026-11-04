@@ -38,11 +38,26 @@ def _mirror_name(name: str) -> str:
     return name
 
 
-@pytest.mark.parametrize("animal", list(ANIMALS))
-def test_the_mirror_table_matches_the_physics(animal):
+def _hopper_with_toes():
+    from studio.creatures.custom import TEMPLATES
+    parts = [dict(part) for part in TEMPLATES["hopper"]["parts"]]
+    parts.append({"id": "toe", "parent": "foot", "x": 1, "y": 1, "pitch": 10, "yaw": 40, "joint": "hip", "mirror": True})
+    return {"torso": TEMPLATES["hopper"]["torso"], "parts": parts}
+
+
+def _bug():
+    from studio.creatures.custom import TEMPLATES
+    return TEMPLATES["bug"]
+
+
+MIRROR_CASES = [("duck", None), ("puppy", None), ("custom", _bug), ("custom", _hopper_with_toes)]
+
+
+@pytest.mark.parametrize("animal,body", MIRROR_CASES)
+def test_the_mirror_table_matches_the_physics(animal, body):
     # A random pose and its exact mirror pose: every part must land mirrored, and the senses must match the table
     import mujoco
-    build = build_creature(animal, {"body": __import__("studio.creatures.custom", fromlist=["x"]).TEMPLATES["bug"]})
+    build = build_creature(animal, {"body": body()} if body else {})
     senses = {"feet": True, "ground": True}
     tables = mirror_tables(build, senses)
     real, mirror = (WalkEnv(build, builtin_worlds()[0], senses, target_speed=0.4) for _ in range(2))

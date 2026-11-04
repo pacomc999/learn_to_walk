@@ -290,6 +290,8 @@ class _Maker:
             self.feet.append(Foot(name, (name,), other))
         for child in self.children.get(part["id"], []):
             lines.append(indent(self._part_tree(child, part["id"], side, mirrored), 2))
+            if child["mirror"] and not mirrored:  # a pair hanging on a middle part: its twin too
+                lines.append(indent(self._part_tree(child, part["id"], "right", True), 2))
         lines.append("</body>")
         return "\n".join(lines)
 

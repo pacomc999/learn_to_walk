@@ -108,3 +108,35 @@ def test_every_extreme_setting_still_builds(animal):
                 data = mujoco.MjData(scene.model)
                 mujoco.mj_step(scene.model, data)
                 assert np.all(np.isfinite(data.qpos)), (setting.key, value)
+
+
+def test_a_mirrored_pair_can_hang_on_a_middle_part():
+    from studio.creatures.custom import TEMPLATES
+    body = {"torso": TEMPLATES["hopper"]["torso"], "parts": [dict(part) for part in TEMPLATES["hopper"]["parts"]]}
+    body["parts"].append({"id": "toe", "name": "Toe", "parent": "foot", "x": 1, "y": 1, "z": 0, "pitch": 0,
+                          "yaw": 30, "joint": "side", "mirror": True, "foot": True})
+    build = build_creature("custom", {"body": body})
+    assert {"left_toe_side", "right_toe_side"} <= set(build.motor_names)
+    assert build.symmetric_ok
+    scene_for("custom", {"body": body})
+
+
+def test_custom_parts_that_point_anywhere_build_and_stand_on_the_ground():
+    rng = __import__("random").Random(4)
+    for attempt in range(25):
+        parts = []
+        for index in range(rng.randint(1, 8)):
+            parent = rng.choice(["torso"] + [part["id"] for part in parts])
+            parts.append({"id": f"p{index}", "parent": parent, "shape": rng.choice(["stick", "ball", "plate"]),
+                          "length": rng.uniform(0, 0.3), "x": rng.uniform(-1, 1), "y": rng.uniform(-1, 1),
+                          "z": rng.uniform(-1, 1), "pitch": rng.uniform(-90, 90), "yaw": rng.uniform(-180, 180),
+                          "joint": rng.choice(["fixed", "swing", "side", "twist", "hip"]),
+                          "mirror": rng.random() < 0.5, "foot": rng.random() < 0.5})
+        scene = scene_for("custom", {"body": {"parts": parts}})
+        data = mujoco.MjData(scene.model)
+        from studio.scene import set_stand_pose
+        set_stand_pose(scene.model, data, scene.build, scene.stand_height)
+        mujoco.mj_forward(scene.model, data)
+        for _ in range(50):
+            mujoco.mj_step(scene.model, data)
+        assert np.all(np.isfinite(data.qpos)), attempt
