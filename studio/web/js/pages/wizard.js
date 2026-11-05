@@ -146,6 +146,7 @@ async function creatureStep(body, draft) {
         ["Motors", String(facts.motors)], ["Feels the ground with", `${facts.feet} part${facts.feet === 1 ? "" : "s"}`],
         ["Strongest muscle", `${fmtNumber(facts.strongest_motor_nm, 1)} N m`]];
       if (draft.creature.animal === "custom") chips.push(["Symmetric brain", facts.symmetric_ok ? "possible" : "not possible (lopsided)"]);
+      if (preview.support && preview.support.length >= 3) chips.push(["Balance", balanceWord(preview)]);
       viewer.setChips(chips);
       if (!facts.motors) viewer.banner("No motors yet: give a part a joint so the brain has something to move.", "bad", 0);
       viewer.banner("");
@@ -485,11 +486,15 @@ async function planStep(body, draft) {
     const speed = measured || 260 * Math.min(worlds, cores) + 60;
     const totalMillion = learning.million_steps + (draft.course || []).reduce((sum, stage) => sum + stage.million_steps, 0);
     const seconds = totalMillion * 1e6 / speed;
-    const warn = worlds > cores ? h("div", { class: "callout warn", style: { marginTop: "10px" }, html: `${icon.info}<div>This computer has ${cores} processor cores. More worlds than cores will not go faster.</div>` }) : null;
+    const busy = store.trainings.filter((t) => ["starting", "training", "examining"].includes(t.status.state));
+    const warn = [
+      worlds > cores ? h("div", { class: "callout warn", style: { marginTop: "10px" }, html: `${icon.info}<div>This computer has ${cores} processor cores. More worlds than cores will not go faster.</div>` }) : null,
+      busy.length ? h("div", { class: "callout warn", style: { marginTop: "10px" }, html: `${icon.info}<div>${busy.map((t) => `"${t.name}"`).join(", ")} ${busy.length > 1 ? "are" : "is"} training right now. Both will share the computer and each will go about half as fast. You can pause it on its page.</div>` }) : null,
+    ];
     estimate.replaceChildren(h("div", { class: "stats" },
       statCard("Practice", `${fmtNumber(totalMillion, 1)}M`, (draft.course || []).length ? `steps in ${draft.course.length + 1} stages` : "steps in total"),
       statCard("Practice time", fmtDuration(totalMillion * 1e6 * 0.02), "of simulated walking"),
-      statCard("Estimated time", fmtDuration(seconds), measured ? "about, at the speed measured on this computer" : "a first guess, better after one run")), warn);
+      statCard("Estimated time", fmtDuration(seconds), measured ? "about, at the speed measured on this computer" : "a first guess, better after one run")), ...warn);
   };
 
   const presets = h("div", { class: "picker", style: { gridTemplateColumns: "repeat(3, 1fr)" } },
@@ -601,6 +606,18 @@ async function planStep(body, draft) {
     startButton);
   paintEstimate();
   return null;
+}
+
+// Whether the centre of mass sits over the area the feet stand on
+function balanceWord(preview) {
+  const [x, y] = preview.centre_of_mass;
+  let inside = false;
+  const polygon = preview.support;
+  for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+    const [xi, yi] = polygon[i], [xj, yj] = polygon[j];
+    if ((yi > y) !== (yj > y) && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi) inside = !inside;
+  }
+  return inside ? "weight over its feet" : "weight outside its feet";
 }
 
 function defaultName(draft) {

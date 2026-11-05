@@ -33,9 +33,44 @@ def creature_preview(animal_key: str, values: dict) -> dict:
     env = _shell(build, scene)
     bodies, shapes = scene_shapes(env)
     frame = np.concatenate([data.xpos[1:], data.xquat[1:]], axis=1).ravel()
+    centre = data.subtree_com[scene.model.body("torso").id]
     return {"bodies": bodies, "shapes": shapes, "frames": [[round(float(v), 4) for v in frame]], "fps": 25,
             "ground": {"kind": "plane"}, "style": "studio", "size": build.size, "stand_height": scene.stand_height,
-            "facts": creature_facts(build, scene)}
+            "facts": creature_facts(build, scene), "centre_of_mass": [round(float(v), 4) for v in centre],
+            "support": _support_area(scene.model, data, build)}
+
+
+# Where the feet stand: the outline (convex hull) of the lowest points of the parts that feel the ground,
+# or of every part that touches the floor at the start when none is marked
+def _support_area(model, data, build) -> list[list[float]]:
+    names = [name for foot in build.feet for name in foot.geoms]
+    geoms = [model.geom(name).id for name in names] if names else []
+    points = []
+    for geom_id in geoms:
+        centre = data.geom_xpos[geom_id]
+        size = model.geom_size[geom_id]
+        reach = float(np.max(size[:3])) if model.geom_type[geom_id] != mujoco.mjtGeom.mjGEOM_CAPSULE else float(size[0])
+        for angle in np.linspace(0, 2 * np.pi, 8, endpoint=False):
+            points.append((centre[0] + reach * np.cos(angle) * 0.5, centre[1] + reach * np.sin(angle) * 0.5))
+    if len(points) < 3:
+        return []
+    return [[round(x, 4), round(y, 4)] for x, y in _hull(points)]
+
+
+def _hull(points):
+    points = sorted(set(points))
+    def cross(o, a, b):
+        return (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0])
+    lower, upper = [], []
+    for p in points:
+        while len(lower) >= 2 and cross(lower[-2], lower[-1], p) <= 0:
+            lower.pop()
+        lower.append(p)
+    for p in reversed(points):
+        while len(upper) >= 2 and cross(upper[-2], upper[-1], p) <= 0:
+            upper.pop()
+        upper.append(p)
+    return lower[:-1] + upper[:-1]
 
 
 def _shell(build, scene):

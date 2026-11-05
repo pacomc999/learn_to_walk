@@ -120,6 +120,7 @@ export class Viewer {
     this._buildWalker(replay);
     if (!keepCamera || !sameWorld) this._buildWorld(replay);
     this._buildPace(replay);
+    this._buildBalance(replay);
     this._applyFrame(0);
     if (!keepCamera) this.frameCamera();
     this.playing = this.options.autoplay && replay.frames.length > 1;
@@ -228,6 +229,37 @@ export class Viewer {
     const row = Math.round((y - ground.y0) / ground.step);
     if (column < 0 || row < 0 || column >= ground.cols || row >= ground.rows) return 0;
     return ground.data[row * ground.cols + column] / 10000;
+  }
+
+  // In the creature preview: the centre of mass (a ball with a line down to the ground) and the area the feet
+  // stand on. Over the area, it can stand; outside it, it tips over
+  _buildBalance(replay) {
+    if (this.balance) { this.scene.remove(this.balance); this.balance.traverse((n) => { if (n.geometry) n.geometry.dispose(); }); this.balance = null; }
+    if (!replay.centre_of_mass) return;
+    const group = new THREE.Group();
+    const [x, y, z] = replay.centre_of_mass;
+    const size = Math.max(replay.size || 1, 0.5);
+    const inside = !replay.support || replay.support.length < 3 || pointInPolygon([x, y], replay.support);
+    const colour = inside ? 0x10b981 : 0xef4444;
+    const ball = new THREE.Mesh(new THREE.SphereGeometry(0.014 * size, 20, 12), new THREE.MeshBasicMaterial({ color: colour, depthTest: false }));
+    ball.position.set(x, y, z);
+    ball.renderOrder = 5;
+    const line = new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(x, y, z), new THREE.Vector3(x, y, 0.001)]),
+      new THREE.LineDashedMaterial({ color: colour, dashSize: 0.01, gapSize: 0.008, depthTest: false }));
+    line.computeLineDistances();
+    line.renderOrder = 5;
+    group.add(ball, line);
+    if (replay.support && replay.support.length >= 3) {
+      const shape = new THREE.Shape(replay.support.map(([px, py]) => new THREE.Vector2(px, py)));
+      const area = new THREE.Mesh(new THREE.ShapeGeometry(shape), new THREE.MeshBasicMaterial({ color: colour, transparent: true, opacity: 0.18, depthWrite: false }));
+      area.position.z = 0.001;
+      const outline = new THREE.LineLoop(new THREE.BufferGeometry().setFromPoints(replay.support.map(([px, py]) => new THREE.Vector3(px, py, 0.0015))),
+        new THREE.LineBasicMaterial({ color: colour }));
+      group.add(area, outline);
+    }
+    this.balance = group;
+    this.balance.visible = this.showBalance !== false;
+    this.scene.add(group);
   }
 
   // A soft marker that moves at the asked speed, so you can see if the walker keeps up
@@ -502,6 +534,15 @@ export class Viewer {
     this.renderer.forceContextLoss();
     this.container.replaceChildren();
   }
+}
+
+function pointInPolygon([x, y], polygon) {
+  let inside = false;
+  for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+    const [xi, yi] = polygon[i], [xj, yj] = polygon[j];
+    if ((yi > y) !== (yj > y) && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi) inside = !inside;
+  }
+  return inside;
 }
 
 function download(url, name) {
