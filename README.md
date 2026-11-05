@@ -2,13 +2,13 @@
 
 Design a creature, build its world, shape its brain, and watch it teach itself to walk. Everything happens in your web browser with sliders, switches and a live 3D view. You never need to open a code file.
 
-Walk Studio is a point-and-click version of the [learn_to_walk](https://github.com/pacomc999/learn_to_walk) project: the same physics (MuJoCo), the same learning (PPO with a left/right symmetric brain), and the same duck, now with a puppy, a build-your-own creature kit and nine worlds to train in.
+Walk Studio is a point-and-click version of the [learn_to_walk](https://github.com/pacomc999/learn_to_walk) project: the same physics (MuJoCo), the same learning (PPO with a left/right symmetric brain), and the same duck, now with a puppy, a build-your-own creature kit (with ready-made bodies from a four-legged table to an eight-legged spider and a kangaroo) and twelve worlds to train in.
 
 ![Your walkers](docs/images/walkers.jpg)
 
 ## Starting it
 
-You need **Python 3.12** (from [python.org](https://www.python.org/downloads/); on Windows, tick "Add python.exe to PATH" during installation).
+You need **Python 3.12** (3.11 or 3.13 work too; from [python.org](https://www.python.org/downloads/); on Windows, tick "Add python.exe to PATH" during installation).
 
 - **Windows:** double-click `Start Walk Studio.bat`.
 - **macOS:** double-click `Start Walk Studio.command` (the first time, right-click it and choose Open).
@@ -20,7 +20,7 @@ The first start downloads the physics and learning libraries (about 1 GB), which
 
 **1. Design a creature.** Pick the **duck** (two webbed feet and a bendy neck), the **puppy** (four legs, a nodding head and a wagging tail), or **build your own** from sticks, balls and plates joined by motors. Every slider updates the 3D view: longer legs, bigger feet, a heavier body, stronger muscles, how far each joint bends, colours. Hover over a slider and the parts it changes light up. The **drop test** shows whether its muscles can hold it up.
 
-**2. Choose its world.** Nine ready-made worlds, and you can change everything about them and save your own:
+**2. Choose its world.** Twelve ready-made worlds, and you can change everything about them and save your own:
 
 | World | What it is |
 |---|---|
