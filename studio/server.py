@@ -99,7 +99,8 @@ class StudioHandler(BaseHTTPRequestHandler):
         self.send_response(200)
         self.send_header("Content-Type", content_type or mimetypes.guess_type(path.name)[0] or "application/octet-stream")
         self.send_header("Content-Length", str(len(body)))
-        self.send_header("Cache-Control", "no-cache")
+        # The bundled libraries never change between versions of a file name; everything else is checked each time
+        self.send_header("Cache-Control", "max-age=86400" if "/vendor/" in path.as_posix() else "no-cache")
         self.end_headers()
         self.wfile.write(body)
 

@@ -194,6 +194,7 @@ export class Viewer {
       this.world.add(sprite);
     }
     this._addMetreMarks(replay, style);
+    if (dark) this.world.add(starField());
   }
 
   // The height maps of a replay: one, or one per lane in a race
@@ -651,6 +652,22 @@ function heightsMesh(ground, style, texture, tile) {
   const mesh = new THREE.Mesh(geometry, new THREE.MeshStandardMaterial({ vertexColors: true, map: texture, roughness: 0.95 }));
   mesh.receiveShadow = true;
   return mesh;
+}
+
+// Stars on a dome far around the scene, for night and Moon skies
+function starField() {
+  const positions = [];
+  for (let i = 0; i < 900; i++) {
+    const angle = Math.random() * Math.PI * 2;
+    const height = 0.05 + Math.random() * 0.9;
+    const radius = 70;
+    positions.push(Math.cos(angle) * radius * Math.sqrt(1 - height * height), Math.sin(angle) * radius * Math.sqrt(1 - height * height), height * radius);
+  }
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
+  const stars = new THREE.Points(geometry, new THREE.PointsMaterial({ color: 0xffffff, size: 0.25, sizeAttenuation: true, fog: false, transparent: true, opacity: 0.85 }));
+  stars.userData.followCamera = true;
+  return stars;
 }
 
 function textSprite(text, colour, alpha = 0.75) {
