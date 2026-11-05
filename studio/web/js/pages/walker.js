@@ -306,7 +306,7 @@ function trainingTab(body, id, details, setup) {
 }
 
 // A new walker like this one with a change, ready on the Training step of the designer
-function retrainWith(setup, changes, what) {
+function retrainWith(setup, changes, what, page = "#/new/plan") {
   store.draft = {
     name: `${setup.name} (${what})`,
     creature: { ...setup.creature, values: { ...setup.creature.values, ...(changes.creature || {}) }, id: null },
@@ -315,8 +315,9 @@ function retrainWith(setup, changes, what) {
     start_from: null, course: JSON.parse(JSON.stringify(setup.course || [])),
   };
   store.saveDraft();
-  toast("Ready to train", "Check the plan and press Start training.");
-  go("#/new/plan");
+  toast(page === "#/new/plan" ? "Ready to train" : "Copied into the designer", page === "#/new/plan"
+    ? "Check the plan and press Start training." : "Change what you like, then start it on the Training step.");
+  go(page);
 }
 
 // A picture of the best walk for the walker's card, taken once it is under way (once per best brain)
@@ -476,11 +477,15 @@ function recipeTab(body, details, setup) {
     : h("div", { class: "faint" }, empty);
   const worldDefaults = Object.fromEntries(catalog.world_groups.flatMap((group) => group.settings.map((s) => [s.key, s.default])));
   const brain = setup.brain;
+  body.append(h("div", { class: "callout", style: { marginBottom: "16px", alignItems: "center" }, html: `${icon.info}<div style="flex:1">Everything this walker was made of. To experiment, copy it into the designer, change one thing and train again, then compare the two.</div>` },
+  ));
+  body.lastElementChild.append(h("button", { class: "btn small primary", onclick: () => retrainWith(setup, {}, "copy", "#/new/creature") }, "Change and train again"));
   body.append(h("div", { class: "grid grid-2" },
     h("div", { class: "card card-pad" }, h("h3", { style: { marginBottom: "10px" } }, `Creature: ${setup.creature.name || animal.name}`),
       table(changed(animal.groups, setup.creature.values, animal.defaults), `A standard ${animal.name.toLowerCase()}.`)),
     h("div", { class: "card card-pad" }, h("h3", { style: { marginBottom: "10px" } }, `World: ${setup.world.name}`),
-      table(catalog.world_groups.flatMap((group) => group.settings.map((s) => [s.label, describe(s, setup.world.values[s.key] ?? worldDefaults[s.key]), ""]))
+      table(catalog.world_groups.flatMap((group) => group.settings.filter((s) => applies(s, { ...worldDefaults, ...setup.world.values }))
+        .map((s) => [s.label, describe(s, setup.world.values[s.key] ?? worldDefaults[s.key]), ""]))
         , "")),
     h("div", { class: "card card-pad" }, h("h3", { style: { marginBottom: "10px" } }, "Brain"),
       h("dl", { class: "kv" }, h("dt", {}, "Layers"), h("dd", {}, brain.layers.join(" x ")), h("dt", {}, "Judge layers"), h("dd", {}, brain.judge_layers.join(" x ")),
@@ -492,6 +497,14 @@ function recipeTab(body, details, setup) {
       h("dl", { class: "kv" }, h("dt", {}, "Stage 1"), h("dd", {}, `${setup.world.name}, ${fmtNumber(setup.learning.million_steps, 1)} million`),
         ...setup.course.flatMap((stage, i) => [h("dt", {}, `Stage ${i + 2}`), h("dd", {}, `${stage.world.name}, ${fmtNumber(stage.million_steps, 1)} million`)]))) : null));
   return null;
+}
+
+// Whether a world setting matters: strengths of rules that are off, and ground details of flat ground, do not
+function applies(setting, values) {
+  if (setting.depends && !values[setting.depends]) return false;
+  const flat = values.terrain === "flat" || !values.terrain_height;
+  if (flat && ["terrain_height", "mixed_heights", "gradually_harder"].includes(setting.key)) return false;
+  return true;
 }
 
 function describe(setting, value) {
