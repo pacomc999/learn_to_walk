@@ -9,6 +9,9 @@ import { store, go } from "../app.js";
 
 const ACTIVE = ["starting", "training", "examining"];
 
+// The course stage boundaries of the walker on screen, drawn on every chart
+const currentMarkers = [];
+
 // The parts of the score, as the world screen names them
 const PART_LABELS = [
   ["speed", "Moving forward", "#6366f1"], ["alive", "Staying on its feet", "#10b981"], ["energy", "Energy", "#f59e0b"],
@@ -238,6 +241,11 @@ function trainingTab(body, id, details, setup) {
     ];
     const lengthSeries = [{ name: "Seconds per attempt", colour: "#0ea5e9", points: progress.map((row) => [row.steps, row.seconds]), fill: true }];
     const fallSeries = [{ name: "Attempts that fell", colour: "#ef4444", points: progress.map((row) => [row.steps, row.fall_share === null ? null : row.fall_share * 100]), fill: true }];
+    // Where each course stage begins (every chart below marks them)
+    const markers = currentMarkers;
+    markers.length = 0;
+    let start = setup.learning.million_steps * 1e6;
+    for (const stage of setup.course || []) { markers.push([start, stage.world.name]); start += stage.million_steps * 1e6; }
     const partSeries = PART_LABELS.map(([key, label, colour]) => ({ name: label, colour,
       points: progress.map((row) => [row.steps, row[`pts_${key}`]]) }))
       .filter((s) => s.points.some((p) => p[1] !== null && p[1] !== undefined && Math.abs(p[1]) > 0.05));
@@ -300,7 +308,7 @@ function saveThumbnail(id, viewer, replay) {
 function chartCard(title, description, series, options) {
   return h("div", { class: "card" },
     h("div", { class: "card-head" }, h("div", {}, h("h3", {}, title), h("div", { class: "desc" }, description))),
-    h("div", { class: "card-body" }, lineChart(series, { height: 200, ...options }), h("div", { style: { marginTop: "8px" } }, legend(series))));
+    h("div", { class: "card-body" }, lineChart(series, { height: 200, markers: currentMarkers, ...options }), h("div", { style: { marginTop: "8px" } }, legend(series))));
 }
 
 // A few plain sentences about what is going on

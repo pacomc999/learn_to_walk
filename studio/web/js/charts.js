@@ -44,7 +44,7 @@ export function lineChart(series, options = {}) {
 }
 
 function drawChart(series, all, width, { height = 220, yFormat = (v) => fmtNumber(v, Math.abs(v) < 10 ? 1 : 0), xFormat = fmtSteps,
-  yMin = null, yMax = null, xLabel = "practice steps", band = null } = {}) {
+  yMin = null, yMax = null, xLabel = "practice steps", band = null, markers = [] } = {}) {
   const pad = { left: 48, right: 14, top: 12, bottom: 28 };
   let x0 = Math.min(...all.map((p) => p[0])), x1 = Math.max(...all.map((p) => p[0]));
   const singleX = x0 === x1;
@@ -74,6 +74,15 @@ function drawChart(series, all, width, { height = 220, yFormat = (v) => fmtNumbe
   svg.append(grid, axis);
   if (band) {
     svg.append(el("rect", { x: pad.left, width: width - pad.left - pad.right, y: Y(Math.min(band[1], y1)), height: Math.max(0, Y(Math.max(band[0], y0)) - Y(Math.min(band[1], y1))), fill: "var(--good)", opacity: 0.07 }));
+  }
+
+  // Marked moments, such as where a course moves on to its next world
+  for (const [x, text] of markers) {
+    if (x <= x0 || x >= x1) continue;
+    svg.append(el("line", { x1: X(x), x2: X(x), y1: pad.top, y2: height - pad.bottom, stroke: "var(--accent)", "stroke-dasharray": "4 4", opacity: 0.6 }));
+    const label = el("text", { x: X(x) + 4, y: pad.top + 10, style: "font-size:10.5px;fill:var(--accent)" });
+    label.textContent = text;
+    svg.append(label);
   }
 
   for (const s of series) {
