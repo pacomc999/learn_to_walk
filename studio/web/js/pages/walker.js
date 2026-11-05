@@ -140,6 +140,9 @@ function trainingTab(body, id, details, setup) {
   const moments = h("div", { class: "stack", style: { gap: "8px", maxHeight: "480px", overflowY: "auto" } });
   const momentsCard = h("div", { class: "card", style: { display: "flex", flexDirection: "column" } },
     h("div", { class: "card-head" }, h("div", {}, h("h3", {}, "Growing up"), h("div", { class: "desc" }, "Its walk at every exam"))),
+    h("div", { style: { padding: "10px 20px 0" }, class: "btn-row" },
+      h("button", { class: "btn small", onclick: () => playFilm(false), title: "Every exam, one after the other", html: `${icon.play}<span>Film</span>` }),
+      h("button", { class: "btn small", onclick: () => playFilm(true), title: "Play the film and save it as a video", html: `${icon.record}<span>Record film</span>` })),
     h("div", { class: "card-body" }, moments));
   const story = h("div");
   const charts = h("div", { class: "grid grid-2" });
@@ -155,6 +158,34 @@ function trainingTab(body, id, details, setup) {
   let current = details;
   let lastBest = null;
   let lastReplayCount = -1;
+
+  // The growing up film: every exam replay in order, a few seconds each, with a caption
+  let filmRunning = false;
+  const playFilm = async (recordIt) => {
+    if (filmRunning) { filmRunning = false; return; }
+    const names = [...current.replays];
+    if (names.length < 2) { toast("Not enough exams yet", "The film needs at least two exams."); return; }
+    filmRunning = true;
+    const byStep = Object.fromEntries(current.exams.map((exam) => [exam.steps, exam]));
+    try {
+      const replays = await Promise.all(names.map((name) => fetch(`/api/trainings/${id}/replay/${name}`).then((r) => r.json())));
+      if (recordIt) viewer.toggleRecording();
+      for (const [index, replay] of replays.entries()) {
+        if (!filmRunning || viewer.disposed) break;
+        shown = names[index];
+        paintMoments(current);
+        viewer.load(replay);
+        gait.show(replay);
+        const exam = byStep[replay.steps];
+        viewer.setChips([["Growing up", `${index + 1} of ${replays.length}`], ["At", `${fmtSteps(replay.steps)} steps`],
+          ["Exam", exam ? `${fmtNumber(exam.quality)}% of the asked distance` : "-"]]);
+        await new Promise((resolve) => setTimeout(resolve, Math.min(6000, Math.max(2500, viewer.duration * 1000))));
+      }
+      if (recordIt && viewer.recorder) viewer.toggleRecording();
+    } finally {
+      filmRunning = false;
+    }
+  };
 
   const showReplay = async (name) => {
     shown = name;
