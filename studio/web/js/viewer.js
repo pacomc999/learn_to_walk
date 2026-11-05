@@ -7,6 +7,8 @@ import { h } from "./ui.js";
 import { icon, STYLE_COLOURS } from "./icons.js";
 
 const SPEEDS = [0.25, 0.5, 1, 2];
+const LOOP_AT_LEAST = 3.0;  // seconds one loop of a replay lasts at least (a short walk holds its last frame)
+const LOOP_PAUSE = 1.0;     // seconds a longer replay rests on its last frame before starting again
 
 export class Viewer {
   constructor(container, { playbar = true, follow = true, autoplay = true, loop = true, pace = false } = {}) {
@@ -123,6 +125,7 @@ export class Viewer {
     const sameWorld = this.replay && this.replay.ground === replay.ground && this.replay.style === replay.style;
     this.replay = replay;
     this.time = 0;
+    this.heldFor = 0;
     this.showMessage("");
     this._buildWalker(replay);
     if (!keepCamera || !sameWorld) this._buildWorld(replay);
@@ -430,9 +433,22 @@ export class Viewer {
     return this.replay ? (this.replay.frames.length - 1) / this.replay.fps : 0;
   }
 
+  // At the end of a looping replay, stay on the last frame for a moment before starting again: a short walk that
+  // falls early would otherwise flash by over and over. Each loop lasts at least LOOP_AT_LEAST seconds, plus a
+  // short pause after longer walks
+  _holdThenLoop(delta) {
+    this.time = this.duration;
+    this.heldFor = (this.heldFor || 0) + delta;
+    const hold = Math.max(LOOP_PAUSE, LOOP_AT_LEAST - this.duration / this.speed);
+    if (this.heldFor >= hold) {
+      this.heldFor = 0;
+      this.time = 0;
+    }
+  }
+
   play() { if (this.replay && this.replay.frames.length > 1) { if (this.time >= this.duration) this.time = 0; this.playing = true; this._paintPlaybar(); } }
   pause() { this.playing = false; this._paintPlaybar(); }
-  seek(seconds) { this.time = Math.max(0, Math.min(this.duration, seconds)); this._applyFrame(this.time); this._paintPlaybar(); }
+  seek(seconds) { this.heldFor = 0; this.time = Math.max(0, Math.min(this.duration, seconds)); this._applyFrame(this.time); this._paintPlaybar(); }
 
   _applyFrame(seconds) {
     const replay = this.replay;
@@ -483,7 +499,7 @@ export class Viewer {
       } else {
         this.time += delta * this.speed;
         if (this.time >= this.duration) {
-          if (this.options.loop) this.time = 0;
+          if (this.options.loop) this._holdThenLoop(delta);
           else { this.time = this.duration; this.playing = false; }
         }
       }
