@@ -163,6 +163,11 @@ class MirrorExtractor(nn.Module):
         self.register_buffer("act_index", torch.as_tensor(mirror["action_order"]), persistent=False)
         self.register_buffer("act_sign", torch.as_tensor(mirror["action_signs"], dtype=torch.float32),
                              persistent=False)
+        # Where each motor's command comes from in one pass of F: its output, or the extra zero at the end
+        place = [outputs] * self.motor_count
+        for position, motor in enumerate(self.left + self.middle):
+            place[motor] = position
+        self.register_buffer("place_index", torch.as_tensor(place), persistent=False)
 
     def _mirror_obs(self, features):
         return features[..., self.obs_index] * self.obs_sign
@@ -178,10 +183,8 @@ class MirrorExtractor(nn.Module):
         return torch.cat([real_view, mirrored_view], dim=0)
 
     def _place(self, outputs):
-        commands = outputs.new_zeros((*outputs.shape[:-1], self.motor_count))
-        commands[..., self.left] = outputs[..., :len(self.left)]
-        commands[..., self.middle] = outputs[..., len(self.left):]
-        return commands
+        padded = torch.cat([outputs, outputs.new_zeros((*outputs.shape[:-1], 1))], dim=-1)
+        return padded[..., self.place_index]
 
     def _actions(self, views):
         real, mirrored = self.actor_head(self.actor_trunk(views)).chunk(2, dim=0)

@@ -439,7 +439,10 @@ function recipeTab(body, details, setup) {
         ...catalog.brain_groups.flatMap((group) => group.settings.flatMap((s) => [h("dt", {}, s.label), h("dd", {}, describe(s, brain.values[s.key]))])))),
     h("div", { class: "card card-pad" }, h("h3", { style: { marginBottom: "10px" } }, "Training"),
       h("dl", { class: "kv" }, ...catalog.learning_groups.flatMap((group) => group.settings.flatMap((s) => [h("dt", {}, s.label), h("dd", {}, describe(s, setup.learning[s.key]))])),
-        setup.start_from ? [h("dt", {}, "Started from"), h("dd", {}, setup.start_from)] : []))));
+        setup.start_from ? [h("dt", {}, "Started from"), h("dd", {}, setup.start_from)] : [])),
+    (setup.course || []).length ? h("div", { class: "card card-pad" }, h("h3", { style: { marginBottom: "10px" } }, "Course"),
+      h("dl", { class: "kv" }, h("dt", {}, "Stage 1"), h("dd", {}, `${setup.world.name}, ${fmtNumber(setup.learning.million_steps, 1)} million`),
+        ...setup.course.flatMap((stage, i) => [h("dt", {}, `Stage ${i + 2}`), h("dd", {}, `${stage.world.name}, ${fmtNumber(stage.million_steps, 1)} million`)]))) : null));
   return null;
 }
 
