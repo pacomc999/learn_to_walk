@@ -3,7 +3,7 @@
 
 import { h } from "./ui.js";
 
-const FOOT_COLOURS = ["#2f7d4f", "#c28a2c", "#3f7fb5", "#b5533c", "#6b7280", "#2a8f86", "#a8642a", "#b5577a"];
+const FOOT_COLOURS = ["#6366f1", "#f59e0b", "#10b981", "#ef4444", "#0ea5e9", "#a855f7", "#14b8a6", "#ec4899"];
 
 function pretty(name) {
   return name.replace(/_/g, " ");
@@ -65,7 +65,7 @@ export class GaitPanel {
     context.clearRect(0, 0, width, height);
     const xs = layers.map((_, i) => 14 + (width - 28) * i / Math.max(1, layers.length - 1));
     const ys = layers.map((layer) => layer.map((_, j) => 8 + (height - 16) * (layer.length === 1 ? 0.5 : j / (layer.length - 1))));
-    context.strokeStyle = "rgba(115, 115, 115, 0.08)";
+    context.strokeStyle = "rgba(99, 102, 241, 0.06)";
     for (let c = 0; c < layers.length - 1; c++) {
       for (const y1 of ys[c]) for (const y2 of ys[c + 1]) { context.beginPath(); context.moveTo(xs[c], y1); context.lineTo(xs[c + 1], y2); context.stroke(); }
     }

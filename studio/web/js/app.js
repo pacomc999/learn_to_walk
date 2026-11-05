@@ -117,8 +117,8 @@ function paintRunning() {
   box.replaceChildren(...running.slice(0, 2).map((t) => {
     const share = t.status.total_steps ? Math.min(1, (t.status.steps || 0) / t.status.total_steps) : 0;
     return h("div", { class: "running-card", onclick: () => { location.hash = `#/walker/${t.id}`; } },
-      h("div", { class: "title" }, h("span", { class: "spinner", style: { width: "11px", height: "11px", color: "#5fb882" } }), t.name),
-      h("div", { style: { marginTop: "4px", color: "#8a8a90" } }, `${fmtSteps(t.status.steps || 0)} of ${fmtSteps(t.status.total_steps)} steps`),
+      h("div", { class: "title" }, h("span", { class: "spinner", style: { width: "11px", height: "11px", color: "#a5b4fc" } }), t.name),
+      h("div", { style: { marginTop: "4px", color: "#8c92ad" } }, `${fmtSteps(t.status.steps || 0)} of ${fmtSteps(t.status.total_steps)} steps`),
       h("div", { class: "bar" }, h("div", { style: { width: `${share * 100}%` } })));
   }));
 }

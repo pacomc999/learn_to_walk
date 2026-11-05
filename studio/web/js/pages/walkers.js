@@ -23,7 +23,7 @@ export function walkerCard(training) {
         h("div", {}, h("b", {}, status.best_quality !== null && status.best_quality !== undefined ? `${fmtNumber(status.best_quality)}%` : "-"), "best walk"),
         h("div", {}, h("b", {}, fmtSteps(status.steps || 0)), "steps"),
         h("div", { style: { textAlign: "right" } }, h("b", {}, `${fmtNumber(share * 100)}%`), "done")),
-      h("div", { class: "progress" }, h("div", { style: { width: `${share * 100}%` } })), h("div", { class: "tape" })));
+      h("div", { class: "progress" }, h("div", { style: { width: `${share * 100}%` } }))));
 }
 
 // Open a .walker file someone shared

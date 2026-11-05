@@ -45,11 +45,12 @@ export async function render(main) {
   const trainings = await api("trainings");
 
   page.append(h("div", { class: "hero" },
-    h("h1", {}, "Design a creature, build its world and watch it learn to walk"),
+    h("h1", {}, "Design a creature. Build its world. Watch it learn to walk."),
     h("p", {}, "Nobody tells it how to move its legs. A small brain tries things, earns points for walking at the speed it is asked for, and slowly finds a gait of its own."),
     h("div", { class: "btn-row" },
       h("button", { class: "btn primary big", onclick: () => go("#/new/creature"), html: `${icon.plus}<span>Make a new walker</span>` }),
-      h("button", { class: "btn big", onclick: quickStart, html: `${icon.play}<span>Quick start</span>` })),
+      h("button", { class: "btn light big", onclick: quickStart, html: `${icon.play}<span>Quick start</span>` }),
+      h("button", { class: "btn light big", onclick: () => go("#/guide"), html: `${icon.book}<span>How it works</span>` })),
     h("div", { class: "hero-art", html: `<div style="display:flex;gap:6px;align-items:flex-end;height:100%">${animalArt("puppy").replace('class="animal"', 'style="height:150px"')}${animalArt("duck").replace('class="animal"', 'style="height:170px"')}</div>` })));
 
   // A learn_to_walk folder nearby, and none of its ducks brought over yet: offer it
@@ -69,7 +70,7 @@ export async function render(main) {
     ["Train and watch", "It practises in many worlds at once. Follow the charts and watch its walk improve exam by exam."],
   ];
   page.append(h("div", { class: "section-title" }, h("h2", {}, "Four steps")),
-    h("div", { class: "card steps-row" }, ...steps.map(([title, text], index) => h("div", { class: "how" },
+    h("div", { class: "steps-row" }, ...steps.map(([title, text], index) => h("div", { class: "card how" },
       h("div", { class: "n" }, String(index + 1)), h("div", { class: "t" }, title), h("div", { class: "d" }, text)))));
 
   page.append(h("div", { class: "section-title" }, h("h2", {}, "Your walkers"),

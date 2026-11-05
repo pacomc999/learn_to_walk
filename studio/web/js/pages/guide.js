@@ -72,12 +72,12 @@ export function render(main) {
 // points come back, and learning nudges the brain
 function loopDiagram() {
   const boxes = [
-    ["Senses", "tilt, speed, joints, feet", 70, 70, "#3f7fb5"],
-    ["Brain", "layers of thinking cells", 330, 70, "#2f7d4f"],
-    ["Muscles", "a command for every motor", 590, 70, "#c28a2c"],
-    ["Physics", "the body moves in its world", 590, 210, "#2a8f86"],
-    ["Points", "earned or lost each moment", 330, 210, "#b5533c"],
-    ["Learning", "nudges it toward more points", 70, 210, "#6b7280"],
+    ["Senses", "tilt, speed, joints, feet", 70, 70, "#0ea5e9"],
+    ["Brain", "layers of thinking cells", 330, 70, "#6366f1"],
+    ["Muscles", "a command for every motor", 590, 70, "#f59e0b"],
+    ["Physics", "the body moves in its world", 590, 210, "#10b981"],
+    ["Points", "earned or lost each moment", 330, 210, "#ef4444"],
+    ["Learning", "nudges it toward more points", 70, 210, "#a855f7"],
   ];
   const box = ([title, text, x, y, colour]) => `<g transform="translate(${x},${y})">
     <rect x="-95" y="-36" width="190" height="72" rx="14" fill="var(--surface)" stroke="${colour}" stroke-width="2"/>

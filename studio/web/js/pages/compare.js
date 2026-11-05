@@ -5,7 +5,7 @@ import { animalArt } from "../icons.js";
 import { lineChart, legend } from "../charts.js";
 import { store, go } from "../app.js";
 
-const COLOURS = ["#2f7d4f", "#c28a2c", "#3f7fb5", "#b5533c", "#6b7280", "#2a8f86"];
+const COLOURS = ["#6366f1", "#f59e0b", "#10b981", "#ef4444", "#0ea5e9", "#a855f7"];
 
 export async function render(main) {
   const page = h("div", { class: "page" });

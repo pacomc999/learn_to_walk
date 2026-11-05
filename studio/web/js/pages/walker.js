@@ -15,10 +15,10 @@ const currentMarkers = [];
 
 // The parts of the score, as the world screen names them
 const PART_LABELS = [
-  ["speed", "Moving forward", "#2f7d4f"], ["alive", "Staying on its feet", "#7fb08f"], ["energy", "Energy", "#c28a2c"],
-  ["straight", "Drifting", "#3f7fb5"], ["fall", "Falling", "#b5533c"], ["end_stops", "Joint limits", "#6b7280"],
-  ["level", "Tilting", "#2a8f86"], ["crouch", "Crouching", "#a8642a"], ["smooth", "Jerky moves", "#b5577a"],
-  ["feet", "Lifting feet", "#8a9a3a"], ["heading", "Turning away", "#9aa0a8"], ["ride", "Bouncing", "#d0a25c"],
+  ["speed", "Moving forward", "#6366f1"], ["alive", "Staying on its feet", "#10b981"], ["energy", "Energy", "#f59e0b"],
+  ["straight", "Drifting", "#0ea5e9"], ["fall", "Falling", "#ef4444"], ["end_stops", "Joint limits", "#a855f7"],
+  ["level", "Tilting", "#14b8a6"], ["crouch", "Crouching", "#84cc16"], ["smooth", "Jerky moves", "#ec4899"],
+  ["feet", "Lifting feet", "#22c55e"], ["heading", "Turning away", "#64748b"], ["ride", "Bouncing", "#f97316"],
 ];
 
 export async function render(main, params) {
@@ -246,7 +246,7 @@ function trainingTab(body, id, details, setup) {
     const last = exams[exams.length - 1];
     const progressCard = statCard("Progress", `${fmtSteps(status.steps || 0)}<small>/ ${fmtSteps(status.total_steps)}</small>`,
       ACTIVE.includes(status.state) && speed ? `about ${fmtDuration(remaining)} to go` : status.message || "", icon.clock);
-    progressCard.append(h("div", { class: "progress" }, h("div", { style: { width: `${share * 100}%` } })), h("div", { class: "tape" }));
+    progressCard.append(h("div", { class: "progress" }, h("div", { style: { width: `${share * 100}%` } })));
     stats.replaceChildren(...[
       progressCard,
       statCard("Best walk", status.best_quality !== null && status.best_quality !== undefined ? `${fmtNumber(status.best_quality)}<small>%</small>` : "-",
@@ -274,13 +274,13 @@ function trainingTab(body, id, details, setup) {
 
     // Charts
     const examPoints = (key) => exams.map((exam) => [exam.steps, exam[key]]);
-    const qualitySeries = [{ name: "Exam: share of the asked distance", colour: "var(--accent)", points: examPoints("quality"), dots: true, fill: true }];
+    const qualitySeries = [{ name: "Exam: share of the asked distance", colour: "#10b981", points: examPoints("quality"), dots: true, fill: true }];
     const scoreSeries = [
-      { name: "Practice score", colour: "var(--text-3)", points: progress.map((row) => [row.steps, row.score]) },
-      { name: "Exam score", colour: "var(--accent)", points: examPoints("score"), dots: true },
+      { name: "Practice score", colour: "#6366f1", points: progress.map((row) => [row.steps, row.score]) },
+      { name: "Exam score", colour: "#f59e0b", points: examPoints("score"), dots: true },
     ];
-    const lengthSeries = [{ name: "Seconds per attempt", colour: "var(--text-2)", points: progress.map((row) => [row.steps, row.seconds]), fill: true }];
-    const fallSeries = [{ name: "Attempts that fell", colour: "var(--bad)", points: progress.map((row) => [row.steps, row.fall_share === null ? null : row.fall_share * 100]), fill: true }];
+    const lengthSeries = [{ name: "Seconds per attempt", colour: "#0ea5e9", points: progress.map((row) => [row.steps, row.seconds]), fill: true }];
+    const fallSeries = [{ name: "Attempts that fell", colour: "#ef4444", points: progress.map((row) => [row.steps, row.fall_share === null ? null : row.fall_share * 100]), fill: true }];
     // Where each course stage begins (every chart below marks them)
     const markers = currentMarkers;
     markers.length = 0;

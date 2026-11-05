@@ -64,7 +64,7 @@ export function scoringGlance(values) {
       style: { width: `${Math.abs(value) / most * 50}%`, [value < 0 ? "right" : "left"]: "50%" } })),
     h("span", { class: `score-value ${value < 0 ? "negative" : ""}` }, `${value > 0 ? "+" : ""}${fmtNumber(value)}`))));
   const speeds = Array.from({ length: 41 }, (_, i) => (i / 40) * s.target * 2.5);
-  const curve = lineChart([{ name: "Forward points per second", colour: "var(--accent)", fill: true,
+  const curve = lineChart([{ name: "Forward points per second", colour: "#6366f1", fill: true,
     points: speeds.map((v) => [v, values.speed_points * speedScore(values, v, s.target) * STEPS_PER_SECOND]) }],
   { height: 140, xFormat: (v) => `${fmtNumber(v, 2)}`, xLabel: "m/s", yFormat: (v) => fmtNumber(v) });
   const notes = warnings(values, s).map(([kind, text]) => h("div", { class: `callout ${kind === "info" ? "" : kind}`, html: `${icon.info}<div>${text}</div>` }));
