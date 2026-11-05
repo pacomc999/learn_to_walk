@@ -158,3 +158,16 @@ def test_a_creature_without_motors_can_still_be_shown():
     from studio import previews
     assert previews.creature_preview("custom", {"body": {"parts": []}})["facts"]["motors"] == 0
     assert previews.drop_test("custom", {"body": {"parts": []}}, None, 0.5)["frames"]
+
+
+def test_the_preview_marks_every_motor_and_every_glued_part():
+    from studio.creatures.custom import TEMPLATES
+    from studio.previews import creature_preview
+    bug = TEMPLATES["bug"]
+    preview = creature_preview("custom", {"body": {"torso": bug["torso"], "parts": bug["parts"]}})
+    rings = [mark for mark in preview["joints"] if mark["motor"]]
+    assert len(rings) == preview["facts"]["motors"] == 18  # six hips with two motors, six knees with one
+    assert {mark["kind"] for mark in rings} == {"swing", "side"}
+    glued = dict(bug["parts"][-1], id="horn", parent="torso", joint="fixed", mirror=False, y=0)
+    preview = creature_preview("custom", {"body": {"torso": bug["torso"], "parts": bug["parts"] + [glued]}})
+    assert [mark["name"] for mark in preview["joints"] if mark["kind"] == "glued"] == ["horn"]

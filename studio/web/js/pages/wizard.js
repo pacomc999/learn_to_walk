@@ -260,8 +260,7 @@ async function creatureStep(body, draft) {
           persist();
           go("#/new/creature");
         }, html: `${icon.reset}<span>All standard</span>` }))),
-    builder ? builder.element : null,
-    builder ? h("div", { style: { height: "12px" } }) : null,
+    ...(builder ? [builder.element, h("div", { style: { height: "12px" } })] : []),  // native append would write "null" as text
     groups);
 
   await refresh(true);

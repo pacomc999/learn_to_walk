@@ -128,6 +128,14 @@ TEMPLATES = {
                      _part("head", "Head", "torso", x=1, z=0.8, shape="ball", length=0.06, thickness=0.05,
                            pitch=-50, joint="swing", motion=40, strength=3, colour="#b45309"),
                  ]},
+    "worm": {"name": "Worm", "description": "A head and a chain of five segments lying on the ground. Can it crawl?",
+             "torso": _torso("capsule", 0.12, 0.07, 0.07, 0.25, "#db2777"),
+             "parts": [
+                 _part(f"seg{n}", f"Segment {n}", "torso" if n == 1 else f"seg{n - 1}", x=-1 if n == 1 else 0,
+                       pitch=0, yaw=180, joint="hip", motion=60, length=0.1, thickness=0.025, strength=5, foot=True,
+                       colour="#ec4899" if n % 2 else "#f472b6")
+                 for n in range(1, 6)
+             ]},
     "starter": {"name": "Just a body", "description": "A body with one pair of legs. Add the rest yourself.",
                 "torso": _torso(),
                 "parts": [_part("leg", "Leg", "torso", x=0, y=1, z=-1, joint="hip", motion=50, length=0.18,

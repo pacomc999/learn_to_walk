@@ -37,7 +37,50 @@ def creature_preview(animal_key: str, values: dict) -> dict:
     return {"bodies": bodies, "shapes": shapes, "frames": [[round(float(v), 4) for v in frame]], "fps": 25,
             "ground": {"kind": "plane"}, "style": "studio", "size": build.size, "stand_height": scene.stand_height,
             "facts": creature_facts(build, scene), "centre_of_mass": [round(float(v), 4) for v in centre],
-            "support": _support_area(scene.model, data, build)}
+            "support": _support_area(scene.model, data, build), "joints": joint_marks(scene.model, build),
+            "view_size": _view_size(scene.model, data, build)}
+
+
+# How big the creature looks, for framing the camera: its reach from the torso, where a
+# 0.3 m reach counts as size 1. Only the camera uses it (build.size also scales the physics)
+def _view_size(model, data, build) -> float:
+    torso = data.xpos[model.body("torso").id]
+    reach = 0.0
+    for geom_id in range(model.ngeom):
+        if model.geom_bodyid[geom_id] == 0:
+            continue
+        away = float(np.linalg.norm(data.geom_xpos[geom_id][:2] - torso[:2]) + np.max(model.geom_size[geom_id][:3]))
+        reach = max(reach, away)
+    return round(max(build.size, reach / 0.3), 3)
+
+
+# Where every joint sits, for the motor rings in the 3D view. Each hinge with a motor gets a ring
+# around its axis (kind: swing, side or twist, from the axis); a part with no hinge is "glued" on.
+# Places and axes are in the part's own frame, so the marks move with the part.
+JOINT_KINDS = ("side", "swing", "twist")  # axis x, y, z
+
+
+def joint_marks(model, build) -> list[dict]:
+    motors = set(build.motor_names)
+    marks, torso = [], model.body("torso").id
+    for body in range(1, model.nbody):
+        hinges = [j for j in range(model.njnt)
+                  if model.jnt_bodyid[j] == body and model.jnt_type[j] == mujoco.mjtJoint.mjJNT_HINGE]
+        for joint in hinges:
+            axis = model.jnt_axis[joint]
+            name = model.joint(joint).name
+            marks.append({"body": body - 1, "pos": _rounded(model.jnt_pos[joint]), "axis": _rounded(axis),
+                          "kind": JOINT_KINDS[int(np.argmax(np.abs(axis)))], "name": name,
+                          "motor": name in motors})
+        has_shape = any(model.geom_bodyid[g] == body for g in range(model.ngeom))
+        if not hinges and body != torso and has_shape and model.body_parentid[body] != 0:
+            marks.append({"body": body - 1, "pos": [0.0, 0.0, 0.0], "kind": "glued",
+                          "name": model.body(body).name, "motor": False})
+    return marks
+
+
+def _rounded(values) -> list[float]:
+    return [round(float(v), 4) for v in values]
 
 
 # Where the feet stand: the outline (convex hull) of the lowest points of the parts that feel the ground,

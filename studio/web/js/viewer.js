@@ -67,20 +67,27 @@ export class Viewer {
     this._buildTools();
     if (playbar) this._buildPlaybar();
 
-    // Clicking a part (without dragging the view) tells onPick its name
+    // Clicking a part (without dragging the view) tells onPick its name and where it was hit.
+    // onHover gets the same details while the mouse moves (only when someone listens)
     this.onPick = null;
+    this.onHover = null;
     this.onTime = null;  // called every frame with the playback time, for panels that follow the replay
     let downAt = null;
     this.renderer.domElement.addEventListener("pointerdown", (event) => { downAt = [event.clientX, event.clientY]; });
     this.renderer.domElement.addEventListener("pointerup", (event) => {
       if (!downAt || !this.onPick || Math.hypot(event.clientX - downAt[0], event.clientY - downAt[1]) > 4) return;
-      const box = this.renderer.domElement.getBoundingClientRect();
-      const pointer = new THREE.Vector2(((event.clientX - box.left) / box.width) * 2 - 1, -((event.clientY - box.top) / box.height) * 2 + 1);
-      const ray = new THREE.Raycaster();
-      ray.setFromCamera(pointer, this.camera);
-      const hit = ray.intersectObjects(this.meshes, false)[0];
-      this.onPick(hit ? hit.object.userData.name : null);
+      const hit = this._hitAt(event);
+      this.onPick(hit ? hit.name : null, hit);
     });
+    this.renderer.domElement.addEventListener("pointermove", (event) => {
+      if (this.onHover && !event.buttons) this.onHover(this._hitAt(event));
+    });
+    this.renderer.domElement.addEventListener("pointerleave", () => { if (this.onHover) this.onHover(null); });
+
+    // Motor rings at the joints, and a see-through preview of a part about to be added
+    this.showJoints = true;
+    this.ghost = new THREE.Group();
+    this.scene.add(this.ghost);
 
     this.resizeObserver = new ResizeObserver(() => this._resize());
     this.resizeObserver.observe(container);
@@ -150,10 +157,79 @@ export class Viewer {
       if (!mesh) continue;
       mesh.userData.name = shape.name || "";
       mesh.userData.baseColour = mesh.material.color.clone();
+      mesh.userData.body = shape.body;
       this.bodyGroups[shape.body].add(mesh);
       this.meshes.push(mesh);
     }
+    this._buildJointMarks(replay);
     this._paintHighlight();
+  }
+
+  // ---------- Motor rings ----------
+
+  // A ring around each motor's axis (one colour per kind of movement) and a grey dot where a part is glued on
+  _buildJointMarks(replay) {
+    this.jointMarks = [];
+    const radius = 0.02 * Math.max(replay.size || 1, 0.5);
+    for (const mark of replay.joints || []) {
+      const group = this.bodyGroups[mark.body];
+      if (!group) continue;
+      const object = mark.kind === "glued" ? glueDot(radius) : motorRing(mark, radius);
+      object.position.set(...mark.pos);
+      object.visible = this.showJoints;
+      object.userData.jointName = mark.name;
+      group.add(object);
+      this.jointMarks.push(object);
+    }
+  }
+
+  setJointsVisible(on) {
+    this.showJoints = on;
+    for (const mark of this.jointMarks || []) mark.visible = on;
+  }
+
+  // ---------- Where the mouse points ----------
+
+  // The part under the mouse: its name, its body number, the point and the outward direction of the surface
+  _hitAt(event) {
+    const box = this.renderer.domElement.getBoundingClientRect();
+    const pointer = new THREE.Vector2(((event.clientX - box.left) / box.width) * 2 - 1, -((event.clientY - box.top) / box.height) * 2 + 1);
+    const ray = new THREE.Raycaster();
+    ray.setFromCamera(pointer, this.camera);
+    const hit = ray.intersectObjects(this.meshes, false)[0];
+    if (!hit) return null;
+    const normal = hit.face ? hit.face.normal.clone().transformDirection(hit.object.matrixWorld) : new THREE.Vector3(0, 0, 1);
+    return { name: hit.object.userData.name, body: hit.object.userData.body, point: hit.point.clone(), normal };
+  }
+
+  // A point and a direction in the world, seen from a body's own frame
+  toBodyFrame(body, point, direction) {
+    const group = this.bodyGroups[body];
+    group.updateMatrixWorld();
+    const local = group.worldToLocal(point.clone());
+    const turn = group.getWorldQuaternion(new THREE.Quaternion()).invert();
+    return { point: local, direction: direction.clone().applyQuaternion(turn).normalize() };
+  }
+
+  // ---------- Preview of a new part ----------
+
+  // sticks: [{ from, to, radius }] in world coordinates; an empty list clears the preview
+  setGhost(sticks) {
+    this._clearGroup(this.ghost);
+    for (const stick of sticks) {
+      const length = stick.from.distanceTo(stick.to);
+      const geometry = new THREE.CapsuleGeometry(stick.radius, Math.max(length, 0.001), 6, 14);
+      const material = new THREE.MeshBasicMaterial({ color: 0x22c55e, transparent: true, opacity: 0.75, depthTest: false });
+      const mesh = new THREE.Mesh(geometry, material);
+      mesh.renderOrder = 10;
+      mesh.position.copy(stick.from.clone().add(stick.to).multiplyScalar(0.5));
+      const along = stick.to.clone().sub(stick.from).normalize();
+      if (length > 0) mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), along);
+      const dot = new THREE.Mesh(new THREE.SphereGeometry(stick.radius * 1.8, 16, 10), material.clone());
+      dot.position.copy(stick.from);
+      dot.renderOrder = 11;
+      this.ghost.add(mesh, dot);
+    }
   }
 
   _buildWorld(replay) {
@@ -283,7 +359,7 @@ export class Viewer {
 
   frameCamera() {
     const replay = this.replay;
-    const size = Math.max(replay ? replay.size || 1 : 1, 0.5);
+    const size = Math.max(replay ? replay.view_size || replay.size || 1 : 1, 0.5);
     const height = replay ? replay.stand_height || 0.25 : 0.25;
     let x = replay && replay.frames.length ? replay.frames[0][0] : 0;
     if (this.live && this.bodyGroups.length) x = this.bodyGroups[0].position.x;
@@ -525,7 +601,13 @@ export class Viewer {
   }
 
   _thumbnailCanvas(width, height) {
+    // Pictures show the creature only: no motor rings or part preview
+    const ringsWere = this.showJoints;
+    this.setJointsVisible(false);
+    this.ghost.visible = false;
     this.renderer.render(this.scene, this.camera);
+    this.setJointsVisible(ringsWere);
+    this.ghost.visible = true;
     const source = this.renderer.domElement;
     const canvas = document.createElement("canvas");
     canvas.width = width; canvas.height = height;
@@ -576,6 +658,28 @@ function download(url, name) {
 }
 
 // ---------- Shapes ----------
+
+// ---------- Joint marks ----------
+
+// Colours of the motor rings: the builder's legend uses the same ones
+export const JOINT_COLOURS = { swing: "#2563eb", side: "#ea580c", twist: "#9333ea", glued: "#94a3b8" };
+
+// A ring lying around the joint's axis, drawn on top of the parts so it is never hidden
+function motorRing(mark, radius) {
+  const size = mark.kind === "side" ? radius * 1.25 : radius;  // a hip's two rings do not overlap
+  const material = new THREE.MeshBasicMaterial({ color: JOINT_COLOURS[mark.kind] || "#2563eb", depthTest: false, transparent: true, opacity: 0.95 });
+  const ring = new THREE.Mesh(new THREE.TorusGeometry(size, size * 0.16, 10, 40), material);
+  ring.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), new THREE.Vector3(...mark.axis).normalize());
+  ring.renderOrder = 5;
+  return ring;
+}
+
+function glueDot(radius) {
+  const material = new THREE.MeshBasicMaterial({ color: JOINT_COLOURS.glued, depthTest: false, transparent: true, opacity: 0.95 });
+  const dot = new THREE.Mesh(new THREE.SphereGeometry(radius * 0.35, 14, 10), material);
+  dot.renderOrder = 5;
+  return dot;
+}
 
 function makeShape(shape) {
   const [r, g, b] = shape.rgba;
