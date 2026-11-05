@@ -11,7 +11,10 @@ echo  Setting up Walk Studio for the first time.
 echo  This downloads the physics and learning libraries (about 1 GB) and takes a few minutes.
 echo.
 set "PYTHON="
-where py >nul 2>nul && (py -3.12 -c "" >nul 2>nul && set "PYTHON=py -3.12")
+rem Prefer the Python versions PyTorch supports best: 3.12, then 3.13, then 3.11
+for %%V in (3.12 3.13 3.11) do (
+  if not defined PYTHON (py -%%V -c "" >nul 2>nul && set "PYTHON=py -%%V")
+)
 if not defined PYTHON (where py >nul 2>nul && (py -3 -c "" >nul 2>nul && set "PYTHON=py -3"))
 if not defined PYTHON (where python >nul 2>nul && set "PYTHON=python")
 if not defined PYTHON (
