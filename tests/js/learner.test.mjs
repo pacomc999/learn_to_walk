@@ -56,3 +56,39 @@ cases.forEach((item, index) => {
     }
   });
 });
+
+test("studying does not leave tensors behind, lesson after lesson", () => {
+  const inputs = 12, motors = 4;
+  const learner = new Learner(tf, { kind: "free", activation: "tanh", inputSize: inputs, motorCount: motors, actorLayers: [16], criticLayers: [16] });
+  const count = 64;
+  const batch = { count, observations: Float32Array.from({ length: count * inputs }, Math.random), actions: Float32Array.from({ length: count * motors }, Math.random),
+    logProbs: new Float32Array(count).fill(-5), advantages: Float32Array.from({ length: count }, Math.random), returns: Float32Array.from({ length: count }, Math.random) };
+  const lesson = (extra) => {
+    learner.update(batch, { epochs: 2, batchSize: 16, entropyWeight: 0.01, learningRate: 3e-4 });
+    learner.judgeValues(Float32Array.from({ length: (count + extra) * inputs }, Math.random), count + extra);
+    learner.toBrain();
+  };
+  lesson(1);  // the first lesson creates Adam's running averages, which stay
+  const before = tf.memory().numTensors;
+  for (let n = 2; n <= 5; n++) lesson(n);
+  try {
+    assert.equal(tf.memory().numTensors, before, "tensors left over after four more lessons");
+  } finally {
+    learner.dispose();
+  }
+});
+
+test("the judge's values do not depend on the padding of its batch", () => {
+  const inputs = 6;
+  const learner = new Learner(tf, { kind: "free", activation: "tanh", inputSize: inputs, motorCount: 2, actorLayers: [8], criticLayers: [8] });
+  try {
+    const rows = Float32Array.from({ length: 300 * inputs }, () => Math.random() - 0.5);
+    const all = learner.judgeValues(rows, 300);
+    const few = learner.judgeValues(rows.subarray(0, 7 * inputs), 7);
+    assert.equal(all.length, 300);
+    assert.equal(few.length, 7);
+    few.forEach((value, i) => assert.ok(Math.abs(value - all[i]) < 1e-6));
+  } finally {
+    learner.dispose();
+  }
+});

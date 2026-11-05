@@ -58,11 +58,13 @@ export function capacity(terrain, tallest) {
 }
 
 // ---------- Helpers on grids ----------
+// Grids are Float32Arrays: half the memory of doubles, plenty for millimetre bumps. A cobblestone floor has about
+// two million heights, so every grid is filled in place, without temporary copies.
 
 // Scale values so the lowest becomes 0 and the highest becomes 1 (in place)
 function toUnit(values) {
   let low = Infinity, high = -Infinity;
-  for (const value of values) { if (value < low) low = value; if (value > high) high = value; }
+  for (let i = 0; i < values.length; i++) { const value = values[i]; if (value < low) low = value; if (value > high) high = value; }
   const spread = high - low;
   for (let i = 0; i < values.length; i++) values[i] = spread > 0 ? (values[i] - low) / spread : 0;
   return values;
@@ -70,26 +72,29 @@ function toUnit(values) {
 
 // One profile along x, the same in every row
 function tile(profile, rows) {
-  const grid = new Float64Array(rows * profile.length);
+  const grid = new Float32Array(rows * profile.length);
   for (let r = 0; r < rows; r++) grid.set(profile, r * profile.length);
   return grid;
 }
 
 // ---------- Cobblestones (from learn_to_walk) ----------
 
-// A sum of plane waves: cos(2 pi (x cos a + y sin a) / wavelength + phase)
+// A sum of plane waves: cos(2 pi (x cos a + y sin a) / wavelength + phase). With cos(b + a) = cos b cos a - sin b sin a,
+// each wave needs one cosine and one sine per row and per column, not one per height (as NumPy's version does it)
 function rollingBumps(rng, layout, [shortest, longest], waves, maxAngle = Math.PI) {
-  const grid = new Float64Array(layout.rows * layout.columns);
+  const { rows, columns, columnX, rowY } = layout;
+  const grid = new Float32Array(rows * columns);
+  const cosX = new Float64Array(columns), sinX = new Float64Array(columns);
   for (let w = 0; w < waves; w++) {
     const wavelength = rng.uniform(shortest, longest);
     const angle = rng.uniform(0, maxAngle) - (maxAngle < Math.PI ? maxAngle / 2 : 0);
     const phase = rng.uniform(0, 2 * Math.PI);
     const kx = (2 * Math.PI * Math.cos(angle)) / wavelength, ky = (2 * Math.PI * Math.sin(angle)) / wavelength;
-    const alongX = Float64Array.from(layout.columnX, (x) => kx * x + phase);
-    for (let r = 0; r < layout.rows; r++) {
-      const alongY = ky * layout.rowY[r];
-      const offset = r * layout.columns;
-      for (let c = 0; c < layout.columns; c++) grid[offset + c] += Math.cos(alongY + alongX[c]);
+    for (let c = 0; c < columns; c++) { const a = kx * columnX[c] + phase; cosX[c] = Math.cos(a); sinX[c] = Math.sin(a); }
+    for (let r = 0; r < rows; r++) {
+      const b = ky * rowY[r], cosY = Math.cos(b), sinY = Math.sin(b);
+      const offset = r * columns;
+      for (let c = 0; c < columns; c++) grid[offset + c] += cosY * cosX[c] - sinY * sinX[c];
     }
   }
   return grid;
@@ -97,25 +102,33 @@ function rollingBumps(rng, layout, [shortest, longest], waves, maxAngle = Math.P
 
 function stoneIndexAndGap(positions, start, stone, gapShare) {
   const index = new Int32Array(positions.length), gap = new Uint8Array(positions.length);
-  positions.forEach((position, i) => {
-    const place = (position - start) / stone;
+  for (let i = 0; i < positions.length; i++) {
+    const place = (positions[i] - start) / stone;
     index[i] = Math.floor(place);
     const inside = place - index[i];
     gap[i] = inside < gapShare || inside > 1 - gapShare ? 1 : 0;
-  });
+  }
   return [index, gap];
+}
+
+// The largest value of a typed array (Math.max(...array) runs out of stack on big arrays)
+function largest(values) {
+  let most = -Infinity;
+  for (let i = 0; i < values.length; i++) if (values[i] > most) most = values[i];
+  return most;
 }
 
 function squareStones(rng, layout, stone, [lowest, highest], gapShare) {
   const [columnStone, columnGap] = stoneIndexAndGap(layout.columnX, layout.xMin, stone, gapShare);
   const [rowStone, rowGap] = stoneIndexAndGap(layout.rowY, -layout.yHalf, stone, gapShare);
-  const stoneColumns = Math.max(...columnStone) + 1, stoneRows = Math.max(...rowStone) + 1;
-  const heights = Float64Array.from({ length: stoneRows * stoneColumns }, () => rng.uniform(lowest, highest));
-  const grid = new Float64Array(layout.rows * layout.columns);
+  const stoneColumns = largest(columnStone) + 1, stoneRows = largest(rowStone) + 1;
+  const heights = new Float32Array(stoneRows * stoneColumns);
+  for (let i = 0; i < heights.length; i++) heights[i] = rng.uniform(lowest, highest);
+  const grid = new Float32Array(layout.rows * layout.columns);
   for (let r = 0; r < layout.rows; r++) {
-    for (let c = 0; c < layout.columns; c++) {
-      grid[r * layout.columns + c] = rowGap[r] || columnGap[c] ? 0 : heights[rowStone[r] * stoneColumns + columnStone[c]];
-    }
+    if (rowGap[r]) continue;  // a gap row stays 0
+    const offset = r * layout.columns, stoneRow = rowStone[r] * stoneColumns;
+    for (let c = 0; c < layout.columns; c++) if (!columnGap[c]) grid[offset + c] = heights[stoneRow + columnStone[c]];
   }
   return grid;
 }
@@ -124,7 +137,8 @@ function cobblestones(rng, layout) {
   const shape = COBBLE_SHAPE;
   const bumps = toUnit(rollingBumps(rng, layout, shape.wavelengthRange, shape.waves));
   const stones = toUnit(squareStones(rng, layout, shape.stoneSize, shape.stoneHeightRange, shape.gapShare));
-  return toUnit(bumps.map((bump, i) => shape.bumpShare * bump + (1 - shape.bumpShare) * stones[i]));
+  for (let i = 0; i < bumps.length; i++) bumps[i] = shape.bumpShare * bumps[i] + (1 - shape.bumpShare) * stones[i];  // mixed in place
+  return toUnit(bumps);
 }
 
 // ---------- The other terrains ----------
@@ -157,7 +171,8 @@ function stairs(rng, layout) {
       position += rng.uniform(0.6, 1.2);  // landing
     }
   }
-  return tile(profile.map((value) => value / MOST_STEPS), layout.rows);  // a share of what the floor holds
+  for (let i = 0; i < profile.length; i++) profile[i] /= MOST_STEPS;  // a share of what the floor holds
+  return tile(profile, layout.rows);
 }
 
 // The first index whose value is not below `value` (NumPy's searchsorted)
@@ -170,7 +185,7 @@ function searchSorted(values, value) {
 // A dusty plain with round craters (bowls with a raised rim) and a little roughness
 function craters(rng, layout) {
   const xs = layout.columnX, ys = layout.rowY;
-  const ground = new Float64Array(layout.rows * layout.columns);
+  const ground = new Float32Array(layout.rows * layout.columns);
   const area = (layout.xMax - layout.xMin) * 2 * layout.yHalf;
   for (let n = 0; n < Math.floor(area / 2.5); n++) {
     const centreX = rng.uniform(layout.xMin, layout.xMax);
@@ -190,7 +205,8 @@ function craters(rng, layout) {
     }
   }
   const dust = toUnit(rollingBumps(rng, layout, [0.3, 0.8], 6));
-  return toUnit(ground.map((value, i) => value + 0.15 * dust[i]));
+  for (let i = 0; i < ground.length; i++) ground[i] += 0.15 * dust[i];  // a little roughness, in place
+  return toUnit(ground);
 }
 
 // Big flat topped rocks of random heights, side by side
@@ -198,12 +214,14 @@ function blocks(rng, layout) {
   const size = rng.uniform(0.18, 0.32);
   const columnBlock = Int32Array.from(layout.columnX, (x) => Math.floor((x - layout.xMin) / size));
   const rowBlock = Int32Array.from(layout.rowY, (y) => Math.floor((y + layout.yHalf) / size));
-  const blockColumns = Math.max(...columnBlock) + 1, blockRows = Math.max(...rowBlock) + 1;
-  const heights = Float64Array.from({ length: blockRows * blockColumns }, () => rng.uniform(0.0, 1.0));
+  const blockColumns = largest(columnBlock) + 1, blockRows = largest(rowBlock) + 1;
+  const heights = new Float32Array(blockRows * blockColumns);
+  for (let i = 0; i < heights.length; i++) heights[i] = rng.uniform(0.0, 1.0);
   for (let i = 0; i < heights.length; i++) if (rng.random() < 0.25) heights[i] = 0.0;
-  const grid = new Float64Array(layout.rows * layout.columns);
+  const grid = new Float32Array(layout.rows * layout.columns);
   for (let r = 0; r < layout.rows; r++) {
-    for (let c = 0; c < layout.columns; c++) grid[r * layout.columns + c] = heights[rowBlock[r] * blockColumns + columnBlock[c]];
+    const offset = r * layout.columns, blockRow = rowBlock[r] * blockColumns;
+    for (let c = 0; c < layout.columns; c++) grid[offset + c] = heights[blockRow + columnBlock[c]];
   }
   return grid;
 }
@@ -245,16 +263,19 @@ function slopes(rng, layout) {
     fillFrom(profile, xs, position, level);
     position += rng.uniform(0.8, 1.5);
   }
-  return tile(profile.map((value) => clamp(value, 0.0, 1.0)), layout.rows);
+  for (let i = 0; i < profile.length; i++) profile[i] = clamp(profile[i], 0.0, 1.0);
+  return tile(profile, layout.rows);
 }
 
 const SHAPES = { cobblestones, hills, stairs, craters, blocks, hurdles, slopes };
 
-// Heights in metres for one attempt: the terrain's shape scaled to this attempt's tallest bumps
+// Heights in metres for one attempt: the terrain's shape scaled to this attempt's tallest bumps (in place)
 export function groundHeights(terrain, rng, layout, height) {
-  if (height <= 0 || !(terrain in SHAPES)) return new Float64Array(layout.rows * layout.columns);
+  if (height <= 0 || !(terrain in SHAPES)) return new Float32Array(layout.rows * layout.columns);
   const scale = capacity(terrain, height);
-  return SHAPES[terrain](rng, layout).map((value) => value * scale);
+  const heights = SHAPES[terrain](rng, layout);
+  for (let i = 0; i < heights.length; i++) heights[i] *= scale;
+  return heights;
 }
 
 // The highest ground in the square of half size `radius` around (x, y)

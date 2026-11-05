@@ -16,7 +16,10 @@ export class PracticeGroup {
     this.mujoco = mujoco;
     this.build = buildCreature(animal, values);
     this.world = worldFromDict(world);
-    this.scene = buildScene(mujoco, this.build, this.world);
+    // On flat ground the worlds can share one physics model. On bumpy ground each world lays its own floor into the
+    // model's height field, so each needs its own model (sharing one let the worlds overwrite each other's ground)
+    const shareScene = this.world.terrain === "flat";
+    this.scene = shareScene ? buildScene(mujoco, this.build, this.world) : null;
     this.envs = Array.from({ length: count }, () => new WalkEnv(mujoco, this.build, this.world, { senses, scene: this.scene }));
     this.random = new Random(seed * 7919 + 13);
     this.observations = this.envs.map((env, i) => env.reset(seed + i));  // VecEnv.seed(seed) then reset()

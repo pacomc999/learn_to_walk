@@ -51,3 +51,18 @@ test("the creature preview and the drop test give replays the 3D view can show",
   assert.equal(drop.ground.kind, "heights");
   assert.equal(typeof drop.stats.stood, "boolean");
 });
+
+test("worlds practising together on bumpy ground each walk on their own ground", async () => {
+  const { PracticeGroup } = await import("../../studio/web/js/engine/practice.js");
+  const table = read("../../studio/web/data/catalog.json").animals.find((a) => a.key === "custom").templates.find((t) => t.key === "table");
+  const group = new PracticeGroup(mujoco, { animal: "custom", values: { body: { torso: table.torso, parts: table.parts } },
+    world: { values: { terrain: "hills", terrain_height: 10 } }, senses: { feet: true }, count: 2, seed: 3 });
+  try {
+    for (const env of group.envs) {
+      const field = env.model.hfield_data, most = Math.max(env.scene.floorCapacity, 1e-4);
+      for (const i of [0, 1234, 20000, env.heights.length - 1]) close(field[i] * most, env.heights[i], 1e-4, `world ground at ${i}`);
+    }
+  } finally {
+    group.dispose();
+  }
+});

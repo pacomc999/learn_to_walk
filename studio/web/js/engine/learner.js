@@ -26,6 +26,8 @@ export async function startTensorflow(tf, prefer = ["webgpu", "webgl", "cpu"]) {
       }
       if (await tf.setBackend(name)) {
         await tf.ready();
+        // WebGL keeps freed textures for reuse and by default never gives them back; past 64 MB of them, let them go
+        if (name === "webgl") tf.env().set("WEBGL_DELETE_TEXTURE_THRESHOLD", 64 * 1024 * 1024);
         return name;
       }
     } catch { /* try the next one */ }
@@ -155,10 +157,15 @@ export class Learner {
   }
 
   // The judge's values for many scaled observations at once (flat, row by row), read back in one go
+  // The batch is padded with empty rows to a multiple of 256, so the graphics card sees the same few sizes every
+  // lesson and can reuse its buffers (a new size each lesson made it keep more and more of them)
   judgeValues(observations, count) {
     if (!count) return new Float32Array(0);
     const tf = this.tf;
-    return tf.tidy(() => this.forward(tf.tensor2d(observations, [count, this.inputSize])).value.dataSync().slice());
+    const padded = Math.ceil(count / 256) * 256;
+    const rows = new Float32Array(padded * this.inputSize);
+    rows.set(observations.subarray(0, count * this.inputSize));
+    return tf.tidy(() => this.forward(tf.tensor2d(rows, [padded, this.inputSize])).value.dataSync().slice(0, count));
   }
 
   // The log of the wobble per motor; the symmetric brain wobbles each motor like its mirror partner
@@ -218,14 +225,15 @@ export class Learner {
     const actions = tf.gather(all.allActions, index);
     const oldLogProbs = tf.gather(all.allLogProbs, index);
     const returns = tf.gather(all.allReturns, index);
-    let advantages = tf.gather(all.allAdvantages, index);
-    if (pick.length > 1) {  // normalised per minibatch, as Stable-Baselines3 does (PyTorch's std divides by n - 1)
-      const moments = tf.moments(advantages);
+    // Normalised per minibatch, as Stable-Baselines3 does (PyTorch's std divides by n - 1). tidy() frees every
+    // in-between tensor (numbers turned into tensors included); before, three were left behind per minibatch
+    const advantages = tf.tidy(() => {
+      const raw = tf.gather(all.allAdvantages, index);
+      if (pick.length < 2) return raw;
+      const moments = tf.moments(raw);
       const std = tf.sqrt(tf.mul(moments.variance, pick.length / (pick.length - 1)));
-      const raw = advantages;
-      advantages = tf.div(tf.sub(raw, moments.mean), tf.add(std, 1e-8));
-      tf.dispose([raw, moments.mean, moments.variance, std]);
-    }
+      return tf.div(tf.sub(raw, moments.mean), tf.add(std, 1e-8));
+    });
     let kept = null;
     const lossFunction = () => {
       const { mean, value } = this.forward(observations);
