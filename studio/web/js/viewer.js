@@ -182,10 +182,15 @@ export class Viewer {
       texture.needsUpdate = true;
       this.world.add(heightsMesh(patch, style, texture, 0.5 * Math.max(size, 0.5)));
     }
+    // Name labels: fixed in place, or floating above a body (racers) and following it
+    this.labels = [];
     for (const label of replay.labels || []) {
       const sprite = textSprite(label.text, dark ? "#ffffff" : "#111827", 0.95);
-      sprite.position.set(label.x, label.y, label.z);
-      sprite.scale.multiplyScalar(1.6);
+      sprite.scale.multiplyScalar(2.2);
+      sprite.material.depthTest = false;  // always readable, never hidden behind a walker
+      sprite.renderOrder = 10;
+      if (label.body !== undefined) this.labels.push({ sprite, body: label.body, lift: label.z });
+      else sprite.position.set(label.x, label.y, label.z);
       this.world.add(sprite);
     }
     this._addMetreMarks(replay, style);
@@ -358,6 +363,10 @@ export class Viewer {
       qb.set(b[o + 4], b[o + 5], b[o + 6], b[o + 3]);
       group.quaternion.copy(qa.slerp(qb, blend));
     });
+    for (const label of this.labels || []) {
+      const body = this.bodyGroups[label.body];
+      if (body) label.sprite.position.set(body.position.x, body.position.y, label.lift);
+    }
     if (this.paceMarker) {
       const x = this.paceStart + replay.stats.target_speed * Math.min(seconds, replay.stats.seconds + 1);
       this.paceMarker.position.set(x, 0, this._groundHeight(replay, x, 0) + 0.004);

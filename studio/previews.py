@@ -176,8 +176,8 @@ def _merge_lanes(replays: list[dict], lane: float) -> dict:
         torsos.append(first)
         bodies += [f"{name}" for name in replay["bodies"]]
         shapes += [{**shape, "body": shape["body"] + first} for shape in replay["shapes"]]
-        labels.append({"text": replay["name"], "x": replay["frames"][0][0] - 0.35, "y": offset,
-                       "z": replay["stand_height"] * 1.9})
+        short = replay["name"].replace(" (from learn_to_walk)", "")
+        labels.append({"text": short, "body": first, "z": replay["stand_height"] * 2.4 + 0.12})
         ground = dict(replay["ground"])
         if ground.get("kind") == "heights":
             ground["y0"] = round(ground["y0"] + offset, 4)
