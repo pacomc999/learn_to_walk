@@ -142,3 +142,19 @@ def test_a_turning_world_switches_on_the_asked_direction_sense(tmp_path, tiny, m
     train.run(folder, resume=False)
     status = json.loads((folder / "status.json").read_text())
     assert status["state"] == "finished"
+
+
+def test_a_lopsided_custom_creature_trains_with_the_free_brain(tmp_path, tiny):
+    folder = tmp_path / "lopsided"
+    folder.mkdir()
+    body = {"parts": [{"id": "leg", "parent": "torso", "x": 0.5, "y": 1, "z": -1, "joint": "hip", "strength": 10,
+                       "foot": True},
+                      {"id": "prop", "parent": "torso", "x": -0.5, "y": -0.5, "z": -1, "joint": "swing", "strength": 10,
+                       "foot": True}]}
+    setup = {"id": "lopsided", "name": "lopsided", "creature": {"animal": "custom", "values": {"body": body}},
+             "world": builtin_worlds()[0].to_dict(), "brain": {"layers": [16, 16]}, "learning": {}}
+    (folder / "setup.json").write_text(json.dumps(setup))
+    train.run(folder, resume=False)
+    assert json.loads((folder / "status.json").read_text())["state"] == "finished"
+    brain = WalkerBrain(folder / "brain/best.zip", folder / "brain/best_norm.npz")
+    assert type(brain.model.policy).__name__ == "ActorCriticPolicy"  # not the symmetric one
