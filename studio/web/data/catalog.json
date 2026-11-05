@@ -1663,6 +1663,7 @@
      "key": "worm",
      "name": "Worm",
      "description": "A head and a chain of five segments lying on the ground. Can it crawl?",
+     "crawler": true,
      "torso": {
       "shape": "capsule",
       "length": 0.12,

@@ -338,6 +338,8 @@ class WalkEnv(gymnasium.Env):
     def _fallen(self) -> bool:
         if not self._finite():
             return True
+        if self.build.crawler:  # a crawler lies on the ground by design: it never falls
+            return False
         return self.torso_height() < self.fall_height or self.torso_up() < FALL_UP_Z
 
     # ---------- Points ----------
@@ -356,7 +358,7 @@ class WalkEnv(gymnasium.Env):
         off_course = abs(self.heading_error()) if self.world.turning or self.fixed_turn_rate else abs(float(self.data.qpos[1]))
         parts = {
             "speed": values["speed_points"] * self._speed_score(speed),
-            "alive": values["alive_points"],
+            "alive": 0.0 if self.build.crawler else values["alive_points"],  # a crawler cannot fall, so no points for staying up
             "energy": -values["energy_cost"] * energy,
             "straight": -values["straight_cost"] * off_course,
         }

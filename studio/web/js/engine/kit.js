@@ -54,6 +54,7 @@ export function makeBuild(fields) {
   return {
     stridePairs: [], materials: {}, jointDamping: 0.1, jointArmature: 0.005, size: 1.0, torsoGeoms: [],
     symmetricOk: true, motorType: "position",
+    crawler: false,  // crawls on the ground: never counts as fallen, earns no points for staying up
     ...fields,
     get motorNames() { return this.motors.map((m) => m.name); },
   };

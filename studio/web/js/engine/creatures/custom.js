@@ -72,7 +72,8 @@ export function cleanBody(body) {
     });
     known.add(pid);
   }
-  return { template: String(body.template ?? ""), torso, parts };
+  // A crawler (a worm, a snake) lies on the ground: falling and staying up mean nothing for it
+  return { template: String(body.template ?? ""), torso, parts, crawler: Boolean(body.crawler) };
 }
 
 // ---------- Building ----------
@@ -128,7 +129,7 @@ class Maker {
       animal: KEY, bodyXml: lines.join("\n"), actuatorXml: this.actuators.join("\n"), motors: this.motors, feet: this.feet,
       standPose: Object.fromEntries(this.motors.map((m) => [m.name, 0.0])), stridePairs: pairs.slice(0, 2),
       materials: this.materials, size, torsoGeoms: ["torso"], symmetricOk: this.symmetricOk,
-      motorType: this.settings.motor_type,
+      motorType: this.settings.motor_type, crawler: this.body.crawler,
     });
   }
 

@@ -171,3 +171,20 @@ def test_the_preview_marks_every_motor_and_every_glued_part():
     glued = dict(bug["parts"][-1], id="horn", parent="torso", joint="fixed", mirror=False, y=0)
     preview = creature_preview("custom", {"body": {"torso": bug["torso"], "parts": bug["parts"] + [glued]}})
     assert [mark["name"] for mark in preview["joints"] if mark["kind"] == "glued"] == ["horn"]
+
+
+def test_a_crawler_never_falls_and_earns_no_points_for_staying_up():
+    import mujoco
+    from studio.creatures.custom import TEMPLATES
+    from studio.env import WalkEnv
+    worm = TEMPLATES["worm"]
+    build = build_creature("custom", {"body": {"torso": worm["torso"], "parts": worm["parts"], "crawler": worm["crawler"]}})
+    assert build.crawler
+    assert not build_creature("custom", {"body": TEMPLATES["table"]}).crawler and not build_creature("duck", {}).crawler
+    env = WalkEnv(build, PLAIN)
+    env.reset(seed=1)
+    env.data.qpos[3:7] = [0.7071, 0.7071, 0, 0]  # rolled right over onto its side
+    mujoco.mj_forward(env.model, env.data)
+    _, _, fell, _, info = env.step([0.0] * len(build.motors))
+    assert not fell
+    assert info["reward_parts"]["alive"] == 0.0

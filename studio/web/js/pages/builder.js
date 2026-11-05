@@ -83,6 +83,7 @@ export function builderPanel(creature, animal, viewer, onChange) {
     body.template = data.template;
     body.torso = data.torso;
     body.parts = data.parts;
+    body.crawler = Boolean(data.crawler);
     lastSnapshot = snapshot;
     if (selected !== "torso" && !partById(selected)) selected = "torso";
     paintAll();
@@ -446,7 +447,10 @@ export function builderPanel(creature, animal, viewer, onChange) {
         torso.shape !== "ball" ? slider(torso, "height", "Height", { min: 2, max: 100, step: 1, unit: "cm", scale: 100 }) : null),
       section("Weight and colour",
         slider(torso, "weight", "Weight", { min: 0.05, max: 20, step: 0.05, unit: "kg" }),
-        colourField(torso, "colour", "Colour")));
+        colourField(torso, "colour", "Colour")),
+      section("How it moves",
+        toggle(body, "crawler", "Crawls on the ground",
+          "For worms, snakes and other crawlers. It never counts as fallen and gets no points for staying up: only moving forward counts.")));
   };
 
   // The motors of the selected part in words, with the ring colours
@@ -517,6 +521,7 @@ export function builderPanel(creature, animal, viewer, onChange) {
     body.template = template.key;
     body.torso = clone(template.torso);
     body.parts = clone(template.parts);
+    body.crawler = Boolean(template.crawler);  // the Worm crawls; the walkers do not
     lastSnapshot = JSON.stringify(body);
     selected = "torso";
     stopPlacing();

@@ -335,6 +335,7 @@ export class WalkEnv {
 
   fallen() {
     if (!this.finite()) return true;
+    if (this.build.crawler) return false;  // a crawler lies on the ground by design: it never falls
     return this.torsoHeight() < this.fallHeight || this.torsoUp() < FALL_UP_Z;
   }
 
@@ -351,7 +352,7 @@ export class WalkEnv {
     const offCourse = this.world.turning || this.fixedTurnRate ? Math.abs(this.headingError()) : Math.abs(qpos[1]);
     const parts = {
       speed: values.speed_points * this.speedScore(speed),
-      alive: values.alive_points,
+      alive: this.build.crawler ? 0.0 : values.alive_points,  // a crawler cannot fall, so no points for staying up
       energy: -values.energy_cost * energy,
       straight: -values.straight_cost * offCourse,
     };

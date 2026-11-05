@@ -110,6 +110,7 @@ ENV_WORLDS = [
     {"end_stops": True, "level_body": True, "no_crouch": True, "smooth_moves": True, "lift_feet": True,
      "face_forward": True, "steady_ride": True, "fall_cost": 20, "speed_shape": "bell"},
     {"backpack": True, "gravity": 5.0, "speed_shape": "faster", "ground_grip": 60},
+    {"fall_cost": 50},
 ]
 
 
@@ -127,7 +128,8 @@ def env_cases() -> list[dict]:
     from studio.env import WalkEnv
     from studio.worlds import World, clean_values, SETTING_GROUPS as WORLD_GROUPS
     cases = []
-    creatures = [("duck", {}), ("puppy", {"motor_type": "position"}), ("custom", {"body": custom.TEMPLATES["table"]})]
+    creatures = [("duck", {}), ("puppy", {"motor_type": "position"}), ("custom", {"body": custom.TEMPLATES["table"]}),
+                 ("custom", {"body": custom.TEMPLATES["worm"]})]  # the worm crawls: never falls, no points for staying up
     for (animal, values), world_values in zip(creatures, ENV_WORLDS):
         world = World("w", "w", "", clean_values(WORLD_GROUPS, world_values))
         env = WalkEnv(build_creature(animal, values), world, {"feet": True, "ground": True})

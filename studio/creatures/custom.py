@@ -129,6 +129,7 @@ TEMPLATES = {
                            pitch=-50, joint="swing", motion=40, strength=3, colour="#b45309"),
                  ]},
     "worm": {"name": "Worm", "description": "A head and a chain of five segments lying on the ground. Can it crawl?",
+             "crawler": True,
              "torso": _torso("capsule", 0.12, 0.07, 0.07, 0.25, "#db2777"),
              "parts": [
                  _part(f"seg{n}", f"Segment {n}", "torso" if n == 1 else f"seg{n - 1}", x=-1 if n == 1 else 0,
@@ -199,7 +200,8 @@ def clean_body(body: dict | None) -> dict:
             "heaviness": _number(raw.get("heaviness"), 10, 1000, 100), "colour": _colour(raw.get("colour"), "#4f46e5"),
         })
         known.add(pid)
-    return {"template": str(body.get("template", "")), "torso": torso, "parts": parts}
+    # A crawler (a worm, a snake) lies on the ground: falling and staying up mean nothing for it
+    return {"template": str(body.get("template", "")), "torso": torso, "parts": parts, "crawler": bool(body.get("crawler"))}
 
 
 # ---------- Building ----------
@@ -257,7 +259,8 @@ class _Maker:
         return Build(animal=KEY, body_xml="\n".join(lines), actuator_xml="\n".join(self.actuators),
                      motors=self.motors, feet=self.feet, stand_pose={m.name: 0.0 for m in self.motors},
                      stride_pairs=pairs[:2], materials=self.materials, size=size, torso_geoms=["torso"],
-                     symmetric_ok=self.symmetric_ok, motor_type=self.settings["motor_type"])
+                     symmetric_ok=self.symmetric_ok, motor_type=self.settings["motor_type"],
+                     crawler=self.body["crawler"])
 
     def _top_level(self, motor_name: str) -> bool:
         part_id = motor_name.removeprefix("left_").rsplit("_", 1)[0]
