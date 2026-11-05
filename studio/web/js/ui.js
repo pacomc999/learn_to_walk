@@ -1,6 +1,7 @@
 // Small building blocks for the pages: making elements, controls for settings, toasts, dialogs and the API.
 
 import { icon, groupIcon } from "./icons.js";
+import { localAnswer, NotHere } from "./engine/local_api.js";
 
 // ---------- Elements ----------
 
@@ -95,14 +96,31 @@ export function debounce(fn, wait) {
 
 // ---------- API ----------
 
+// A request to the studio. The browser engine answers what it can (previews, the library); anything else goes to
+// the Python server, if one is running
 export async function api(path, { method = "GET", body } = {}) {
-  const response = await fetch(`/api/${path}`, {
-    method,
-    headers: body ? { "Content-Type": "application/json" } : {},
-    body: body ? JSON.stringify(body) : undefined,
-  });
+  try {
+    return await localAnswer(path, method, body);
+  } catch (error) {
+    if (!(error instanceof NotHere)) throw error;
+  }
+  return serverAnswer(path, { method, body });
+}
+
+async function serverAnswer(path, { method, body }) {
+  let response;
+  try {
+    response = await fetch(`/api/${path}`, {
+      method,
+      headers: body ? { "Content-Type": "application/json" } : {},
+      body: body ? JSON.stringify(body) : undefined,
+    });
+  } catch {
+    throw new Error("This part of the studio is not in the browser version yet.");
+  }
   let data = null;
   try { data = await response.json(); } catch { data = null; }
+  if (response.status === 404 && !data) throw new Error("This part of the studio is not in the browser version yet.");
   if (!response.ok) throw new Error((data && data.error) || `The studio answered ${response.status}.`);
   return data;
 }

@@ -5,6 +5,7 @@ import { icon, animalArt, worldArt } from "../icons.js";
 import { Viewer } from "../viewer.js";
 import { lineChart, legend } from "../charts.js";
 import { GaitPanel } from "../gait.js";
+import { packWalker, saveFile } from "../engine/sharing.js";
 import { store, go } from "../app.js";
 
 const ACTIVE = ["starting", "training", "examining"];
@@ -62,7 +63,7 @@ export async function render(main, params) {
           : null,
       !running && details.has_brain ? h("button", { class: "btn", onclick: trainLonger, dataset: { action: "longer" }, html: `${icon.clock}<span>Train longer</span>` }) : null,
       details.has_brain ? h("button", { class: "btn", onclick: trainMore, html: `${icon.sparkle}<span>Teach a new world</span>` }) : null,
-      h("a", { class: "btn ghost icon-btn", title: "Share: save this walker as a file", href: `/api/trainings/${id}/share`, download: "", html: icon.share }),
+      h("button", { class: "btn ghost icon-btn", title: "Share: save this walker as a file", onclick: share, html: icon.share }),
       h("button", { class: "btn ghost icon-btn", title: "Rename", onclick: rename, html: icon.edit }),
       h("button", { class: "btn ghost icon-btn danger", title: "Delete", onclick: remove, html: icon.trash })].filter(Boolean));
   };
@@ -87,6 +88,16 @@ export async function render(main, params) {
       refresh();
     } catch (error) {
       toast("Could not train longer", error.message, "bad");
+    }
+  };
+  // Save the whole walker (recipe, results, brains, replays) as one .walker file in the downloads
+  const share = async () => {
+    try {
+      const { blob, filename } = await packWalker(id);
+      saveFile(blob, filename);
+      toast("Saved as a file", `${filename}: send it to anyone, they open it with "Open a shared walker".`, "good");
+    } catch (error) {
+      toast("Could not save it", error.message, "bad");
     }
   };
   const rename = async () => {
@@ -168,7 +179,7 @@ function trainingTab(body, id, details, setup) {
     filmRunning = true;
     const byStep = Object.fromEntries(current.exams.map((exam) => [exam.steps, exam]));
     try {
-      const replays = await Promise.all(names.map((name) => fetch(`/api/trainings/${id}/replay/${name}`).then((r) => r.json())));
+      const replays = await Promise.all(names.map((name) => api(`trainings/${id}/replay/${name}`)));
       if (recordIt) viewer.toggleRecording();
       for (const [index, replay] of replays.entries()) {
         if (!filmRunning || viewer.disposed) break;
@@ -192,9 +203,7 @@ function trainingTab(body, id, details, setup) {
     paintMoments(current);
     viewer.setLoading(true);
     try {
-      const response = await fetch(`/api/trainings/${id}/replay/${name}`);
-      if (!response.ok) throw new Error("This replay is not there.");
-      const replay = await response.json();
+      const replay = await api(`trainings/${id}/replay/${name}`);
       viewer.load(replay);
       gait.show(replay);
       if (name === "best") saveThumbnail(id, viewer, replay);
@@ -329,10 +338,10 @@ function saveThumbnail(id, viewer, replay) {
     if (viewer.disposed || viewer.replay !== replay) return;
     const playing = viewer.playing;
     viewer.seek(Math.min(0.6, viewer.duration));  // near the start, standing, framed by the camera
-    const blob = await viewer.thumbnail();
+    const image = viewer.thumbnailUrl(480, 300);
     if (playing) viewer.play();
-    if (!blob) return;
-    await fetch(`/api/trainings/${id}/thumbnail`, { method: "POST", headers: { "Content-Type": "image/jpeg" }, body: blob });
+    if (!image) return;
+    await api(`trainings/${id}/thumbnail`, { method: "POST", body: { image } });
     try { localStorage.setItem(key, stamp); } catch { /* fine */ }
   }, 400);
 }

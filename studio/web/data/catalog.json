@@ -1,0 +1,3347 @@
+{
+ "animals": [
+  {
+   "key": "duck",
+   "name": "Duck",
+   "description": "Two webbed feet, a long body and a bendy neck. Balancing on two legs makes it a real challenge.",
+   "groups": [
+    {
+     "key": "size",
+     "title": "Size and shape",
+     "description": "How big the duck is and how its body is shaped.",
+     "settings": [
+      {
+       "key": "overall_size",
+       "label": "Overall size",
+       "kind": "number",
+       "default": 100,
+       "help": "Makes the whole duck bigger or smaller. Weights and muscles grow with it.",
+       "minimum": 50,
+       "maximum": 200,
+       "step": 5,
+       "unit": "%"
+      },
+      {
+       "key": "body_length",
+       "label": "Body length",
+       "kind": "number",
+       "default": 100,
+       "help": "How long the body is from tail to chest.",
+       "minimum": 60,
+       "maximum": 170,
+       "step": 5,
+       "unit": "%"
+      },
+      {
+       "key": "body_width",
+       "label": "Body plumpness",
+       "kind": "number",
+       "default": 100,
+       "help": "How wide and tall the body is.",
+       "minimum": 60,
+       "maximum": 170,
+       "step": 5,
+       "unit": "%"
+      },
+      {
+       "key": "neck_length",
+       "label": "Neck length",
+       "kind": "number",
+       "default": 100,
+       "help": "A longer neck reaches further but swings more.",
+       "minimum": 40,
+       "maximum": 220,
+       "step": 5,
+       "unit": "%"
+      },
+      {
+       "key": "head_size",
+       "label": "Head size",
+       "kind": "number",
+       "default": 100,
+       "help": "",
+       "minimum": 50,
+       "maximum": 200,
+       "step": 5,
+       "unit": "%"
+      },
+      {
+       "key": "tail_size",
+       "label": "Tail size",
+       "kind": "number",
+       "default": 100,
+       "help": "The tail is a counterweight to the neck and head.",
+       "minimum": 0,
+       "maximum": 250,
+       "step": 5,
+       "unit": "%"
+      },
+      {
+       "key": "wing_size",
+       "label": "Wing size",
+       "kind": "number",
+       "default": 100,
+       "help": "The folded wings. They do not flap.",
+       "minimum": 0,
+       "maximum": 200,
+       "step": 5,
+       "unit": "%"
+      }
+     ]
+    },
+    {
+     "key": "legs",
+     "title": "Legs and feet",
+     "description": "The parts that do the walking.",
+     "settings": [
+      {
+       "key": "leg_length",
+       "label": "Leg length",
+       "kind": "number",
+       "default": 100,
+       "help": "Longer legs take longer steps but are harder to balance on.",
+       "minimum": 50,
+       "maximum": 250,
+       "step": 5,
+       "unit": "%"
+      },
+      {
+       "key": "leg_thickness",
+       "label": "Leg thickness",
+       "kind": "number",
+       "default": 100,
+       "help": "Thicker legs are heavier and sturdier.",
+       "minimum": 50,
+       "maximum": 300,
+       "step": 5,
+       "unit": "%"
+      },
+      {
+       "key": "leg_position",
+       "label": "Leg position",
+       "kind": "number",
+       "default": -40,
+       "help": "Where the legs join the body: far back (minus) or toward the chest (plus). Real ducks have them far back.",
+       "minimum": -90,
+       "maximum": 60,
+       "step": 5,
+       "unit": "%"
+      },
+      {
+       "key": "leg_spread",
+       "label": "Leg spread",
+       "kind": "number",
+       "default": 100,
+       "help": "How far apart the two legs are. Wider is steadier.",
+       "minimum": 50,
+       "maximum": 220,
+       "step": 5,
+       "unit": "%"
+      },
+      {
+       "key": "foot_size",
+       "label": "Foot size",
+       "kind": "number",
+       "default": 100,
+       "help": "Bigger webbed feet give a wider base to stand on.",
+       "minimum": 40,
+       "maximum": 250,
+       "step": 5,
+       "unit": "%"
+      },
+      {
+       "key": "foot_grip",
+       "label": "Foot grip",
+       "kind": "number",
+       "default": 100,
+       "help": "How well the feet grip the ground. Low grip slides like on ice.",
+       "minimum": 10,
+       "maximum": 300,
+       "step": 5,
+       "unit": "%"
+      },
+      {
+       "key": "has_toes",
+       "label": "Moving toes",
+       "kind": "bool",
+       "default": true,
+       "help": "Toes that curl give extra control, with two more motors to learn."
+      }
+     ]
+    },
+    {
+     "key": "weight",
+     "title": "Weight",
+     "description": "How heavy each part is, on top of what its size gives.",
+     "settings": [
+      {
+       "key": "body_weight",
+       "label": "Body weight",
+       "kind": "number",
+       "default": 100,
+       "help": "",
+       "minimum": 25,
+       "maximum": 400,
+       "step": 5,
+       "unit": "%"
+      },
+      {
+       "key": "head_weight",
+       "label": "Head and neck weight",
+       "kind": "number",
+       "default": 100,
+       "help": "",
+       "minimum": 25,
+       "maximum": 400,
+       "step": 5,
+       "unit": "%"
+      },
+      {
+       "key": "leg_weight",
+       "label": "Leg weight",
+       "kind": "number",
+       "default": 100,
+       "help": "",
+       "minimum": 25,
+       "maximum": 400,
+       "step": 5,
+       "unit": "%"
+      }
+     ]
+    },
+    {
+     "key": "muscles",
+     "title": "Muscles",
+     "description": "The motors that move each joint.",
+     "settings": [
+      {
+       "key": "motor_type",
+       "label": "Kind of muscle",
+       "kind": "choice",
+       "default": "force",
+       "help": "Direct muscles push with the force the brain asks for and let the joint swing freely at zero, like real muscles (the newest learn_to_walk ducks). Springy muscles pull each joint toward an angle the brain asks for: stiffer, but easier at first.",
+       "choices": [
+        {
+         "value": "force",
+         "label": "Direct (pushes with a force)"
+        },
+        {
+         "value": "position",
+         "label": "Springy (aims for an angle)"
+        }
+       ]
+      },
+      {
+       "key": "hip_strength",
+       "label": "Hip strength",
+       "kind": "number",
+       "default": 100,
+       "help": "",
+       "minimum": 25,
+       "maximum": 1000,
+       "step": 25,
+       "unit": "%"
+      },
+      {
+       "key": "knee_strength",
+       "label": "Knee strength",
+       "kind": "number",
+       "default": 100,
+       "help": "",
+       "minimum": 25,
+       "maximum": 1000,
+       "step": 25,
+       "unit": "%"
+      },
+      {
+       "key": "ankle_strength",
+       "label": "Ankle strength",
+       "kind": "number",
+       "default": 100,
+       "help": "",
+       "minimum": 25,
+       "maximum": 1000,
+       "step": 25,
+       "unit": "%"
+      },
+      {
+       "key": "toe_strength",
+       "label": "Toe strength",
+       "kind": "number",
+       "default": 100,
+       "help": "",
+       "minimum": 25,
+       "maximum": 1000,
+       "step": 25,
+       "unit": "%"
+      },
+      {
+       "key": "neck_strength",
+       "label": "Neck strength",
+       "kind": "number",
+       "default": 100,
+       "help": "",
+       "minimum": 25,
+       "maximum": 1000,
+       "step": 25,
+       "unit": "%"
+      },
+      {
+       "key": "stiffness",
+       "label": "Muscle springiness",
+       "kind": "number",
+       "default": 100,
+       "help": "How hard springy muscles pull toward their angle. Higher feels more robotic.",
+       "minimum": 25,
+       "maximum": 1000,
+       "step": 25,
+       "unit": "%"
+      },
+      {
+       "key": "flexibility",
+       "label": "Joint flexibility",
+       "kind": "number",
+       "default": 100,
+       "help": "How far every joint can bend.",
+       "minimum": 40,
+       "maximum": 160,
+       "step": 5,
+       "unit": "%"
+      },
+      {
+       "key": "neck_moves",
+       "label": "Moving neck",
+       "kind": "bool",
+       "default": true,
+       "help": "A neck that can nod helps balance, with two more motors to learn."
+      }
+     ]
+    },
+    {
+     "key": "looks",
+     "title": "Colours",
+     "description": "Only for looks: colours do not change how it walks.",
+     "settings": [
+      {
+       "key": "body_colour",
+       "label": "Body",
+       "kind": "colour",
+       "default": "#f5c430",
+       "help": ""
+      },
+      {
+       "key": "wing_colour",
+       "label": "Wings",
+       "kind": "colour",
+       "default": "#e0b021",
+       "help": ""
+      },
+      {
+       "key": "leg_colour",
+       "label": "Legs and feet",
+       "kind": "colour",
+       "default": "#ff8c1a",
+       "help": ""
+      },
+      {
+       "key": "beak_colour",
+       "label": "Beak",
+       "kind": "colour",
+       "default": "#ff8c1a",
+       "help": ""
+      }
+     ]
+    }
+   ],
+   "defaults": {
+    "overall_size": 100,
+    "body_length": 100,
+    "body_width": 100,
+    "neck_length": 100,
+    "head_size": 100,
+    "tail_size": 100,
+    "wing_size": 100,
+    "leg_length": 100,
+    "leg_thickness": 100,
+    "leg_position": -40,
+    "leg_spread": 100,
+    "foot_size": 100,
+    "foot_grip": 100,
+    "has_toes": true,
+    "body_weight": 100,
+    "head_weight": 100,
+    "leg_weight": 100,
+    "motor_type": "force",
+    "hip_strength": 100,
+    "knee_strength": 100,
+    "ankle_strength": 100,
+    "toe_strength": 100,
+    "neck_strength": 100,
+    "stiffness": 100,
+    "flexibility": 100,
+    "neck_moves": true,
+    "body_colour": "#f5c430",
+    "wing_colour": "#e0b021",
+    "leg_colour": "#ff8c1a",
+    "beak_colour": "#ff8c1a"
+   }
+  },
+  {
+   "key": "puppy",
+   "name": "Puppy",
+   "description": "Four legs, a nodding head and a wagging tail. Steadier than the duck, with more legs to coordinate.",
+   "groups": [
+    {
+     "key": "size",
+     "title": "Size and shape",
+     "description": "How big the puppy is and how its body is shaped.",
+     "settings": [
+      {
+       "key": "overall_size",
+       "label": "Overall size",
+       "kind": "number",
+       "default": 100,
+       "help": "Makes the whole puppy bigger or smaller. Weights and muscles grow with it.",
+       "minimum": 50,
+       "maximum": 200,
+       "step": 5,
+       "unit": "%"
+      },
+      {
+       "key": "body_length",
+       "label": "Body length",
+       "kind": "number",
+       "default": 100,
+       "help": "A long body like a dachshund, or a short one like a pug.",
+       "minimum": 60,
+       "maximum": 200,
+       "step": 5,
+       "unit": "%"
+      },
+      {
+       "key": "body_width",
+       "label": "Body chunkiness",
+       "kind": "number",
+       "default": 100,
+       "help": "How wide and deep the body is.",
+       "minimum": 60,
+       "maximum": 170,
+       "step": 5,
+       "unit": "%"
+      },
+      {
+       "key": "neck_length",
+       "label": "Neck length",
+       "kind": "number",
+       "default": 100,
+       "help": "",
+       "minimum": 40,
+       "maximum": 220,
+       "step": 5,
+       "unit": "%"
+      },
+      {
+       "key": "head_size",
+       "label": "Head size",
+       "kind": "number",
+       "default": 100,
+       "help": "",
+       "minimum": 50,
+       "maximum": 200,
+       "step": 5,
+       "unit": "%"
+      },
+      {
+       "key": "tail_length",
+       "label": "Tail length",
+       "kind": "number",
+       "default": 100,
+       "help": "A long tail can help with balance when it wags.",
+       "minimum": 0,
+       "maximum": 250,
+       "step": 5,
+       "unit": "%"
+      },
+      {
+       "key": "ear_size",
+       "label": "Ear size",
+       "kind": "number",
+       "default": 100,
+       "help": "Only for looks.",
+       "minimum": 0,
+       "maximum": 250,
+       "step": 5,
+       "unit": "%"
+      }
+     ]
+    },
+    {
+     "key": "legs",
+     "title": "Legs and paws",
+     "description": "The parts that do the walking.",
+     "settings": [
+      {
+       "key": "front_leg_length",
+       "label": "Front leg length",
+       "kind": "number",
+       "default": 100,
+       "help": "",
+       "minimum": 50,
+       "maximum": 250,
+       "step": 5,
+       "unit": "%"
+      },
+      {
+       "key": "back_leg_length",
+       "label": "Back leg length",
+       "kind": "number",
+       "default": 100,
+       "help": "",
+       "minimum": 50,
+       "maximum": 250,
+       "step": 5,
+       "unit": "%"
+      },
+      {
+       "key": "leg_thickness",
+       "label": "Leg thickness",
+       "kind": "number",
+       "default": 100,
+       "help": "Thicker legs are heavier and sturdier.",
+       "minimum": 50,
+       "maximum": 300,
+       "step": 5,
+       "unit": "%"
+      },
+      {
+       "key": "leg_spread",
+       "label": "Leg spread",
+       "kind": "number",
+       "default": 100,
+       "help": "How far apart the left and right legs are. Wider is steadier.",
+       "minimum": 50,
+       "maximum": 220,
+       "step": 5,
+       "unit": "%"
+      },
+      {
+       "key": "paw_size",
+       "label": "Paw size",
+       "kind": "number",
+       "default": 100,
+       "help": "Bigger paws give a little more to stand on.",
+       "minimum": 50,
+       "maximum": 250,
+       "step": 5,
+       "unit": "%"
+      },
+      {
+       "key": "foot_grip",
+       "label": "Paw grip",
+       "kind": "number",
+       "default": 100,
+       "help": "How well the paws grip the ground. Low grip slides like on ice.",
+       "minimum": 10,
+       "maximum": 300,
+       "step": 5,
+       "unit": "%"
+      }
+     ]
+    },
+    {
+     "key": "weight",
+     "title": "Weight",
+     "description": "How heavy each part is, on top of what its size gives.",
+     "settings": [
+      {
+       "key": "body_weight",
+       "label": "Body weight",
+       "kind": "number",
+       "default": 100,
+       "help": "",
+       "minimum": 25,
+       "maximum": 400,
+       "step": 5,
+       "unit": "%"
+      },
+      {
+       "key": "head_weight",
+       "label": "Head weight",
+       "kind": "number",
+       "default": 100,
+       "help": "",
+       "minimum": 25,
+       "maximum": 400,
+       "step": 5,
+       "unit": "%"
+      },
+      {
+       "key": "leg_weight",
+       "label": "Leg weight",
+       "kind": "number",
+       "default": 100,
+       "help": "",
+       "minimum": 25,
+       "maximum": 400,
+       "step": 5,
+       "unit": "%"
+      }
+     ]
+    },
+    {
+     "key": "muscles",
+     "title": "Muscles",
+     "description": "The motors that move each joint.",
+     "settings": [
+      {
+       "key": "motor_type",
+       "label": "Kind of muscle",
+       "kind": "choice",
+       "default": "force",
+       "help": "Direct muscles push with the force the brain asks for and let the joint swing freely at zero, like real muscles (the newest learn_to_walk ducks). Springy muscles pull each joint toward an angle the brain asks for: stiffer, but easier at first.",
+       "choices": [
+        {
+         "value": "force",
+         "label": "Direct (pushes with a force)"
+        },
+        {
+         "value": "position",
+         "label": "Springy (aims for an angle)"
+        }
+       ]
+      },
+      {
+       "key": "hip_strength",
+       "label": "Shoulder and hip strength",
+       "kind": "number",
+       "default": 100,
+       "help": "",
+       "minimum": 25,
+       "maximum": 1000,
+       "step": 25,
+       "unit": "%"
+      },
+      {
+       "key": "knee_strength",
+       "label": "Knee strength",
+       "kind": "number",
+       "default": 100,
+       "help": "",
+       "minimum": 25,
+       "maximum": 1000,
+       "step": 25,
+       "unit": "%"
+      },
+      {
+       "key": "neck_strength",
+       "label": "Neck strength",
+       "kind": "number",
+       "default": 100,
+       "help": "",
+       "minimum": 25,
+       "maximum": 1000,
+       "step": 25,
+       "unit": "%"
+      },
+      {
+       "key": "tail_strength",
+       "label": "Tail strength",
+       "kind": "number",
+       "default": 100,
+       "help": "",
+       "minimum": 25,
+       "maximum": 1000,
+       "step": 25,
+       "unit": "%"
+      },
+      {
+       "key": "stiffness",
+       "label": "Muscle springiness",
+       "kind": "number",
+       "default": 100,
+       "help": "How hard springy muscles pull toward their angle. Higher feels more robotic.",
+       "minimum": 25,
+       "maximum": 1000,
+       "step": 25,
+       "unit": "%"
+      },
+      {
+       "key": "flexibility",
+       "label": "Joint flexibility",
+       "kind": "number",
+       "default": 100,
+       "help": "How far every joint can bend.",
+       "minimum": 40,
+       "maximum": 160,
+       "step": 5,
+       "unit": "%"
+      },
+      {
+       "key": "neck_moves",
+       "label": "Moving neck",
+       "kind": "bool",
+       "default": true,
+       "help": "A head that can nod, with one more motor to learn."
+      },
+      {
+       "key": "tail_moves",
+       "label": "Wagging tail",
+       "kind": "bool",
+       "default": true,
+       "help": "A tail that swings side to side, with one more motor to learn."
+      }
+     ]
+    },
+    {
+     "key": "looks",
+     "title": "Colours",
+     "description": "Only for looks: colours do not change how it walks.",
+     "settings": [
+      {
+       "key": "fur_colour",
+       "label": "Fur",
+       "kind": "colour",
+       "default": "#c98a4b",
+       "help": ""
+      },
+      {
+       "key": "ear_colour",
+       "label": "Ears",
+       "kind": "colour",
+       "default": "#7a4a26",
+       "help": ""
+      },
+      {
+       "key": "paw_colour",
+       "label": "Paws",
+       "kind": "colour",
+       "default": "#f2e3cf",
+       "help": ""
+      },
+      {
+       "key": "nose_colour",
+       "label": "Nose",
+       "kind": "colour",
+       "default": "#2a1d17",
+       "help": ""
+      }
+     ]
+    }
+   ],
+   "defaults": {
+    "overall_size": 100,
+    "body_length": 100,
+    "body_width": 100,
+    "neck_length": 100,
+    "head_size": 100,
+    "tail_length": 100,
+    "ear_size": 100,
+    "front_leg_length": 100,
+    "back_leg_length": 100,
+    "leg_thickness": 100,
+    "leg_spread": 100,
+    "paw_size": 100,
+    "foot_grip": 100,
+    "body_weight": 100,
+    "head_weight": 100,
+    "leg_weight": 100,
+    "motor_type": "force",
+    "hip_strength": 100,
+    "knee_strength": 100,
+    "neck_strength": 100,
+    "tail_strength": 100,
+    "stiffness": 100,
+    "flexibility": 100,
+    "neck_moves": true,
+    "tail_moves": true,
+    "fur_colour": "#c98a4b",
+    "ear_colour": "#7a4a26",
+    "paw_colour": "#f2e3cf",
+    "nose_colour": "#2a1d17"
+   }
+  },
+  {
+   "key": "custom",
+   "name": "Build your own",
+   "description": "Put sticks, balls and plates together with motors, then see if it can learn to move.",
+   "groups": [
+    {
+     "key": "muscles",
+     "title": "All muscles",
+     "description": "Settings for every motor at once. Each joint also has its own strength.",
+     "settings": [
+      {
+       "key": "motor_type",
+       "label": "Kind of muscle",
+       "kind": "choice",
+       "default": "force",
+       "help": "Direct muscles push with the force the brain asks for and let the joint swing freely at zero. Springy muscles pull each joint toward an angle the brain asks for.",
+       "choices": [
+        {
+         "value": "force",
+         "label": "Direct (pushes with a force)"
+        },
+        {
+         "value": "position",
+         "label": "Springy (aims for an angle)"
+        }
+       ]
+      },
+      {
+       "key": "strength",
+       "label": "Strength of every muscle",
+       "kind": "number",
+       "default": 100,
+       "help": "Multiplies every joint's own strength.",
+       "minimum": 10,
+       "maximum": 1000,
+       "step": 10,
+       "unit": "%"
+      },
+      {
+       "key": "stiffness",
+       "label": "Muscle springiness",
+       "kind": "number",
+       "default": 100,
+       "help": "How hard springy muscles pull toward their angle.",
+       "minimum": 25,
+       "maximum": 1000,
+       "step": 25,
+       "unit": "%"
+      },
+      {
+       "key": "foot_grip",
+       "label": "Grip",
+       "kind": "number",
+       "default": 100,
+       "help": "How well its parts grip the ground.",
+       "minimum": 10,
+       "maximum": 300,
+       "step": 5,
+       "unit": "%"
+      }
+     ]
+    }
+   ],
+   "defaults": {
+    "motor_type": "force",
+    "strength": 100,
+    "stiffness": 100,
+    "foot_grip": 100,
+    "body": {
+     "template": "table",
+     "torso": {
+      "shape": "box",
+      "length": 0.3,
+      "width": 0.16,
+      "height": 0.07,
+      "weight": 1.0,
+      "colour": "#f59e0b"
+     },
+     "parts": [
+      {
+       "id": "front",
+       "name": "Front leg",
+       "parent": "torso",
+       "shape": "stick",
+       "length": 0.12,
+       "thickness": 0.015,
+       "width": 0.05,
+       "x": 0.8,
+       "y": 1,
+       "z": -1,
+       "along": 1.0,
+       "pitch": 90.0,
+       "yaw": 0.0,
+       "joint": "hip",
+       "motion": 50,
+       "strength": 10,
+       "mirror": true,
+       "foot": false,
+       "heaviness": 100.0,
+       "colour": "#4f46e5"
+      },
+      {
+       "id": "front_low",
+       "name": "Front shin",
+       "parent": "front",
+       "shape": "stick",
+       "length": 0.11,
+       "thickness": 0.012,
+       "width": 0.05,
+       "x": 0.0,
+       "y": 0.0,
+       "z": 0.0,
+       "along": 1.0,
+       "pitch": 90.0,
+       "yaw": 0.0,
+       "joint": "swing",
+       "motion": 70,
+       "strength": 10,
+       "mirror": false,
+       "foot": true,
+       "heaviness": 100.0,
+       "colour": "#4f46e5"
+      },
+      {
+       "id": "back",
+       "name": "Back leg",
+       "parent": "torso",
+       "shape": "stick",
+       "length": 0.12,
+       "thickness": 0.015,
+       "width": 0.05,
+       "x": -0.8,
+       "y": 1,
+       "z": -1,
+       "along": 1.0,
+       "pitch": 90.0,
+       "yaw": 0.0,
+       "joint": "hip",
+       "motion": 50,
+       "strength": 10,
+       "mirror": true,
+       "foot": false,
+       "heaviness": 100.0,
+       "colour": "#4f46e5"
+      },
+      {
+       "id": "back_low",
+       "name": "Back shin",
+       "parent": "back",
+       "shape": "stick",
+       "length": 0.11,
+       "thickness": 0.012,
+       "width": 0.05,
+       "x": 0.0,
+       "y": 0.0,
+       "z": 0.0,
+       "along": 1.0,
+       "pitch": 90.0,
+       "yaw": 0.0,
+       "joint": "swing",
+       "motion": 70,
+       "strength": 10,
+       "mirror": false,
+       "foot": true,
+       "heaviness": 100.0,
+       "colour": "#4f46e5"
+      }
+     ]
+    }
+   },
+   "templates": [
+    {
+     "key": "table",
+     "name": "Four-legged table",
+     "description": "A flat body on four two-part legs. A good first build.",
+     "torso": {
+      "shape": "box",
+      "length": 0.3,
+      "width": 0.16,
+      "height": 0.07,
+      "weight": 1.0,
+      "colour": "#f59e0b"
+     },
+     "parts": [
+      {
+       "id": "front",
+       "name": "Front leg",
+       "parent": "torso",
+       "shape": "stick",
+       "length": 0.12,
+       "thickness": 0.015,
+       "width": 0.05,
+       "x": 0.8,
+       "y": 1,
+       "z": -1,
+       "along": 1.0,
+       "pitch": 90.0,
+       "yaw": 0.0,
+       "joint": "hip",
+       "motion": 50,
+       "strength": 10,
+       "mirror": true,
+       "foot": false,
+       "heaviness": 100.0,
+       "colour": "#4f46e5"
+      },
+      {
+       "id": "front_low",
+       "name": "Front shin",
+       "parent": "front",
+       "shape": "stick",
+       "length": 0.11,
+       "thickness": 0.012,
+       "width": 0.05,
+       "x": 0.0,
+       "y": 0.0,
+       "z": 0.0,
+       "along": 1.0,
+       "pitch": 90.0,
+       "yaw": 0.0,
+       "joint": "swing",
+       "motion": 70,
+       "strength": 10,
+       "mirror": false,
+       "foot": true,
+       "heaviness": 100.0,
+       "colour": "#4f46e5"
+      },
+      {
+       "id": "back",
+       "name": "Back leg",
+       "parent": "torso",
+       "shape": "stick",
+       "length": 0.12,
+       "thickness": 0.015,
+       "width": 0.05,
+       "x": -0.8,
+       "y": 1,
+       "z": -1,
+       "along": 1.0,
+       "pitch": 90.0,
+       "yaw": 0.0,
+       "joint": "hip",
+       "motion": 50,
+       "strength": 10,
+       "mirror": true,
+       "foot": false,
+       "heaviness": 100.0,
+       "colour": "#4f46e5"
+      },
+      {
+       "id": "back_low",
+       "name": "Back shin",
+       "parent": "back",
+       "shape": "stick",
+       "length": 0.11,
+       "thickness": 0.012,
+       "width": 0.05,
+       "x": 0.0,
+       "y": 0.0,
+       "z": 0.0,
+       "along": 1.0,
+       "pitch": 90.0,
+       "yaw": 0.0,
+       "joint": "swing",
+       "motion": 70,
+       "strength": 10,
+       "mirror": false,
+       "foot": true,
+       "heaviness": 100.0,
+       "colour": "#4f46e5"
+      }
+     ]
+    },
+    {
+     "key": "biped",
+     "name": "Stick walker",
+     "description": "Two legs with knees and flat feet, like a little robot.",
+     "torso": {
+      "shape": "ellipsoid",
+      "length": 0.16,
+      "width": 0.18,
+      "height": 0.2,
+      "weight": 1.2,
+      "colour": "#22c55e"
+     },
+     "parts": [
+      {
+       "id": "thigh",
+       "name": "Thigh",
+       "parent": "torso",
+       "shape": "stick",
+       "length": 0.14,
+       "thickness": 0.02,
+       "width": 0.05,
+       "x": 0,
+       "y": 0.55,
+       "z": -0.8,
+       "along": 1.0,
+       "pitch": 90.0,
+       "yaw": 0.0,
+       "joint": "hip",
+       "motion": 60,
+       "strength": 20,
+       "mirror": true,
+       "foot": false,
+       "heaviness": 100.0,
+       "colour": "#4f46e5"
+      },
+      {
+       "id": "shin",
+       "name": "Shin",
+       "parent": "thigh",
+       "shape": "stick",
+       "length": 0.14,
+       "thickness": 0.016,
+       "width": 0.05,
+       "x": 0.0,
+       "y": 0.0,
+       "z": 0.0,
+       "along": 1.0,
+       "pitch": 90.0,
+       "yaw": 0.0,
+       "joint": "swing",
+       "motion": 70,
+       "strength": 20,
+       "mirror": false,
+       "foot": false,
+       "heaviness": 100.0,
+       "colour": "#4f46e5"
+      },
+      {
+       "id": "foot",
+       "name": "Foot",
+       "parent": "shin",
+       "shape": "plate",
+       "length": 0.1,
+       "thickness": 0.01,
+       "width": 0.06,
+       "x": 0.0,
+       "y": 0.0,
+       "z": 0.0,
+       "along": 1.0,
+       "pitch": 0,
+       "yaw": 0.0,
+       "joint": "swing",
+       "motion": 40,
+       "strength": 10,
+       "mirror": false,
+       "foot": true,
+       "heaviness": 100.0,
+       "colour": "#4f46e5"
+      }
+     ]
+    },
+    {
+     "key": "bug",
+     "name": "Six-legged bug",
+     "description": "Six legs that splay out to the sides. Very hard to tip over.",
+     "torso": {
+      "shape": "capsule",
+      "length": 0.36,
+      "width": 0.1,
+      "height": 0.1,
+      "weight": 0.8,
+      "colour": "#0ea5e9"
+     },
+     "parts": [
+      {
+       "id": "leg1",
+       "name": "Front leg",
+       "parent": "torso",
+       "shape": "stick",
+       "length": 0.11,
+       "thickness": 0.012,
+       "width": 0.05,
+       "x": 0.7,
+       "y": 1,
+       "z": -0.2,
+       "along": 1.0,
+       "pitch": 20,
+       "yaw": 50,
+       "joint": "hip",
+       "motion": 40,
+       "strength": 8,
+       "mirror": true,
+       "foot": false,
+       "heaviness": 100.0,
+       "colour": "#4f46e5"
+      },
+      {
+       "id": "leg2",
+       "name": "Middle leg",
+       "parent": "torso",
+       "shape": "stick",
+       "length": 0.11,
+       "thickness": 0.012,
+       "width": 0.05,
+       "x": 0,
+       "y": 1,
+       "z": -0.2,
+       "along": 1.0,
+       "pitch": 20,
+       "yaw": 90,
+       "joint": "hip",
+       "motion": 40,
+       "strength": 8,
+       "mirror": true,
+       "foot": false,
+       "heaviness": 100.0,
+       "colour": "#4f46e5"
+      },
+      {
+       "id": "leg3",
+       "name": "Back leg",
+       "parent": "torso",
+       "shape": "stick",
+       "length": 0.11,
+       "thickness": 0.012,
+       "width": 0.05,
+       "x": -0.7,
+       "y": 1,
+       "z": -0.2,
+       "along": 1.0,
+       "pitch": 20,
+       "yaw": 130,
+       "joint": "hip",
+       "motion": 40,
+       "strength": 8,
+       "mirror": true,
+       "foot": false,
+       "heaviness": 100.0,
+       "colour": "#4f46e5"
+      },
+      {
+       "id": "leg1_low",
+       "name": "Front leg tip",
+       "parent": "leg1",
+       "shape": "stick",
+       "length": 0.12,
+       "thickness": 0.01,
+       "width": 0.05,
+       "x": 0.0,
+       "y": 0.0,
+       "z": 0.0,
+       "along": 1.0,
+       "pitch": 80,
+       "yaw": 50,
+       "joint": "swing",
+       "motion": 50,
+       "strength": 6,
+       "mirror": false,
+       "foot": true,
+       "heaviness": 100.0,
+       "colour": "#4f46e5"
+      },
+      {
+       "id": "leg2_low",
+       "name": "Middle leg tip",
+       "parent": "leg2",
+       "shape": "stick",
+       "length": 0.12,
+       "thickness": 0.01,
+       "width": 0.05,
+       "x": 0.0,
+       "y": 0.0,
+       "z": 0.0,
+       "along": 1.0,
+       "pitch": 80,
+       "yaw": 90,
+       "joint": "swing",
+       "motion": 50,
+       "strength": 6,
+       "mirror": false,
+       "foot": true,
+       "heaviness": 100.0,
+       "colour": "#4f46e5"
+      },
+      {
+       "id": "leg3_low",
+       "name": "Back leg tip",
+       "parent": "leg3",
+       "shape": "stick",
+       "length": 0.12,
+       "thickness": 0.01,
+       "width": 0.05,
+       "x": 0.0,
+       "y": 0.0,
+       "z": 0.0,
+       "along": 1.0,
+       "pitch": 80,
+       "yaw": 130,
+       "joint": "swing",
+       "motion": 50,
+       "strength": 6,
+       "mirror": false,
+       "foot": true,
+       "heaviness": 100.0,
+       "colour": "#4f46e5"
+      }
+     ]
+    },
+    {
+     "key": "hopper",
+     "name": "One-legged hopper",
+     "description": "One springy leg under a round body. Can it learn to hop?",
+     "torso": {
+      "shape": "ball",
+      "length": 0.2,
+      "width": 0.2,
+      "height": 0.2,
+      "weight": 1.0,
+      "colour": "#ec4899"
+     },
+     "parts": [
+      {
+       "id": "thigh",
+       "name": "Leg",
+       "parent": "torso",
+       "shape": "stick",
+       "length": 0.16,
+       "thickness": 0.02,
+       "width": 0.05,
+       "x": 0.0,
+       "y": 0.0,
+       "z": -0.9,
+       "along": 1.0,
+       "pitch": 90.0,
+       "yaw": 0.0,
+       "joint": "swing",
+       "motion": 60,
+       "strength": 25,
+       "mirror": false,
+       "foot": false,
+       "heaviness": 100.0,
+       "colour": "#4f46e5"
+      },
+      {
+       "id": "shin",
+       "name": "Shin",
+       "parent": "thigh",
+       "shape": "stick",
+       "length": 0.16,
+       "thickness": 0.016,
+       "width": 0.05,
+       "x": 0.0,
+       "y": 0.0,
+       "z": 0.0,
+       "along": 1.0,
+       "pitch": 90.0,
+       "yaw": 0.0,
+       "joint": "swing",
+       "motion": 70,
+       "strength": 25,
+       "mirror": false,
+       "foot": false,
+       "heaviness": 100.0,
+       "colour": "#4f46e5"
+      },
+      {
+       "id": "foot",
+       "name": "Foot",
+       "parent": "shin",
+       "shape": "plate",
+       "length": 0.14,
+       "thickness": 0.012,
+       "width": 0.1,
+       "x": 0.0,
+       "y": 0.0,
+       "z": 0.0,
+       "along": 1.0,
+       "pitch": 0,
+       "yaw": 0.0,
+       "joint": "swing",
+       "motion": 40,
+       "strength": 12,
+       "mirror": false,
+       "foot": true,
+       "heaviness": 100.0,
+       "colour": "#4f46e5"
+      }
+     ]
+    },
+    {
+     "key": "spider",
+     "name": "Eight-legged spider",
+     "description": "A round body on eight long, bent legs.",
+     "torso": {
+      "shape": "ellipsoid",
+      "length": 0.2,
+      "width": 0.16,
+      "height": 0.1,
+      "weight": 0.6,
+      "colour": "#334155"
+     },
+     "parts": [
+      {
+       "id": "l1",
+       "name": "Leg 1",
+       "parent": "torso",
+       "shape": "stick",
+       "length": 0.12,
+       "thickness": 0.01,
+       "width": 0.05,
+       "x": 0.7,
+       "y": 0.9,
+       "z": -0.2,
+       "along": 1.0,
+       "pitch": -15,
+       "yaw": 40,
+       "joint": "hip",
+       "motion": 50,
+       "strength": 6,
+       "mirror": true,
+       "foot": false,
+       "heaviness": 100.0,
+       "colour": "#475569"
+      },
+      {
+       "id": "l2",
+       "name": "Leg 2",
+       "parent": "torso",
+       "shape": "stick",
+       "length": 0.12,
+       "thickness": 0.01,
+       "width": 0.05,
+       "x": 0.25,
+       "y": 0.9,
+       "z": -0.2,
+       "along": 1.0,
+       "pitch": -15,
+       "yaw": 75,
+       "joint": "hip",
+       "motion": 50,
+       "strength": 6,
+       "mirror": true,
+       "foot": false,
+       "heaviness": 100.0,
+       "colour": "#475569"
+      },
+      {
+       "id": "l3",
+       "name": "Leg 3",
+       "parent": "torso",
+       "shape": "stick",
+       "length": 0.12,
+       "thickness": 0.01,
+       "width": 0.05,
+       "x": -0.25,
+       "y": 0.9,
+       "z": -0.2,
+       "along": 1.0,
+       "pitch": -15,
+       "yaw": 105,
+       "joint": "hip",
+       "motion": 50,
+       "strength": 6,
+       "mirror": true,
+       "foot": false,
+       "heaviness": 100.0,
+       "colour": "#475569"
+      },
+      {
+       "id": "l4",
+       "name": "Leg 4",
+       "parent": "torso",
+       "shape": "stick",
+       "length": 0.12,
+       "thickness": 0.01,
+       "width": 0.05,
+       "x": -0.7,
+       "y": 0.9,
+       "z": -0.2,
+       "along": 1.0,
+       "pitch": -15,
+       "yaw": 140,
+       "joint": "hip",
+       "motion": 50,
+       "strength": 6,
+       "mirror": true,
+       "foot": false,
+       "heaviness": 100.0,
+       "colour": "#475569"
+      },
+      {
+       "id": "l1_tip",
+       "name": "Leg 1 tip",
+       "parent": "l1",
+       "shape": "stick",
+       "length": 0.16,
+       "thickness": 0.008,
+       "width": 0.05,
+       "x": 0.0,
+       "y": 0.0,
+       "z": 0.0,
+       "along": 1.0,
+       "pitch": 75,
+       "yaw": 40,
+       "joint": "swing",
+       "motion": 60,
+       "strength": 5,
+       "mirror": false,
+       "foot": true,
+       "heaviness": 100.0,
+       "colour": "#f97316"
+      },
+      {
+       "id": "l2_tip",
+       "name": "Leg 2 tip",
+       "parent": "l2",
+       "shape": "stick",
+       "length": 0.16,
+       "thickness": 0.008,
+       "width": 0.05,
+       "x": 0.0,
+       "y": 0.0,
+       "z": 0.0,
+       "along": 1.0,
+       "pitch": 75,
+       "yaw": 75,
+       "joint": "swing",
+       "motion": 60,
+       "strength": 5,
+       "mirror": false,
+       "foot": true,
+       "heaviness": 100.0,
+       "colour": "#f97316"
+      },
+      {
+       "id": "l3_tip",
+       "name": "Leg 3 tip",
+       "parent": "l3",
+       "shape": "stick",
+       "length": 0.16,
+       "thickness": 0.008,
+       "width": 0.05,
+       "x": 0.0,
+       "y": 0.0,
+       "z": 0.0,
+       "along": 1.0,
+       "pitch": 75,
+       "yaw": 105,
+       "joint": "swing",
+       "motion": 60,
+       "strength": 5,
+       "mirror": false,
+       "foot": true,
+       "heaviness": 100.0,
+       "colour": "#f97316"
+      },
+      {
+       "id": "l4_tip",
+       "name": "Leg 4 tip",
+       "parent": "l4",
+       "shape": "stick",
+       "length": 0.16,
+       "thickness": 0.008,
+       "width": 0.05,
+       "x": 0.0,
+       "y": 0.0,
+       "z": 0.0,
+       "along": 1.0,
+       "pitch": 75,
+       "yaw": 140,
+       "joint": "swing",
+       "motion": 60,
+       "strength": 5,
+       "mirror": false,
+       "foot": true,
+       "heaviness": 100.0,
+       "colour": "#f97316"
+      }
+     ]
+    },
+    {
+     "key": "kangaroo",
+     "name": "Kangaroo",
+     "description": "Two big back legs with long feet, and a heavy tail to lean on.",
+     "torso": {
+      "shape": "ellipsoid",
+      "length": 0.26,
+      "width": 0.16,
+      "height": 0.2,
+      "weight": 1.4,
+      "colour": "#b45309"
+     },
+     "parts": [
+      {
+       "id": "thigh",
+       "name": "Thigh",
+       "parent": "torso",
+       "shape": "stick",
+       "length": 0.14,
+       "thickness": 0.025,
+       "width": 0.05,
+       "x": -0.4,
+       "y": 0.7,
+       "z": -0.7,
+       "along": 1.0,
+       "pitch": 60,
+       "yaw": 0.0,
+       "joint": "hip",
+       "motion": 80,
+       "strength": 25,
+       "mirror": true,
+       "foot": false,
+       "heaviness": 100.0,
+       "colour": "#92400e"
+      },
+      {
+       "id": "shin",
+       "name": "Shin",
+       "parent": "thigh",
+       "shape": "stick",
+       "length": 0.16,
+       "thickness": 0.018,
+       "width": 0.05,
+       "x": 0.0,
+       "y": 0.0,
+       "z": 0.0,
+       "along": 1.0,
+       "pitch": 110,
+       "yaw": 0.0,
+       "joint": "swing",
+       "motion": 90,
+       "strength": 25,
+       "mirror": false,
+       "foot": false,
+       "heaviness": 100.0,
+       "colour": "#92400e"
+      },
+      {
+       "id": "foot",
+       "name": "Foot",
+       "parent": "shin",
+       "shape": "plate",
+       "length": 0.16,
+       "thickness": 0.012,
+       "width": 0.05,
+       "x": 0.0,
+       "y": 0.0,
+       "z": 0.0,
+       "along": 1.0,
+       "pitch": 0,
+       "yaw": 0.0,
+       "joint": "swing",
+       "motion": 50,
+       "strength": 12,
+       "mirror": false,
+       "foot": true,
+       "heaviness": 100.0,
+       "colour": "#78350f"
+      },
+      {
+       "id": "tail",
+       "name": "Tail",
+       "parent": "torso",
+       "shape": "stick",
+       "length": 0.42,
+       "thickness": 0.03,
+       "width": 0.05,
+       "x": -1,
+       "y": 0.0,
+       "z": -0.3,
+       "along": 1.0,
+       "pitch": 50,
+       "yaw": 180,
+       "joint": "swing",
+       "motion": 50,
+       "strength": 10,
+       "mirror": false,
+       "foot": true,
+       "heaviness": 100.0,
+       "colour": "#b45309"
+      },
+      {
+       "id": "head",
+       "name": "Head",
+       "parent": "torso",
+       "shape": "ball",
+       "length": 0.06,
+       "thickness": 0.05,
+       "width": 0.05,
+       "x": 1,
+       "y": 0.0,
+       "z": 0.8,
+       "along": 1.0,
+       "pitch": -50,
+       "yaw": 0.0,
+       "joint": "swing",
+       "motion": 40,
+       "strength": 3,
+       "mirror": false,
+       "foot": false,
+       "heaviness": 100.0,
+       "colour": "#b45309"
+      }
+     ]
+    },
+    {
+     "key": "worm",
+     "name": "Worm",
+     "description": "A head and a chain of five segments lying on the ground. Can it crawl?",
+     "torso": {
+      "shape": "capsule",
+      "length": 0.12,
+      "width": 0.07,
+      "height": 0.07,
+      "weight": 0.25,
+      "colour": "#db2777"
+     },
+     "parts": [
+      {
+       "id": "seg1",
+       "name": "Segment 1",
+       "parent": "torso",
+       "shape": "stick",
+       "length": 0.1,
+       "thickness": 0.025,
+       "width": 0.05,
+       "x": -1,
+       "y": 0.0,
+       "z": 0.0,
+       "along": 1.0,
+       "pitch": 0,
+       "yaw": 180,
+       "joint": "hip",
+       "motion": 60,
+       "strength": 5,
+       "mirror": false,
+       "foot": true,
+       "heaviness": 100.0,
+       "colour": "#ec4899"
+      },
+      {
+       "id": "seg2",
+       "name": "Segment 2",
+       "parent": "seg1",
+       "shape": "stick",
+       "length": 0.1,
+       "thickness": 0.025,
+       "width": 0.05,
+       "x": 0,
+       "y": 0.0,
+       "z": 0.0,
+       "along": 1.0,
+       "pitch": 0,
+       "yaw": 180,
+       "joint": "hip",
+       "motion": 60,
+       "strength": 5,
+       "mirror": false,
+       "foot": true,
+       "heaviness": 100.0,
+       "colour": "#f472b6"
+      },
+      {
+       "id": "seg3",
+       "name": "Segment 3",
+       "parent": "seg2",
+       "shape": "stick",
+       "length": 0.1,
+       "thickness": 0.025,
+       "width": 0.05,
+       "x": 0,
+       "y": 0.0,
+       "z": 0.0,
+       "along": 1.0,
+       "pitch": 0,
+       "yaw": 180,
+       "joint": "hip",
+       "motion": 60,
+       "strength": 5,
+       "mirror": false,
+       "foot": true,
+       "heaviness": 100.0,
+       "colour": "#ec4899"
+      },
+      {
+       "id": "seg4",
+       "name": "Segment 4",
+       "parent": "seg3",
+       "shape": "stick",
+       "length": 0.1,
+       "thickness": 0.025,
+       "width": 0.05,
+       "x": 0,
+       "y": 0.0,
+       "z": 0.0,
+       "along": 1.0,
+       "pitch": 0,
+       "yaw": 180,
+       "joint": "hip",
+       "motion": 60,
+       "strength": 5,
+       "mirror": false,
+       "foot": true,
+       "heaviness": 100.0,
+       "colour": "#f472b6"
+      },
+      {
+       "id": "seg5",
+       "name": "Segment 5",
+       "parent": "seg4",
+       "shape": "stick",
+       "length": 0.1,
+       "thickness": 0.025,
+       "width": 0.05,
+       "x": 0,
+       "y": 0.0,
+       "z": 0.0,
+       "along": 1.0,
+       "pitch": 0,
+       "yaw": 180,
+       "joint": "hip",
+       "motion": 60,
+       "strength": 5,
+       "mirror": false,
+       "foot": true,
+       "heaviness": 100.0,
+       "colour": "#ec4899"
+      }
+     ]
+    },
+    {
+     "key": "starter",
+     "name": "Just a body",
+     "description": "A body with one pair of legs. Add the rest yourself.",
+     "torso": {
+      "shape": "box",
+      "length": 0.3,
+      "width": 0.16,
+      "height": 0.07,
+      "weight": 1.0,
+      "colour": "#f59e0b"
+     },
+     "parts": [
+      {
+       "id": "leg",
+       "name": "Leg",
+       "parent": "torso",
+       "shape": "stick",
+       "length": 0.18,
+       "thickness": 0.015,
+       "width": 0.05,
+       "x": 0,
+       "y": 1,
+       "z": -1,
+       "along": 1.0,
+       "pitch": 90.0,
+       "yaw": 0.0,
+       "joint": "hip",
+       "motion": 50,
+       "strength": 12,
+       "mirror": true,
+       "foot": true,
+       "heaviness": 100.0,
+       "colour": "#4f46e5"
+      }
+     ]
+    }
+   ]
+  }
+ ],
+ "world_groups": [
+  {
+   "key": "ground",
+   "title": "Ground",
+   "description": "What the walker stands on.",
+   "settings": [
+    {
+     "key": "terrain",
+     "label": "Kind of ground",
+     "kind": "choice",
+     "default": "flat",
+     "help": "The shape of the ground.",
+     "choices": [
+      {
+       "value": "flat",
+       "label": "Flat ground"
+      },
+      {
+       "value": "cobblestones",
+       "label": "Cobblestones"
+      },
+      {
+       "value": "hills",
+       "label": "Rolling hills"
+      },
+      {
+       "value": "stairs",
+       "label": "Stairs"
+      },
+      {
+       "value": "craters",
+       "label": "Craters"
+      },
+      {
+       "value": "blocks",
+       "label": "Rocky blocks"
+      },
+      {
+       "value": "hurdles",
+       "label": "Hurdles"
+      },
+      {
+       "value": "slopes",
+       "label": "Mountain slopes"
+      }
+     ]
+    },
+    {
+     "key": "terrain_height",
+     "label": "Tallest bumps",
+     "kind": "number",
+     "default": 3.0,
+     "help": "How tall the bumps, stones, hills, steps or hurdles get. For mountain slopes: how many centimetres the path climbs per metre. 0 is flat.",
+     "minimum": 0.0,
+     "maximum": 40.0,
+     "step": 0.5,
+     "unit": "cm"
+    },
+    {
+     "key": "mixed_heights",
+     "label": "Mix of heights",
+     "kind": "bool",
+     "default": true,
+     "help": "Each practice attempt picks a height from flat up to the tallest, so the walker meets easy and hard ground. Off: always the tallest."
+    },
+    {
+     "key": "gradually_harder",
+     "label": "Gradually harder",
+     "kind": "bool",
+     "default": false,
+     "help": "Start on flat ground and raise the bumps step by step as training goes on. Helps with hard ground."
+    },
+    {
+     "key": "ground_grip",
+     "label": "Ground grip",
+     "kind": "number",
+     "default": 100,
+     "help": "How slippery the ground is. Ice is about 15%.",
+     "minimum": 5,
+     "maximum": 200,
+     "step": 5,
+     "unit": "%"
+    }
+   ]
+  },
+  {
+   "key": "physics",
+   "title": "Physics",
+   "description": "The laws of nature in this world.",
+   "settings": [
+    {
+     "key": "gravity",
+     "label": "Gravity",
+     "kind": "number",
+     "default": 9.81,
+     "help": "Earth 9.8, Mars 3.7, Moon 1.6. Low gravity makes every step a jump.",
+     "minimum": 1.0,
+     "maximum": 25.0,
+     "step": 0.1,
+     "unit": "m/s²"
+    }
+   ]
+  },
+  {
+   "key": "task",
+   "title": "The task",
+   "description": "What the walker is asked to do in every attempt.",
+   "settings": [
+    {
+     "key": "slowest_speed",
+     "label": "Slowest asked speed",
+     "kind": "number",
+     "default": 0.2,
+     "help": "Each attempt asks for a speed between the slowest and the fastest. The walker learns to follow the speed it is given.",
+     "minimum": 0.05,
+     "maximum": 3.0,
+     "step": 0.05,
+     "unit": "m/s"
+    },
+    {
+     "key": "fastest_speed",
+     "label": "Fastest asked speed",
+     "kind": "number",
+     "default": 0.7,
+     "help": "",
+     "minimum": 0.05,
+     "maximum": 4.0,
+     "step": 0.05,
+     "unit": "m/s"
+    },
+    {
+     "key": "attempt_seconds",
+     "label": "Attempt length",
+     "kind": "number",
+     "default": 20,
+     "help": "How long one practice attempt lasts if the walker does not fall.",
+     "minimum": 5,
+     "maximum": 60,
+     "step": 1,
+     "unit": "s"
+    },
+    {
+     "key": "turning",
+     "label": "Asked to turn",
+     "kind": "bool",
+     "default": false,
+     "help": "Each attempt also asks it to turn, left or right, changing every few seconds. A walker trained this way can be steered in Live mode. Flat ground only."
+    },
+    {
+     "key": "turn_rate",
+     "label": "Sharpest turn",
+     "kind": "number",
+     "default": 30,
+     "help": "The sharpest turn it is asked for, in degrees per second.",
+     "minimum": 5,
+     "maximum": 120,
+     "step": 5,
+     "unit": "°/s",
+     "depends": "turning"
+    }
+   ]
+  },
+  {
+   "key": "reward",
+   "title": "What it cares about",
+   "description": "Points the walker earns or loses every moment. Learning is the search for more points, so these shape how it walks.",
+   "settings": [
+    {
+     "key": "speed_shape",
+     "label": "How speed is scored",
+     "kind": "choice",
+     "default": "target",
+     "help": "Exactly the asked speed: the most points at the asked speed, fewer for going slower or faster (learn_to_walk's rule). Close to the asked speed: a gentler bell curve around it. As fast as possible: more speed is always better, the asked speed is ignored.",
+     "choices": [
+      {
+       "value": "target",
+       "label": "Exactly the asked speed"
+      },
+      {
+       "value": "bell",
+       "label": "Close to the asked speed"
+      },
+      {
+       "value": "faster",
+       "label": "As fast as possible"
+      }
+     ]
+    },
+    {
+     "key": "speed_points",
+     "label": "Moving forward",
+     "kind": "number",
+     "default": 3.0,
+     "help": "Points for moving forward (see above). The main goal.",
+     "minimum": 0.0,
+     "maximum": 10.0,
+     "step": 0.1,
+     "unit": "points"
+    },
+    {
+     "key": "alive_points",
+     "label": "Staying on its feet",
+     "kind": "number",
+     "default": 0.2,
+     "help": "Points for every moment without falling. Too many and it learns to just stand still.",
+     "minimum": 0.0,
+     "maximum": 2.0,
+     "step": 0.05,
+     "unit": "points"
+    },
+    {
+     "key": "energy_cost",
+     "label": "Saving energy",
+     "kind": "number",
+     "default": 1.5,
+     "help": "Points lost per joule the muscles use. Higher gives calmer, more efficient walking; too high and it barely moves.",
+     "minimum": 0.0,
+     "maximum": 10.0,
+     "step": 0.1,
+     "unit": "points"
+    },
+    {
+     "key": "straight_cost",
+     "label": "Walking straight",
+     "kind": "number",
+     "default": 0.5,
+     "help": "Points lost per metre of drifting off the straight line.",
+     "minimum": 0.0,
+     "maximum": 5.0,
+     "step": 0.1,
+     "unit": "points"
+    },
+    {
+     "key": "fall_cost",
+     "label": "Falling",
+     "kind": "number",
+     "default": 0.0,
+     "help": "Points lost once, when it falls. Falling already ends the attempt and its points, so this is extra.",
+     "minimum": 0.0,
+     "maximum": 200.0,
+     "step": 5.0,
+     "unit": "points"
+    }
+   ]
+  },
+  {
+   "key": "rules",
+   "title": "Style rules",
+   "description": "Optional extra rules for how it should walk. Each one can be switched on and given a strength. Small strengths nudge; big ones can take over.",
+   "settings": [
+    {
+     "key": "end_stops",
+     "label": "No leaning on joint limits",
+     "kind": "bool",
+     "default": true,
+     "help": "Lose points for resting joints against their end stops (the last 5% of their range). With direct muscles, leaning on the stops holds the body up for free, so walkers learn odd crouches without this. Learn_to_walk's Duck 4 used it."
+    },
+    {
+     "key": "end_stop_cost",
+     "label": "Strength",
+     "kind": "number",
+     "default": 0.05,
+     "help": "Points lost per joint fully at its limit, every moment. 0.05 is gentle; at 0.2 the duck preferred falling on purpose.",
+     "minimum": 0.0,
+     "maximum": 0.5,
+     "step": 0.01,
+     "unit": "points",
+     "depends": "end_stops"
+    },
+    {
+     "key": "level_body",
+     "label": "Keep the body level",
+     "kind": "bool",
+     "default": false,
+     "help": "Lose points for tilting the body forward, back or sideways."
+    },
+    {
+     "key": "level_cost",
+     "label": "Strength",
+     "kind": "number",
+     "default": 0.5,
+     "help": "Points lost each moment when tipped fully on its side; less for smaller tilts.",
+     "minimum": 0.0,
+     "maximum": 5.0,
+     "step": 0.05,
+     "unit": "points",
+     "depends": "level_body"
+    },
+    {
+     "key": "no_crouch",
+     "label": "Stand tall",
+     "kind": "bool",
+     "default": false,
+     "help": "Lose points for letting the body sink below its standing height."
+    },
+    {
+     "key": "crouch_cost",
+     "label": "Strength",
+     "kind": "number",
+     "default": 1.0,
+     "help": "Points lost each moment when the body is on the ground; less for a small crouch.",
+     "minimum": 0.0,
+     "maximum": 10.0,
+     "step": 0.1,
+     "unit": "points",
+     "depends": "no_crouch"
+    },
+    {
+     "key": "smooth_moves",
+     "label": "Smooth moves",
+     "kind": "bool",
+     "default": false,
+     "help": "Lose points for sudden changes in the muscle commands. Gives calmer, less jittery motion."
+    },
+    {
+     "key": "smooth_cost",
+     "label": "Strength",
+     "kind": "number",
+     "default": 0.2,
+     "help": "Points lost for a muscle flipping from one end to the other in one moment.",
+     "minimum": 0.0,
+     "maximum": 5.0,
+     "step": 0.05,
+     "unit": "points",
+     "depends": "smooth_moves"
+    },
+    {
+     "key": "lift_feet",
+     "label": "Lift its feet",
+     "kind": "bool",
+     "default": false,
+     "help": "Points for every step where a foot was in the air for longer than a quarter of a second. Encourages real steps instead of shuffling."
+    },
+    {
+     "key": "lift_points",
+     "label": "Strength",
+     "kind": "number",
+     "default": 1.0,
+     "help": "Points per tenth of a second a foot spent in the air beyond a quarter of a second, given when it lands.",
+     "minimum": 0.0,
+     "maximum": 10.0,
+     "step": 0.1,
+     "unit": "points",
+     "depends": "lift_feet"
+    },
+    {
+     "key": "face_forward",
+     "label": "Face forward",
+     "kind": "bool",
+     "default": false,
+     "help": "Lose points for turning away from the walking direction."
+    },
+    {
+     "key": "heading_cost",
+     "label": "Strength",
+     "kind": "number",
+     "default": 0.3,
+     "help": "Points lost each moment per radian turned away.",
+     "minimum": 0.0,
+     "maximum": 5.0,
+     "step": 0.05,
+     "unit": "points",
+     "depends": "face_forward"
+    },
+    {
+     "key": "steady_ride",
+     "label": "Steady ride",
+     "kind": "bool",
+     "default": false,
+     "help": "Lose points for bouncing the body up and down."
+    },
+    {
+     "key": "bounce_cost",
+     "label": "Strength",
+     "kind": "number",
+     "default": 0.5,
+     "help": "Points lost per (metre per second) squared of up and down speed.",
+     "minimum": 0.0,
+     "maximum": 10.0,
+     "step": 0.1,
+     "unit": "points",
+     "depends": "steady_ride"
+    }
+   ]
+  },
+  {
+   "key": "extras",
+   "title": "Surprises",
+   "description": "Things that happen to the walker while it practises.",
+   "settings": [
+    {
+     "key": "rocks",
+     "label": "Thrown rocks",
+     "kind": "bool",
+     "default": false,
+     "help": "Stones are thrown at the walker from the side."
+    },
+    {
+     "key": "rock_weight",
+     "label": "Rock weight",
+     "kind": "number",
+     "default": 100,
+     "help": "",
+     "minimum": 10,
+     "maximum": 2000,
+     "step": 10,
+     "unit": "g"
+    },
+    {
+     "key": "rock_every",
+     "label": "Time between rocks",
+     "kind": "number",
+     "default": 2.0,
+     "help": "",
+     "minimum": 0.5,
+     "maximum": 10.0,
+     "step": 0.5,
+     "unit": "s"
+    },
+    {
+     "key": "wind",
+     "label": "Gusts of wind",
+     "kind": "bool",
+     "default": false,
+     "help": "Sudden pushes from a random direction."
+    },
+    {
+     "key": "wind_strength",
+     "label": "Gust strength",
+     "kind": "number",
+     "default": 30,
+     "help": "How hard a gust pushes, as a share of the walker's weight.",
+     "minimum": 5,
+     "maximum": 150,
+     "step": 5,
+     "unit": "%"
+    },
+    {
+     "key": "wind_every",
+     "label": "Time between gusts",
+     "kind": "number",
+     "default": 3.0,
+     "help": "",
+     "minimum": 0.5,
+     "maximum": 10.0,
+     "step": 0.5,
+     "unit": "s"
+    },
+    {
+     "key": "backpack",
+     "label": "Backpack",
+     "kind": "bool",
+     "default": false,
+     "help": "A box to carry on its back."
+    },
+    {
+     "key": "backpack_weight",
+     "label": "Backpack weight",
+     "kind": "number",
+     "default": 200,
+     "help": "",
+     "minimum": 10,
+     "maximum": 3000,
+     "step": 10,
+     "unit": "g"
+    }
+   ]
+  },
+  {
+   "key": "looks",
+   "title": "Looks",
+   "description": "Only for the 3D view.",
+   "settings": [
+    {
+     "key": "style",
+     "label": "Scenery",
+     "kind": "choice",
+     "default": "meadow",
+     "help": "",
+     "choices": [
+      {
+       "value": "meadow",
+       "label": "Green meadow"
+      },
+      {
+       "value": "street",
+       "label": "Stone street"
+      },
+      {
+       "value": "desert",
+       "label": "Sandy desert"
+      },
+      {
+       "value": "snow",
+       "label": "Snow and ice"
+      },
+      {
+       "value": "moon",
+       "label": "Moon dust"
+      },
+      {
+       "value": "night",
+       "label": "Night"
+      }
+     ]
+    }
+   ]
+  }
+ ],
+ "world_templates": [
+  {
+   "id": "flat_meadow",
+   "name": "Flat Meadow",
+   "description": "Smooth, flat grass. The best place to take the very first steps.",
+   "builtin": true,
+   "values": {
+    "terrain": "flat",
+    "terrain_height": 3.0,
+    "mixed_heights": true,
+    "gradually_harder": false,
+    "ground_grip": 100.0,
+    "gravity": 9.81,
+    "slowest_speed": 0.2,
+    "fastest_speed": 0.7,
+    "attempt_seconds": 20.0,
+    "turning": false,
+    "turn_rate": 30.0,
+    "speed_shape": "target",
+    "speed_points": 3.0,
+    "alive_points": 0.2,
+    "energy_cost": 1.5,
+    "straight_cost": 0.5,
+    "fall_cost": 0.0,
+    "end_stops": true,
+    "end_stop_cost": 0.05,
+    "level_body": false,
+    "level_cost": 0.5,
+    "no_crouch": false,
+    "crouch_cost": 1.0,
+    "smooth_moves": false,
+    "smooth_cost": 0.2,
+    "lift_feet": false,
+    "lift_points": 1.0,
+    "face_forward": false,
+    "heading_cost": 0.3,
+    "steady_ride": false,
+    "bounce_cost": 0.5,
+    "rocks": false,
+    "rock_weight": 100.0,
+    "rock_every": 2.0,
+    "wind": false,
+    "wind_strength": 30.0,
+    "wind_every": 3.0,
+    "backpack": false,
+    "backpack_weight": 200.0,
+    "style": "meadow"
+   }
+  },
+  {
+   "id": "cobblestone_street",
+   "name": "Cobblestone Street",
+   "description": "Square cobblestones and gentle bumps up to 3 cm. Every step lands a little differently.",
+   "builtin": true,
+   "values": {
+    "terrain": "cobblestones",
+    "terrain_height": 3.0,
+    "mixed_heights": true,
+    "gradually_harder": false,
+    "ground_grip": 100.0,
+    "gravity": 9.81,
+    "slowest_speed": 0.2,
+    "fastest_speed": 0.7,
+    "attempt_seconds": 20.0,
+    "turning": false,
+    "turn_rate": 30.0,
+    "speed_shape": "target",
+    "speed_points": 3.0,
+    "alive_points": 0.2,
+    "energy_cost": 1.5,
+    "straight_cost": 0.5,
+    "fall_cost": 0.0,
+    "end_stops": true,
+    "end_stop_cost": 0.05,
+    "level_body": false,
+    "level_cost": 0.5,
+    "no_crouch": false,
+    "crouch_cost": 1.0,
+    "smooth_moves": false,
+    "smooth_cost": 0.2,
+    "lift_feet": false,
+    "lift_points": 1.0,
+    "face_forward": false,
+    "heading_cost": 0.3,
+    "steady_ride": false,
+    "bounce_cost": 0.5,
+    "rocks": false,
+    "rock_weight": 100.0,
+    "rock_every": 2.0,
+    "wind": false,
+    "wind_strength": 30.0,
+    "wind_every": 3.0,
+    "backpack": false,
+    "backpack_weight": 200.0,
+    "style": "street"
+   }
+  },
+  {
+   "id": "running_track",
+   "name": "Running Track",
+   "description": "Flat ground, but the walker is asked for speeds up to a run.",
+   "builtin": true,
+   "values": {
+    "terrain": "flat",
+    "terrain_height": 3.0,
+    "mixed_heights": true,
+    "gradually_harder": false,
+    "ground_grip": 100.0,
+    "gravity": 9.81,
+    "slowest_speed": 0.2,
+    "fastest_speed": 1.5,
+    "attempt_seconds": 20.0,
+    "turning": false,
+    "turn_rate": 30.0,
+    "speed_shape": "target",
+    "speed_points": 3.0,
+    "alive_points": 0.2,
+    "energy_cost": 1.5,
+    "straight_cost": 0.5,
+    "fall_cost": 0.0,
+    "end_stops": true,
+    "end_stop_cost": 0.05,
+    "level_body": false,
+    "level_cost": 0.5,
+    "no_crouch": false,
+    "crouch_cost": 1.0,
+    "smooth_moves": false,
+    "smooth_cost": 0.2,
+    "lift_feet": false,
+    "lift_points": 1.0,
+    "face_forward": false,
+    "heading_cost": 0.3,
+    "steady_ride": false,
+    "bounce_cost": 0.5,
+    "rocks": false,
+    "rock_weight": 100.0,
+    "rock_every": 2.0,
+    "wind": false,
+    "wind_strength": 30.0,
+    "wind_every": 3.0,
+    "backpack": false,
+    "backpack_weight": 200.0,
+    "style": "desert"
+   }
+  },
+  {
+   "id": "rolling_hills",
+   "name": "Rolling Hills",
+   "description": "Long, smooth hills to climb up and walk down, up to 25 cm tall.",
+   "builtin": true,
+   "values": {
+    "terrain": "hills",
+    "terrain_height": 25.0,
+    "mixed_heights": true,
+    "gradually_harder": true,
+    "ground_grip": 100.0,
+    "gravity": 9.81,
+    "slowest_speed": 0.2,
+    "fastest_speed": 0.7,
+    "attempt_seconds": 20.0,
+    "turning": false,
+    "turn_rate": 30.0,
+    "speed_shape": "target",
+    "speed_points": 3.0,
+    "alive_points": 0.2,
+    "energy_cost": 1.5,
+    "straight_cost": 0.5,
+    "fall_cost": 0.0,
+    "end_stops": true,
+    "end_stop_cost": 0.05,
+    "level_body": false,
+    "level_cost": 0.5,
+    "no_crouch": false,
+    "crouch_cost": 1.0,
+    "smooth_moves": false,
+    "smooth_cost": 0.2,
+    "lift_feet": false,
+    "lift_points": 1.0,
+    "face_forward": false,
+    "heading_cost": 0.3,
+    "steady_ride": false,
+    "bounce_cost": 0.5,
+    "rocks": false,
+    "rock_weight": 100.0,
+    "rock_every": 2.0,
+    "wind": false,
+    "wind_strength": 30.0,
+    "wind_every": 3.0,
+    "backpack": false,
+    "backpack_weight": 200.0,
+    "style": "meadow"
+   }
+  },
+  {
+   "id": "grand_staircase",
+   "name": "Grand Staircase",
+   "description": "Flights of steps up and down, each step up to 3 cm high.",
+   "builtin": true,
+   "values": {
+    "terrain": "stairs",
+    "terrain_height": 3.0,
+    "mixed_heights": true,
+    "gradually_harder": true,
+    "ground_grip": 100.0,
+    "gravity": 9.81,
+    "slowest_speed": 0.2,
+    "fastest_speed": 0.7,
+    "attempt_seconds": 20.0,
+    "turning": false,
+    "turn_rate": 30.0,
+    "speed_shape": "target",
+    "speed_points": 3.0,
+    "alive_points": 0.2,
+    "energy_cost": 1.5,
+    "straight_cost": 0.5,
+    "fall_cost": 0.0,
+    "end_stops": true,
+    "end_stop_cost": 0.05,
+    "level_body": false,
+    "level_cost": 0.5,
+    "no_crouch": false,
+    "crouch_cost": 1.0,
+    "smooth_moves": false,
+    "smooth_cost": 0.2,
+    "lift_feet": false,
+    "lift_points": 1.0,
+    "face_forward": false,
+    "heading_cost": 0.3,
+    "steady_ride": false,
+    "bounce_cost": 0.5,
+    "rocks": false,
+    "rock_weight": 100.0,
+    "rock_every": 2.0,
+    "wind": false,
+    "wind_strength": 30.0,
+    "wind_every": 3.0,
+    "backpack": false,
+    "backpack_weight": 200.0,
+    "style": "street"
+   }
+  },
+  {
+   "id": "frozen_lake",
+   "name": "Frozen Lake",
+   "description": "Flat, slippery ice. Feet slide unless every step is careful.",
+   "builtin": true,
+   "values": {
+    "terrain": "flat",
+    "terrain_height": 3.0,
+    "mixed_heights": true,
+    "gradually_harder": false,
+    "ground_grip": 15.0,
+    "gravity": 9.81,
+    "slowest_speed": 0.2,
+    "fastest_speed": 0.7,
+    "attempt_seconds": 20.0,
+    "turning": false,
+    "turn_rate": 30.0,
+    "speed_shape": "target",
+    "speed_points": 3.0,
+    "alive_points": 0.2,
+    "energy_cost": 1.5,
+    "straight_cost": 0.5,
+    "fall_cost": 0.0,
+    "end_stops": true,
+    "end_stop_cost": 0.05,
+    "level_body": false,
+    "level_cost": 0.5,
+    "no_crouch": false,
+    "crouch_cost": 1.0,
+    "smooth_moves": false,
+    "smooth_cost": 0.2,
+    "lift_feet": false,
+    "lift_points": 1.0,
+    "face_forward": false,
+    "heading_cost": 0.3,
+    "steady_ride": false,
+    "bounce_cost": 0.5,
+    "rocks": false,
+    "rock_weight": 100.0,
+    "rock_every": 2.0,
+    "wind": false,
+    "wind_strength": 30.0,
+    "wind_every": 3.0,
+    "backpack": false,
+    "backpack_weight": 200.0,
+    "style": "snow"
+   }
+  },
+  {
+   "id": "moon_base",
+   "name": "Moon Base",
+   "description": "Low gravity and dusty craters. Every step turns into a little jump.",
+   "builtin": true,
+   "values": {
+    "terrain": "craters",
+    "terrain_height": 6.0,
+    "mixed_heights": true,
+    "gradually_harder": false,
+    "ground_grip": 100.0,
+    "gravity": 1.62,
+    "slowest_speed": 0.2,
+    "fastest_speed": 0.7,
+    "attempt_seconds": 20.0,
+    "turning": false,
+    "turn_rate": 30.0,
+    "speed_shape": "target",
+    "speed_points": 3.0,
+    "alive_points": 0.2,
+    "energy_cost": 1.5,
+    "straight_cost": 0.5,
+    "fall_cost": 0.0,
+    "end_stops": true,
+    "end_stop_cost": 0.05,
+    "level_body": false,
+    "level_cost": 0.5,
+    "no_crouch": false,
+    "crouch_cost": 1.0,
+    "smooth_moves": false,
+    "smooth_cost": 0.2,
+    "lift_feet": false,
+    "lift_points": 1.0,
+    "face_forward": false,
+    "heading_cost": 0.3,
+    "steady_ride": false,
+    "bounce_cost": 0.5,
+    "rocks": false,
+    "rock_weight": 100.0,
+    "rock_every": 2.0,
+    "wind": false,
+    "wind_strength": 30.0,
+    "wind_every": 3.0,
+    "backpack": false,
+    "backpack_weight": 200.0,
+    "style": "moon"
+   }
+  },
+  {
+   "id": "stormy_crossing",
+   "name": "Stormy Crossing",
+   "description": "Flat ground with gusts of wind and the odd rock thrown from the side.",
+   "builtin": true,
+   "values": {
+    "terrain": "flat",
+    "terrain_height": 3.0,
+    "mixed_heights": true,
+    "gradually_harder": false,
+    "ground_grip": 100.0,
+    "gravity": 9.81,
+    "slowest_speed": 0.2,
+    "fastest_speed": 0.7,
+    "attempt_seconds": 20.0,
+    "turning": false,
+    "turn_rate": 30.0,
+    "speed_shape": "target",
+    "speed_points": 3.0,
+    "alive_points": 0.2,
+    "energy_cost": 1.5,
+    "straight_cost": 0.5,
+    "fall_cost": 0.0,
+    "end_stops": true,
+    "end_stop_cost": 0.05,
+    "level_body": false,
+    "level_cost": 0.5,
+    "no_crouch": false,
+    "crouch_cost": 1.0,
+    "smooth_moves": false,
+    "smooth_cost": 0.2,
+    "lift_feet": false,
+    "lift_points": 1.0,
+    "face_forward": false,
+    "heading_cost": 0.3,
+    "steady_ride": false,
+    "bounce_cost": 0.5,
+    "rocks": true,
+    "rock_weight": 80.0,
+    "rock_every": 3.0,
+    "wind": true,
+    "wind_strength": 25.0,
+    "wind_every": 3.0,
+    "backpack": false,
+    "backpack_weight": 200.0,
+    "style": "night"
+   }
+  },
+  {
+   "id": "rocky_canyon",
+   "name": "Rocky Canyon",
+   "description": "Big flat-topped rocks of different heights, up to 4 cm, to step up and down.",
+   "builtin": true,
+   "values": {
+    "terrain": "blocks",
+    "terrain_height": 4.0,
+    "mixed_heights": true,
+    "gradually_harder": true,
+    "ground_grip": 100.0,
+    "gravity": 9.81,
+    "slowest_speed": 0.2,
+    "fastest_speed": 0.7,
+    "attempt_seconds": 20.0,
+    "turning": false,
+    "turn_rate": 30.0,
+    "speed_shape": "target",
+    "speed_points": 3.0,
+    "alive_points": 0.2,
+    "energy_cost": 1.5,
+    "straight_cost": 0.5,
+    "fall_cost": 0.0,
+    "end_stops": true,
+    "end_stop_cost": 0.05,
+    "level_body": false,
+    "level_cost": 0.5,
+    "no_crouch": false,
+    "crouch_cost": 1.0,
+    "smooth_moves": false,
+    "smooth_cost": 0.2,
+    "lift_feet": false,
+    "lift_points": 1.0,
+    "face_forward": false,
+    "heading_cost": 0.3,
+    "steady_ride": false,
+    "bounce_cost": 0.5,
+    "rocks": false,
+    "rock_weight": 100.0,
+    "rock_every": 2.0,
+    "wind": false,
+    "wind_strength": 30.0,
+    "wind_every": 3.0,
+    "backpack": false,
+    "backpack_weight": 200.0,
+    "style": "desert"
+   }
+  },
+  {
+   "id": "hurdle_track",
+   "name": "Hurdle Track",
+   "description": "Low bars across the track, about a metre apart. Each one needs a proper step over it.",
+   "builtin": true,
+   "values": {
+    "terrain": "hurdles",
+    "terrain_height": 2.5,
+    "mixed_heights": true,
+    "gradually_harder": true,
+    "ground_grip": 100.0,
+    "gravity": 9.81,
+    "slowest_speed": 0.2,
+    "fastest_speed": 0.7,
+    "attempt_seconds": 20.0,
+    "turning": false,
+    "turn_rate": 30.0,
+    "speed_shape": "target",
+    "speed_points": 3.0,
+    "alive_points": 0.2,
+    "energy_cost": 1.5,
+    "straight_cost": 0.5,
+    "fall_cost": 0.0,
+    "end_stops": true,
+    "end_stop_cost": 0.05,
+    "level_body": false,
+    "level_cost": 0.5,
+    "no_crouch": false,
+    "crouch_cost": 1.0,
+    "smooth_moves": false,
+    "smooth_cost": 0.2,
+    "lift_feet": false,
+    "lift_points": 1.0,
+    "face_forward": false,
+    "heading_cost": 0.3,
+    "steady_ride": false,
+    "bounce_cost": 0.5,
+    "rocks": false,
+    "rock_weight": 100.0,
+    "rock_every": 2.0,
+    "wind": false,
+    "wind_strength": 30.0,
+    "wind_every": 3.0,
+    "backpack": false,
+    "backpack_weight": 200.0,
+    "style": "desert"
+   }
+  },
+  {
+   "id": "mountain_path",
+   "name": "Mountain Path",
+   "description": "Long, even climbs and descents of up to 12 cm per metre, with flat tops.",
+   "builtin": true,
+   "values": {
+    "terrain": "slopes",
+    "terrain_height": 12.0,
+    "mixed_heights": true,
+    "gradually_harder": true,
+    "ground_grip": 100.0,
+    "gravity": 9.81,
+    "slowest_speed": 0.2,
+    "fastest_speed": 0.7,
+    "attempt_seconds": 20.0,
+    "turning": false,
+    "turn_rate": 30.0,
+    "speed_shape": "target",
+    "speed_points": 3.0,
+    "alive_points": 0.2,
+    "energy_cost": 1.5,
+    "straight_cost": 0.5,
+    "fall_cost": 0.0,
+    "end_stops": true,
+    "end_stop_cost": 0.05,
+    "level_body": false,
+    "level_cost": 0.5,
+    "no_crouch": false,
+    "crouch_cost": 1.0,
+    "smooth_moves": false,
+    "smooth_cost": 0.2,
+    "lift_feet": false,
+    "lift_points": 1.0,
+    "face_forward": false,
+    "heading_cost": 0.3,
+    "steady_ride": false,
+    "bounce_cost": 0.5,
+    "rocks": false,
+    "rock_weight": 100.0,
+    "rock_every": 2.0,
+    "wind": false,
+    "wind_strength": 30.0,
+    "wind_every": 3.0,
+    "backpack": false,
+    "backpack_weight": 200.0,
+    "style": "snow"
+   }
+  },
+  {
+   "id": "turning_field",
+   "name": "Turning Field",
+   "description": "Flat grass where it is asked to turn left and right, changing every few seconds. Train here to steer it in Live mode.",
+   "builtin": true,
+   "values": {
+    "terrain": "flat",
+    "terrain_height": 3.0,
+    "mixed_heights": true,
+    "gradually_harder": false,
+    "ground_grip": 100.0,
+    "gravity": 9.81,
+    "slowest_speed": 0.2,
+    "fastest_speed": 0.7,
+    "attempt_seconds": 20.0,
+    "turning": true,
+    "turn_rate": 30.0,
+    "speed_shape": "target",
+    "speed_points": 3.0,
+    "alive_points": 0.2,
+    "energy_cost": 1.5,
+    "straight_cost": 0.5,
+    "fall_cost": 0.0,
+    "end_stops": true,
+    "end_stop_cost": 0.05,
+    "level_body": false,
+    "level_cost": 0.5,
+    "no_crouch": false,
+    "crouch_cost": 1.0,
+    "smooth_moves": false,
+    "smooth_cost": 0.2,
+    "lift_feet": false,
+    "lift_points": 1.0,
+    "face_forward": false,
+    "heading_cost": 0.3,
+    "steady_ride": false,
+    "bounce_cost": 0.5,
+    "rocks": false,
+    "rock_weight": 100.0,
+    "rock_every": 2.0,
+    "wind": false,
+    "wind_strength": 30.0,
+    "wind_every": 3.0,
+    "backpack": false,
+    "backpack_weight": 200.0,
+    "style": "meadow"
+   }
+  }
+ ],
+ "brain_groups": [
+  {
+   "key": "cells",
+   "title": "Thinking cells",
+   "description": "How each cell in the network reacts to what it receives.",
+   "settings": [
+    {
+     "key": "activation",
+     "label": "Cell response",
+     "kind": "choice",
+     "default": "tanh",
+     "help": "Smooth cells (tanh) are calm and reliable for walking. Sharp cells (ReLU) learn fast but can be jumpy.",
+     "choices": [
+      {
+       "value": "tanh",
+       "label": "Smooth (tanh)"
+      },
+      {
+       "value": "relu",
+       "label": "Sharp (ReLU)"
+      },
+      {
+       "value": "elu",
+       "label": "Soft sharp (ELU)"
+      },
+      {
+       "value": "silu",
+       "label": "Swishy (SiLU)"
+      }
+     ]
+    },
+    {
+     "key": "symmetric",
+     "label": "Left/right symmetric",
+     "kind": "bool",
+     "default": true,
+     "help": "The left and right side share one way of thinking, mirrored. Learns walking gaits much faster. Turn off to let each side think for itself."
+    },
+    {
+     "key": "judge_same",
+     "label": "Judge has the same shape",
+     "kind": "bool",
+     "default": true,
+     "help": "Learning uses a second network, the judge, that guesses how many points are coming. Usually it has the same layers as the brain."
+    }
+   ]
+  },
+  {
+   "key": "senses",
+   "title": "Senses",
+   "description": "What the brain gets to feel. Every animal always feels its balance, speed and joint angles.",
+   "settings": [
+    {
+     "key": "feel_feet",
+     "label": "Feel the feet touching the ground",
+     "kind": "bool",
+     "default": true,
+     "help": "Tells the brain which feet are on the ground."
+    },
+    {
+     "key": "see_ground",
+     "label": "See the ground ahead",
+     "kind": "bool",
+     "default": false,
+     "help": "Seven heights of the ground just in front of the walker. Helps a lot on stairs and rocks."
+    },
+    {
+     "key": "feel_turn",
+     "label": "Feel the asked direction",
+     "kind": "bool",
+     "default": false,
+     "help": "Where it is asked to go, so it can learn to turn and be steered. Switched on by itself when the world asks it to turn."
+    }
+   ]
+  },
+  {
+   "key": "habits",
+   "title": "Starting habits",
+   "description": "How the brain behaves before it has learned anything.",
+   "settings": [
+    {
+     "key": "start_wobble",
+     "label": "Starting curiosity",
+     "kind": "choice",
+     "default": "auto",
+     "help": "How wildly it tries things at the start. Matched to the muscles is very calm for direct muscles (as learn_to_walk's Duck 4) and calm for springy ones.",
+     "choices": [
+      {
+       "value": "auto",
+       "label": "Matched to the muscles"
+      },
+      {
+       "value": "tiny",
+       "label": "Very calm"
+      },
+      {
+       "value": "calm",
+       "label": "Calm"
+      },
+      {
+       "value": "lively",
+       "label": "Lively"
+      },
+      {
+       "value": "wild",
+       "label": "Wild"
+      }
+     ]
+    }
+   ]
+  }
+ ],
+ "brain_default": {
+  "values": {
+   "activation": "tanh",
+   "symmetric": true,
+   "judge_same": true,
+   "feel_feet": true,
+   "see_ground": false,
+   "feel_turn": false,
+   "start_wobble": "auto"
+  },
+  "layers": [
+   256,
+   256
+  ],
+  "judge_layers": [
+   256,
+   256
+  ]
+ },
+ "brain_presets": [
+  {
+   "id": "standard",
+   "name": "Standard",
+   "description": "Two layers of 256 cells. The brain of the learn_to_walk ducks.",
+   "layers": [
+    256,
+    256
+   ]
+  },
+  {
+   "id": "small",
+   "name": "Small and quick",
+   "description": "Two layers of 64 cells. Fast to train, simpler gaits.",
+   "layers": [
+    64,
+    64
+   ]
+  },
+  {
+   "id": "deep",
+   "name": "Deep thinker",
+   "description": "Three layers of 256 cells. More room for tricky ground, slower to train.",
+   "layers": [
+    256,
+    256,
+    256
+   ]
+  },
+  {
+   "id": "wide",
+   "name": "Wide",
+   "description": "Two layers of 512 cells. Lots of capacity.",
+   "layers": [
+    512,
+    512
+   ]
+  },
+  {
+   "id": "tiny",
+   "name": "Tiny",
+   "description": "One layer of 32 cells. Can it still walk?",
+   "layers": [
+    32
+   ]
+  }
+ ],
+ "learning_groups": [
+  {
+   "key": "length",
+   "title": "How long",
+   "description": "More practice usually means better walking. Training stops early by itself if it stops getting better.",
+   "settings": [
+    {
+     "key": "million_steps",
+     "label": "Practice steps",
+     "kind": "number",
+     "default": 5.0,
+     "help": "One step is a fiftieth of a second of practice in one world. With springy muscles a first wobbly walk often comes after 1 to 2 million; with direct muscles learn_to_walk's Duck 4 needed about 2.5 million.",
+     "minimum": 0.1,
+     "maximum": 100.0,
+     "step": 0.1,
+     "unit": "million"
+    },
+    {
+     "key": "parallel_worlds",
+     "label": "Worlds at once",
+     "kind": "number",
+     "default": 8,
+     "help": "How many copies of the world practise side by side. Use about as many as your computer has processor cores.",
+     "minimum": 1,
+     "maximum": 32,
+     "step": 1,
+     "unit": ""
+    },
+    {
+     "key": "patience",
+     "label": "Patience",
+     "kind": "number",
+     "default": 12,
+     "help": "Stop when this many exams in a row bring no new best. 0 never stops early.",
+     "minimum": 0,
+     "maximum": 50,
+     "step": 1,
+     "unit": "exams"
+    },
+    {
+     "key": "exam_every",
+     "label": "Exam every",
+     "kind": "number",
+     "default": 250,
+     "help": "How often the walker takes a fixed test without any random wobble.",
+     "minimum": 50,
+     "maximum": 2000,
+     "step": 50,
+     "unit": "thousand steps"
+    }
+   ]
+  },
+  {
+   "key": "study",
+   "title": "How it studies",
+   "description": "The details of each lesson. The defaults are the ones that taught the learn_to_walk ducks.",
+   "settings": [
+    {
+     "key": "learning_rate",
+     "label": "Learning speed",
+     "kind": "choice",
+     "default": 0.0003,
+     "help": "How big each change to the brain is. Too fast and it forgets, too slow and it takes forever.",
+     "choices": [
+      {
+       "value": 0.0001,
+       "label": "Careful"
+      },
+      {
+       "value": 0.0003,
+       "label": "Normal"
+      },
+      {
+       "value": 0.001,
+       "label": "Bold"
+      },
+      {
+       "value": 0.003,
+       "label": "Very bold"
+      }
+     ]
+    },
+    {
+     "key": "adaptive",
+     "label": "Adjust learning speed by itself",
+     "kind": "bool",
+     "default": true,
+     "help": "Speeds up or slows down each lesson so the brain changes by a steady amount. Recommended."
+    },
+    {
+     "key": "steps_per_update",
+     "label": "Practice before each lesson",
+     "kind": "choice",
+     "default": 1024,
+     "help": "Steps of practice in each world before the brain studies them.",
+     "choices": [
+      {
+       "value": 256,
+       "label": "Short (256)"
+      },
+      {
+       "value": 512,
+       "label": "Medium (512)"
+      },
+      {
+       "value": 1024,
+       "label": "Long (1,024)"
+      },
+      {
+       "value": 2048,
+       "label": "Very long (2,048)"
+      },
+      {
+       "value": 4096,
+       "label": "Huge (4,096)"
+      }
+     ]
+    },
+    {
+     "key": "batch_size",
+     "label": "Study batch",
+     "kind": "choice",
+     "default": 256,
+     "help": "How many moments it looks at together while studying.",
+     "choices": [
+      {
+       "value": 64,
+       "label": "64"
+      },
+      {
+       "value": 128,
+       "label": "128"
+      },
+      {
+       "value": 256,
+       "label": "256"
+      },
+      {
+       "value": 512,
+       "label": "512"
+      },
+      {
+       "value": 1024,
+       "label": "1,024"
+      },
+      {
+       "value": 2048,
+       "label": "2,048"
+      }
+     ]
+    },
+    {
+     "key": "epochs",
+     "label": "Study rounds",
+     "kind": "number",
+     "default": 10,
+     "help": "How many times it goes over each batch of practice.",
+     "minimum": 1,
+     "maximum": 30,
+     "step": 1,
+     "unit": ""
+    },
+    {
+     "key": "gamma",
+     "label": "Foresight",
+     "kind": "choice",
+     "default": 0.99,
+     "help": "How far ahead it plans. Walking needs about two seconds.",
+     "choices": [
+      {
+       "value": 0.95,
+       "label": "Short (half a second)"
+      },
+      {
+       "value": 0.98,
+       "label": "Medium (one second)"
+      },
+      {
+       "value": 0.99,
+       "label": "Long (two seconds)"
+      },
+      {
+       "value": 0.995,
+       "label": "Very long (four seconds)"
+      }
+     ]
+    },
+    {
+     "key": "curiosity",
+     "label": "Curiosity bonus",
+     "kind": "number",
+     "default": 0.0,
+     "help": "Extra points for trying new things. A little can help a walker that gets stuck.",
+     "minimum": 0.0,
+     "maximum": 0.05,
+     "step": 0.001,
+     "unit": ""
+    },
+    {
+     "key": "seed",
+     "label": "Lucky number",
+     "kind": "number",
+     "default": 0,
+     "help": "The seed of all the randomness. The same number repeats the same run.",
+     "minimum": 0,
+     "maximum": 9999,
+     "step": 1,
+     "unit": ""
+    }
+   ]
+  }
+ ],
+ "learning_default": {
+  "million_steps": 5.0,
+  "parallel_worlds": 8,
+  "patience": 12,
+  "exam_every": 250,
+  "learning_rate": 0.0003,
+  "adaptive": true,
+  "steps_per_update": 1024,
+  "batch_size": 256,
+  "epochs": 10,
+  "gamma": 0.99,
+  "curiosity": 0.0,
+  "seed": 0
+ },
+ "learning_presets": [
+  {
+   "id": "taste",
+   "name": "Quick taste",
+   "description": "About 15 to 30 minutes. Enough to see it try, rarely a real walk.",
+   "values": {
+    "million_steps": 1.0,
+    "patience": 0
+   }
+  },
+  {
+   "id": "evening",
+   "name": "An evening",
+   "description": "One to two hours. Usually a steady walk on easy ground.",
+   "values": {
+    "million_steps": 5.0,
+    "patience": 12
+   }
+  },
+  {
+   "id": "overnight",
+   "name": "Overnight",
+   "description": "Several hours. For hard worlds, courses and polished gaits.",
+   "values": {
+    "million_steps": 20.0,
+    "patience": 20
+   }
+  }
+ ]
+}

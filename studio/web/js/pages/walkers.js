@@ -3,6 +3,7 @@
 import { h, api, toast, fmtSteps, fmtNumber, fmtWhen, pillForState } from "../ui.js";
 import { icon, animalArt, STYLE_COLOURS } from "../icons.js";
 import { go, store } from "../app.js";
+import { openWalker } from "../engine/sharing.js";
 
 export function walkerCard(training) {
   const status = training.status;
@@ -10,7 +11,7 @@ export function walkerCard(training) {
   const share = status.total_steps ? Math.min(1, (status.steps || 0) / status.total_steps) : 0;
   return h("div", { class: "card walker-card", onclick: () => go(`#/walker/${training.id}`) },
     training.thumbnail
-      ? h("div", { class: "top", style: { background: `center / cover no-repeat url(/api/trainings/${training.id}/thumbnail?v=${training.thumbnail})` } },
+      ? h("div", { class: "top", style: { background: `center / cover no-repeat url(${training.thumbnail})` } },
         pillForState(status.state))
       : h("div", { class: "top", style: { background: `linear-gradient(180deg, ${style.sky[0]}, ${style.sky[1]} 70%, ${style.ground} 70%)` } },
         h("div", { html: animalArt(training.creature.animal, training.creature_values) }),
@@ -33,11 +34,9 @@ export function openShared() {
     input.remove();
     if (!file) return;
     try {
-      const response = await fetch("/api/trainings/open", { method: "POST", headers: { "Content-Type": "application/zip" }, body: file });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || "It could not be opened.");
+      const id = await openWalker(file);
       toast("Walker opened", file.name, "good");
-      go(`#/walker/${data.id}`);
+      go(`#/walker/${id}`);
     } catch (error) {
       toast("Could not open that file", error.message, "bad");
     }

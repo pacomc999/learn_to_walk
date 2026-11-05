@@ -1,0 +1,4 @@
+TensorFlow.js 4.22.0 (Apache-2.0, Google), from npm.
+  tf.fesm.min.js                 @tensorflow/tfjs (the whole library: core, gradients, processor and WebGL backends)
+  tf-backend-webgpu.fesm.min.js  @tensorflow/tfjs-backend-webgpu, its import "@tensorflow/tfjs-core" pointed at ./tf.fesm.min.js
+The studio uses it to train the walkers' brains on the graphics card (WebGPU, else WebGL, else the processor).

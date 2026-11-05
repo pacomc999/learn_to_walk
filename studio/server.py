@@ -157,7 +157,7 @@ class StudioHandler(BaseHTTPRequestHandler):
             self.send_json({"error": "Not found"}, 404)
             return
         types = {".js": "text/javascript", ".css": "text/css", ".html": "text/html; charset=utf-8",
-                 ".svg": "image/svg+xml"}
+                 ".svg": "image/svg+xml", ".wasm": "application/wasm", ".json": "application/json"}
         self.send_file(target, types.get(target.suffix))
 
     def _api(self, method: str, parts: list[str], query: dict):

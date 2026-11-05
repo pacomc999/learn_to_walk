@@ -1,0 +1,2 @@
+@mujoco/mujoco 3.17.0 (Apache-2.0, Google DeepMind), single-threaded build, from npm.
+The same MuJoCo version as the Python studio, so the physics matches.
