@@ -37,7 +37,7 @@ from stable_baselines3.common.vec_env import DummyVecEnv, SubprocVecEnv, VecNorm
 
 from studio.brain import clean_design, design_for_body, design_senses, policy_for  # noqa: E402
 from studio.creatures import build_creature  # noqa: E402
-from studio.env import PART_NAMES, WalkEnv, observation_size  # noqa: E402
+from studio.env import PART_NAMES, WalkEnv  # noqa: E402
 from studio.learning import clean_learning, ppo_settings  # noqa: E402
 from studio.mirror import MirroredRunningMeanStd, mirror_tables  # noqa: E402
 from studio.replay import policy_cells, record, replace_file, save_scaling  # noqa: E402

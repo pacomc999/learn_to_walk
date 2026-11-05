@@ -99,3 +99,11 @@ def test_a_bad_walker_file_is_refused(tmp_path, monkeypatch):
     opened = sharing.unpack(buffer.getvalue())
     assert not (tmp_path / "evil.txt").exists() and not (tmp_path.parent / "evil.txt").exists()
     assert sorted(p.name for p in library.training_folder(opened).iterdir()) == ["setup.json", "status.json"]
+
+
+def test_a_creature_without_motors_cannot_start_training(tmp_path, monkeypatch):
+    from studio import library, manager
+    monkeypatch.setattr(library, "LIBRARY", tmp_path)
+    body = {"parts": [{"id": "stick", "parent": "torso", "joint": "fixed", "z": -1}]}
+    with pytest.raises(ValueError, match="no motors"):
+        manager.create_training({"creature": {"animal": "custom", "values": {"body": body}}, "world": {}})

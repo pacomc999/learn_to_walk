@@ -1,6 +1,6 @@
 // New walker: four steps (creature, world, brain, training plan) and then training starts.
 
-import { h, api, toast, debounce, settingGroups, fmtNumber, fmtDuration, fmtSteps, askName, svg, clear } from "../ui.js";
+import { h, api, toast, debounce, settingGroups, fmtNumber, fmtDuration, askName, clear, confirmDialog } from "../ui.js";
 import { icon, animalArt, worldArt } from "../icons.js";
 import { Viewer } from "../viewer.js";
 import { store, go, askForNotifications } from "../app.js";
@@ -63,7 +63,7 @@ export async function render(main, params) {
       h("div", { class: "sub" }, pageSubtitle(stepIndex))),
     h("div", { class: "btn-row" },
       h("button", { class: "btn ghost", onclick: async () => {
-        const ok = await import("../ui.js").then((ui) => ui.confirmDialog("Start over?", "This clears the creature, world, brain and plan you are working on.", "Start over", "danger"));
+        const ok = await confirmDialog("Start over?", "This clears the creature, world, brain and plan you are working on.", "Start over", "danger");
         if (ok) { store.resetDraft(draft.creature.animal); go("#/new/creature"); }
       }, html: `${icon.restart}<span>Start over</span>` })));
   page.append(head, stepper(stepIndex));

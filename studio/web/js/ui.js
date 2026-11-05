@@ -33,7 +33,6 @@ function append(element, children) {
   }
 }
 
-export const svg = (markup, cls = "") => h("span", { class: `svg-wrap ${cls}`, style: { display: "contents" }, html: markup });
 
 export function clear(element) {
   while (element.firstChild) element.firstChild.remove();

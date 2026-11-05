@@ -57,6 +57,7 @@ export function render(main) {
   page.append(h("div", { class: "page-head" }, h("div", {}, h("div", { class: "eyebrow" }, "Guide"), h("h1", {}, "How it works"),
     h("div", { class: "sub" }, "What happens when a creature learns to walk, without any code."))));
   const guide = h("div", { class: "guide card card-pad", style: { padding: "8px 28px 28px" } });
+  guide.append(h("div", { class: "figure", html: loopDiagram() }));
   for (const [title, paragraphs] of SECTIONS) {
     guide.append(h("h2", {}, title));
     if (title === "Tips") guide.append(h("ul", {}, ...paragraphs.map((text) => h("li", {}, text))));
@@ -64,4 +65,28 @@ export function render(main) {
   }
   page.append(guide);
   return null;
+}
+
+// The learning loop: senses go into the brain, commands go to the muscles, physics moves the body,
+// points come back, and learning nudges the brain
+function loopDiagram() {
+  const boxes = [
+    ["Senses", "tilt, speed, joints, feet", 70, 70, "#0ea5e9"],
+    ["Brain", "layers of thinking cells", 330, 70, "#6366f1"],
+    ["Muscles", "a command for every motor", 590, 70, "#f59e0b"],
+    ["Physics", "the body moves in its world", 590, 210, "#10b981"],
+    ["Points", "earned or lost each moment", 330, 210, "#ef4444"],
+    ["Learning", "nudges it toward more points", 70, 210, "#a855f7"],
+  ];
+  const box = ([title, text, x, y, colour]) => `<g transform="translate(${x},${y})">
+    <rect x="-95" y="-36" width="190" height="72" rx="14" fill="var(--surface)" stroke="${colour}" stroke-width="2"/>
+    <text x="0" y="-6" text-anchor="middle" style="font-weight:650;font-size:15px;fill:var(--text)">${title}</text>
+    <text x="0" y="16" text-anchor="middle" style="font-size:11.5px;fill:var(--text-2)">${text}</text></g>`;
+  const arrow = (x1, y1, x2, y2) => `<path d="M${x1} ${y1} L${x2} ${y2}" stroke="var(--text-3)" stroke-width="2" marker-end="url(#arrowhead)" fill="none"/>`;
+  return `<svg viewBox="-40 20 740 250" style="width:100%;max-width:760px;display:block;margin:12px auto 0">
+    <defs><marker id="arrowhead" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0 0 L10 4 L0 8 Z" fill="var(--text-3)"/></marker></defs>
+    ${arrow(167, 70, 233, 70)}${arrow(427, 70, 493, 70)}${arrow(590, 108, 590, 172)}${arrow(493, 210, 427, 210)}${arrow(233, 210, 167, 210)}${arrow(70, 172, 70, 108)}
+    ${boxes.map(box).join("")}
+    <text x="330" y="142" text-anchor="middle" style="font-size:12px;fill:var(--text-3)">50 times a second, millions of times</text>
+  </svg>`;
 }

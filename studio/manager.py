@@ -37,6 +37,9 @@ def create_training(request: dict) -> dict:
     world = world_from_dict(request.get("world") or {})
     design = clean_design(request.get("brain"))
     learning = clean_learning(request.get("learning"))
+    if not build_creature(kind.KEY, creature_values).motors:
+        raise ValueError("This creature has no motors, so there is nothing for its brain to learn. "
+                         "Give at least one part a joint.")
     name = str(request.get("name") or f"{creature.get('name') or kind.NAME} in {world.name}").strip()[:80]
     training_id = library.new_id(name)
     setup = {
