@@ -347,13 +347,38 @@ async function worldStep(body, draft) {
       mine.length ? gallery(mine, "Your worlds") : null),
     h("div", { class: "card card-pad", style: { marginBottom: "12px" } },
       h("div", { class: "spread" }, nameText, h("button", { class: "btn small", onclick: saveWorld, html: `${icon.save}<span>Save world</span>` })),
-      description),
+      description,
+      h("div", { style: { marginTop: "14px" } }, h("div", { class: "field-label", style: { marginBottom: "8px" } }, "Scoring style"),
+        h("div", { class: "btn-row" }, ...SCORING_STYLES.map((style) => h("button", { class: "btn small", title: style.description, onclick: () => {
+          const changes = { ...SCORING_RESET, ...style.values };
+          Object.assign(draft.world.values, changes);
+          for (const [key, value] of Object.entries(changes)) if (groups.controls[key]) groups.controls[key].setValue(value);
+          if (draft.world.builtin) { draft.world.builtin = false; draft.world.id = null; draft.world.name = `${draft.world.name} (${style.name.toLowerCase()})`; nameText.textContent = draft.world.name; }
+          groups.querySelectorAll(".group").forEach((card) => card.dispatchEvent(new Event("refresh")));
+          persist();
+          paintGlance();
+          toast(`Scoring style: ${style.name}`, style.description);
+        } }, style.name))))),
     groups);
 
   paintGlance();
   await show();
   return () => viewer.dispose();
 }
+
+// Ready-made scoring styles: the main points and the style rules together
+const SCORING_RESET = {
+  speed_shape: "target", speed_points: 3.0, alive_points: 0.2, energy_cost: 1.5, straight_cost: 0.5, fall_cost: 0,
+  end_stops: true, end_stop_cost: 0.05, level_body: false, no_crouch: false, smooth_moves: false, lift_feet: false,
+  face_forward: false, steady_ride: false,
+};
+const SCORING_STYLES = [
+  { name: "Classic", description: "learn_to_walk's scoring: the asked speed, staying up, energy and walking straight, with a gentle joint limit penalty.", values: {} },
+  { name: "Graceful", description: "Smooth, level and steady: calm walking that looks natural.", values: { smooth_moves: true, smooth_cost: 0.3, level_body: true, level_cost: 0.5, steady_ride: true, bounce_cost: 0.5, no_crouch: true, crouch_cost: 1.0 } },
+  { name: "Athletic", description: "Big steps and plenty of speed: cheaper energy and points for lifting the feet.", values: { speed_points: 4.0, energy_cost: 0.8, lift_feet: true, lift_points: 1.0 } },
+  { name: "Thrifty", description: "Every joule counts: expensive energy and smooth moves. Slow but efficient.", values: { energy_cost: 2.5, smooth_moves: true, smooth_cost: 0.2 } },
+  { name: "Anything goes", description: "Only forward points and staying up: no costs at all. Expect strange gaits.", values: { energy_cost: 0, straight_cost: 0, end_stops: false } },
+];
 
 // ---------- Step 3: the brain ----------
 

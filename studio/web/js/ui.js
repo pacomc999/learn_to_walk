@@ -276,6 +276,7 @@ export function settingGroups(groups, values, onChange, { open = [], onHover, de
         h("span", { class: "group-chevron", html: icon.chevron, style: { width: "18px", height: "18px", display: "grid" } })),
       body);
     markChanged();
+    card.addEventListener("refresh", markChanged);  // after values change from outside (presets), show the right controls
     wrap.append(card);
   }
   wrap.controls = controls;
