@@ -107,6 +107,7 @@ class WalkEnv(gymnasium.Env):
         self.previous_action = np.zeros(len(build.motors))
         self.air_time = np.zeros(len(build.feet))
         self.episode_parts = dict.fromkeys(PART_NAMES, 0.0)
+        self.last_energy = 0.0
 
         motor_count = len(build.motors)
         self.action_space = gymnasium.spaces.Box(-1.0, 1.0, (motor_count,), dtype=np.float32)
@@ -275,6 +276,7 @@ class WalkEnv(gymnasium.Env):
         self.data.ctrl[:] = self._scale_action(action)
         self._extras_before_step()
         energy = self._simulate()
+        self.last_energy = energy  # joules of muscle work in this step, for measuring efficiency
         self._extras_after_step()
         self.step_count += 1
         terminated = self._fallen()

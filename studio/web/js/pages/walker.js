@@ -209,7 +209,7 @@ function trainingTab(body, id, details, setup) {
       statCard("Best walk", status.best_quality !== null && status.best_quality !== undefined ? `${fmtNumber(status.best_quality)}<small>%</small>` : "-",
         "of the asked distance, in its best exam", icon.trophy),
       statCard("Last exam", last ? `${last.attempts - last.falls}<small>/ ${last.attempts} stayed up</small>` : "-",
-        last ? `score ${fmtNumber(last.score)} points` : "the first exam comes right at the start", icon.target),
+        last ? `score ${fmtNumber(last.score)} points${last.joules_per_metre ? ` · ${fmtNumber(last.joules_per_metre, 1)} J per metre` : ""}` : "the first exam comes right at the start", icon.target),
       statCard("Practice speed", speed ? `${fmtNumber(speed)}<small>steps/s</small>` : "-", `${setup.learning.parallel_worlds} worlds at once`, icon.speed),
       (setup.course || []).length ? statCard("Stage", `${(status.stage || 0) + 1}<small>of ${setup.course.length + 1}</small>`,
         status.stage_world || setup.world.name, icon.flag) : null,

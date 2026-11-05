@@ -59,7 +59,8 @@ MOST_EXAM_REPLAYS = 30
 
 PROGRESS_HEADER = ["time", "steps", "score", "distance", "seconds", "fall_share", "steps_per_second", "difficulty",
                    "stage"] + [f"pts_{name}" for name in PART_NAMES]
-EXAM_HEADER = ["time", "steps", "score", "falls", "attempts", "distance", "quality", "speed_error", "stage"]
+EXAM_HEADER = ["time", "steps", "score", "falls", "attempts", "distance", "quality", "speed_error", "stage",
+               "joules_per_metre"]
 
 
 # ---------- Files ----------
@@ -180,15 +181,16 @@ def deterministic_actor(model, vec_normalize):
 
 def take_exam(model, vec_normalize, build, world, senses, scene) -> dict:
     act = deterministic_actor(model, vec_normalize)
-    scores, falls, distances, qualities, speed_errors = [], 0, [], [], []
+    scores, falls, distances, qualities, speed_errors, energies = [], 0, [], [], [], []
     for index, (speed, height) in enumerate(exam_plan(world)):
         env = WalkEnv(build, world, senses, target_speed=speed, terrain_height=height, scene=scene)
         observation, _ = env.reset(seed=EXAM_FIRST_SEED + index)
-        total, fell, steps = 0.0, False, 0
+        total, fell, steps, joules = 0.0, False, 0, 0.0
         while True:
             observation, reward, fell, timed_out, info = env.step(act(observation))
             total += reward
             steps += 1
+            joules += env.last_energy
             if fell or timed_out:
                 break
         seconds = steps * env.control_seconds
@@ -199,9 +201,12 @@ def take_exam(model, vec_normalize, build, world, senses, scene) -> dict:
         distances.append(distance)
         qualities.append(min(max(distance / asked, 0.0), 1.0))
         speed_errors.append(abs(distance / max(seconds, 1e-9) - speed))
+        if distance > 0.5:
+            energies.append(joules / distance)
     return {"score": float(np.mean(scores)), "falls": falls, "attempts": len(scores),
             "distance": float(np.mean(distances)), "quality": float(np.mean(qualities) * 100),
-            "speed_error": float(np.mean(speed_errors))}
+            "speed_error": float(np.mean(speed_errors)),
+            "joules_per_metre": float(np.mean(energies)) if energies else None}
 
 
 # A replay of the brain walking at the middle speed on fairly tall ground
@@ -348,6 +353,8 @@ class SessionCallback(BaseCallback):
         row = {"time": datetime.now().isoformat(timespec="seconds"), "steps": self.num_timesteps,
                "stage": self.stage.index,
                **{key: round(value, 3) if isinstance(value, float) else value for key, value in result.items()}}
+        if row.get("joules_per_metre") is None:
+            row["joules_per_metre"] = ""
         self.folder.append_row("exams.csv", EXAM_HEADER, row)
         replay = best_walk_replay(self.model, self.vec_normalize, self.build, self.world, self.senses, self.scene)
         replay["steps"] = self.num_timesteps

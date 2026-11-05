@@ -121,7 +121,9 @@ def test_a_course_moves_through_its_stages(tmp_path, tiny, capsys):
     assert "Stage 2 of 2: Rolling Hills" in capsys.readouterr().out
     status = json.loads((folder / "status.json").read_text())
     assert status["state"] == "finished" and status["steps"] >= 4000 and status["stage"] == 1
-    exams = (folder / "exams.csv").read_text().splitlines()
-    assert exams[0].endswith("stage") and exams[-1].endswith(",1")
+    import csv
+    exams = list(csv.DictReader((folder / "exams.csv").open()))
+    assert exams[0]["stage"] == "0" and exams[-1]["stage"] == "1"
+    assert "joules_per_metre" in exams[-1]
     replay = json.loads((folder / "replays/best.json").read_text())
     assert replay["ground"]["kind"] == "heights"  # the best walk is on the hills

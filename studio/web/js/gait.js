@@ -16,13 +16,14 @@ export class GaitPanel {
     this.canvas = h("canvas", { class: "gait-canvas" });
     this.bars = h("div", { class: "muscles" });
     this.brainCanvas = h("canvas", { class: "brain-canvas" });
+    this.gaitFacts = h("div", { class: "gait-facts" });
     this.brainBox = h("div", { class: "brain-box" }, h("div", { class: "field-label", style: { fontSize: "12.5px", marginBottom: "4px" } }, "Its brain at work"),
       h("div", { class: "faint", style: { fontSize: "11.5px", marginBottom: "6px" } }, "A sample of the thinking cells of each layer: orange is firing one way, blue the other."),
       this.brainCanvas);
     this.element.append(
       h("div", { class: "spread" }, h("div", {}, h("h3", {}, "Inside the walk"),
         h("div", { class: "faint", style: { fontSize: "12.5px" } }, "When each foot touches the ground (its rhythm, or gait), what its brain is doing, and what it tells every muscle at this moment."))),
-      this.canvas, h("div", { class: "inside-grid" }, this.brainBox, h("div", {}, h("div", { class: "field-label", style: { fontSize: "12.5px", marginBottom: "8px" } }, "Muscle commands"), this.bars)));
+      this.canvas, this.gaitFacts, h("div", { class: "inside-grid" }, this.brainBox, h("div", {}, h("div", { class: "field-label", style: { fontSize: "12.5px", marginBottom: "8px" } }, "Muscle commands"), this.bars)));
     viewer.onTime = (time) => this.paint(time);
     this.lastIndex = -1;
   }
@@ -41,6 +42,7 @@ export class GaitPanel {
     }));
     this.lastIndex = -1;
     this.brainBox.hidden = !(replay.cells && replay.cells.length);
+    this.paintGaitFacts();
     this.drawBase();
   }
 
@@ -74,6 +76,26 @@ export class GaitPanel {
       context.arc(xs[c], ys[c][j], c === layers.length - 1 ? 4.5 : 3.6, 0, Math.PI * 2);
       context.fill();
     }));
+  }
+
+  // Gait numbers, as learn_to_walk's catalogue cards give them: steps per second and feet on the ground
+  paintGaitFacts() {
+    const replay = this.replay;
+    const end = replay.stats && replay.stats.fell ? Math.min(replay.contacts.length, Math.round(replay.stats.seconds * replay.fps)) : replay.contacts.length;
+    const frames = replay.contacts.slice(0, Math.max(end, 1));
+    const feet = replay.feet.length;
+    const counts = new Array(feet + 1).fill(0);
+    let landings = 0;
+    frames.forEach((touching, index) => {
+      counts[touching.reduce((sum, value) => sum + value, 0)] += 1;
+      if (index) touching.forEach((value, foot) => { if (value && !frames[index - 1][foot]) landings += 1; });
+    });
+    const seconds = frames.length / replay.fps;
+    const share = (n) => `${Math.round((100 * n) / frames.length)}%`;
+    const items = [["Steps per second", seconds > 0.5 ? (landings / seconds).toFixed(1) : "-"], ["All feet in the air", share(counts[0])]];
+    if (feet >= 2) items.push(["One foot down", share(counts[1])]);
+    if (feet >= 2) items.push([feet === 2 ? "Both feet down" : "Two or more down", share(counts.slice(2).reduce((a, b) => a + b, 0))]);
+    this.gaitFacts.replaceChildren(...items.map(([label, value]) => h("div", { class: "gait-fact" }, h("span", {}, label), h("b", {}, value))));
   }
 
   // The footfall pattern of the whole replay, drawn once

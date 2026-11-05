@@ -67,6 +67,7 @@ function recipeTable(items) {
   const rows = [
     ["Best walk", (d) => d.status.best_quality !== null && d.status.best_quality !== undefined ? `${fmtNumber(d.status.best_quality)}%` : "-"],
     ["Practice steps", (d) => fmtSteps(d.status.steps || 0)],
+    ["Energy per metre", (d) => { const last = d.exams[d.exams.length - 1]; return last && last.joules_per_metre ? `${fmtNumber(last.joules_per_metre, 1)} J` : "-"; }],
     ["Animal", (d) => store.animal(d.setup.creature.animal).name],
     ["World", (d) => d.setup.world.name],
     ["Brain layers", (d) => d.setup.brain.layers.join(" x ")],
