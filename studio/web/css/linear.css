@@ -1,0 +1,194 @@
+/* ==========================================================================
+   Walk Studio's look, after Linear. Loaded after studio.css and overrides it.
+   Values measured from linear.app's own tokens (November 2026) and the principles of
+   Linear's design articles: "Don't compete for attention you haven't earned" (content in focus, a dimmer
+   sidebar), "Structure should be felt not seen" (few, faint borders, no heavy shadows), the "inverted L"
+   chrome around a raised content panel, a warm, low-saturation grey and one indigo accent.
+   Buttons never move; cards shade on hover (stronger than Linear's 2% wash, as asked).
+   ========================================================================== */
+
+:root {
+  /* Light (linear.app light theme) */
+  --lin-chrome: #f9f8f9;   /* sidebar and the frame around the panel (bg-secondary) */
+  --lin-panel: #ffffff;    /* the raised content panel (bg-primary) */
+  --lin-raised: #f4f2f4;   /* bg-tertiary */
+  --lin-raised-2: #eeedef; /* bg-quaternary */
+  --lin-text-1: #282a30; --lin-text-2: #3c4149; --lin-text-3: #6f6e77; --lin-text-4: #86848d;
+  --lin-line: #e9e8ea; --lin-line-2: #dcdbdd;
+  --lin-wash: rgba(0, 0, 0, 0.03); --lin-wash-strong: rgba(0, 0, 0, 0.055);
+  --lin-hairline: rgba(0, 0, 0, 0.08); --lin-hairline-strong: rgba(0, 0, 0, 0.14);
+  --lin-brand: #5e6ad2; --lin-accent: #7170ff; --lin-accent-tint: #f1f1ff;
+
+  --bg: var(--lin-chrome); --surface: var(--lin-panel); --surface-2: var(--lin-raised); --surface-3: var(--lin-raised-2);
+  --border: var(--lin-line); --border-strong: var(--lin-line-2);
+  --text: var(--lin-text-1); --text-2: var(--lin-text-3); --text-3: var(--lin-text-4);
+  --accent: var(--lin-brand); --accent-2: #4f5bc4; --accent-soft: var(--lin-accent-tint); --accent-text: #4b55b8;
+  --sidebar: var(--lin-chrome); --sidebar-2: var(--lin-wash-strong); --sidebar-text: var(--lin-text-2); --sidebar-muted: var(--lin-text-4);
+  --radius: 12px; --radius-sm: 6px; --radius-lg: 16px;
+  --shadow-sm: none; --shadow: none; --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.12);
+  --font: "Inter", "SF Pro Display", -apple-system, "Segoe UI", system-ui, sans-serif;
+  --lin-ease: cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+/* Dark (linear.app dark theme) */
+:root[data-theme="dark"] {
+  --lin-chrome: #08090a; --lin-panel: #0f1011; --lin-raised: #141516; --lin-raised-2: #191a1b;
+  --lin-text-1: #f7f8f8; --lin-text-2: #d0d6e0; --lin-text-3: #8a8f98; --lin-text-4: #62666d;
+  --lin-line: #23252a; --lin-line-2: #34343a;
+  --lin-wash: rgba(255, 255, 255, 0.03); --lin-wash-strong: rgba(255, 255, 255, 0.055);
+  --lin-hairline: rgba(255, 255, 255, 0.08); --lin-hairline-strong: rgba(255, 255, 255, 0.12);
+  --lin-accent-tint: #18182f;
+  --accent-2: #6b77e0; --accent-text: #9ca4ff; --viewer-bg: #141516;
+  --shadow-lg: 0 2px 32px rgba(0, 0, 0, 0.35);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --lin-chrome: #08090a; --lin-panel: #0f1011; --lin-raised: #141516; --lin-raised-2: #191a1b;
+    --lin-text-1: #f7f8f8; --lin-text-2: #d0d6e0; --lin-text-3: #8a8f98; --lin-text-4: #62666d;
+    --lin-line: #23252a; --lin-line-2: #34343a;
+    --lin-wash: rgba(255, 255, 255, 0.03); --lin-wash-strong: rgba(255, 255, 255, 0.055);
+    --lin-hairline: rgba(255, 255, 255, 0.08); --lin-hairline-strong: rgba(255, 255, 255, 0.12);
+    --lin-accent-tint: #18182f;
+    --accent-2: #6b77e0; --accent-text: #9ca4ff; --viewer-bg: #141516;
+    --shadow-lg: 0 2px 32px rgba(0, 0, 0, 0.35);
+  }
+}
+
+/* ---------- Type: Inter, weights 400 / 510 / 590, nothing heavier ---------- */
+body { font-size: 13px; }
+h1, h2, h3, h4 { font-weight: 590; }
+h1 { font-size: 24px; letter-spacing: -0.012em; }
+h2 { font-size: 17px; letter-spacing: -0.008em; }
+h3 { font-size: 14px; letter-spacing: 0; }
+.eyebrow { text-transform: none; letter-spacing: 0; font-size: 12px; font-weight: 510; color: var(--text-3); }
+.page-head .sub, .card-head .desc, .group-desc, .field-help, .pick .pick-desc { color: var(--text-2); }
+
+/* ---------- The inverted L: sidebar and frame in the chrome colour, content in a raised panel ---------- */
+body { background: var(--lin-chrome); }
+.main { margin: 8px 8px 8px 0; background: var(--lin-panel); border-radius: 12px; box-shadow: 0 0 0 1px var(--lin-hairline);
+  min-height: calc(100vh - 16px); }
+.sidebar { background: transparent; padding: 14px 10px; }
+.brand { padding: 4px 8px 18px; }
+.brand-mark { background: var(--lin-brand); box-shadow: none; border-radius: 6px; width: 28px; height: 28px; }
+.brand-mark svg { width: 16px; height: 16px; }
+.brand-name { color: var(--lin-text-1); font-weight: 590; font-size: 14px; letter-spacing: 0; }
+.brand-sub { color: var(--lin-text-4); font-size: 12px; }
+/* A few notches dimmer than the content: secondary text, small dim icons, 28 px rows */
+.nav-label { text-transform: none; letter-spacing: 0; font-size: 12px; font-weight: 510; color: var(--lin-text-4); padding: 16px 8px 4px; }
+.nav a { height: 28px; padding: 0 8px; border-radius: 8px; font-size: 13px; font-weight: 510; color: var(--lin-text-2);
+  transition: background-color 0.1s var(--lin-ease), color 0.1s var(--lin-ease); }
+.nav a svg { width: 16px; height: 16px; opacity: 1; color: var(--lin-text-3); }
+.nav a:hover { background: var(--lin-wash); color: var(--lin-text-1); }
+.nav a.active { background: var(--lin-wash-strong); color: var(--lin-text-1); }
+.nav a.active svg { color: var(--lin-text-1); }
+.nav .nav-cta { background: var(--lin-panel); color: var(--lin-text-1); box-shadow: 0 0 0 1px var(--lin-hairline-strong); margin: 4px 0 8px; }
+.nav .nav-cta:hover { background: var(--lin-raised); color: var(--lin-text-1); }
+.nav .nav-cta svg { color: var(--lin-text-2); }
+.running-card { background: var(--lin-panel); border: 0; box-shadow: 0 0 0 1px var(--lin-hairline); border-radius: 8px; }
+.running-card .title { color: var(--lin-text-1); font-weight: 510; }
+.running-card .bar { background: var(--lin-raised-2); }
+.running-card .bar > div { background: var(--lin-brand); }
+.sidebar-tools, .icon-button-dark { color: var(--lin-text-4); }
+.icon-button-dark:hover { color: var(--lin-text-1); background: var(--lin-wash); }
+
+/* ---------- Buttons: the app's small corners, 13 px at 510, colour changes only ---------- */
+.btn { height: 32px; padding: 0 12px; border-radius: 6px; font-size: 13px; font-weight: 510; border: 0;
+  background: var(--lin-panel); color: var(--lin-text-1); box-shadow: 0 0 0 1px var(--lin-hairline-strong);
+  transition: background-color 0.1s var(--lin-ease), box-shadow 0.1s var(--lin-ease), color 0.1s var(--lin-ease); }
+.btn:hover { background: var(--lin-raised); }
+.btn:active { transform: none; background: var(--lin-raised-2); }
+.btn svg { width: 14px; height: 14px; color: var(--lin-text-3); }
+.btn.primary { background: var(--lin-brand); color: #fff; box-shadow: none; }
+.btn.primary svg { color: #fff; }
+.btn.primary:hover { background: var(--accent-2); }
+.btn.big { height: 40px; padding: 0 18px; font-size: 14px; border-radius: 8px; }
+.btn.small { height: 26px; padding: 0 10px; font-size: 12px; border-radius: 6px; }
+.btn.ghost { background: transparent; box-shadow: none; color: var(--lin-text-3); }
+.btn.ghost:hover { background: var(--lin-wash); color: var(--lin-text-1); }
+.btn.danger { color: var(--bad); }
+.icon-btn { width: 32px; height: 32px; padding: 0; }
+:focus-visible { outline: 1px solid var(--lin-brand); outline-offset: 2px; }
+
+/* ---------- Cards: a faint outline, no shadow, and a clear shade on hover ---------- */
+.card, .stat, .group, .stepper, .empty, .layer-box, .moment, .race-row { border: 0; box-shadow: 0 0 0 1px var(--lin-hairline);
+  background: var(--lin-panel); transition: background-color 0.1s var(--lin-ease), box-shadow 0.1s var(--lin-ease); }
+.card, .stat, .group, .empty { border-radius: 12px; }
+.stepper { border-radius: 10px; padding: 4px; }
+.walker-card:hover, .pick:hover, .moment:hover, .race-row:hover, .layer-box:hover, .how:hover {
+  background: var(--lin-raised); box-shadow: 0 0 0 1px var(--lin-hairline-strong); transform: none; }
+.walker-card .top svg.animal { filter: none; }
+.group-head:hover { background: var(--lin-wash); }
+.group-icon { background: transparent; color: var(--lin-text-3); width: 24px; height: 24px; }
+.group-icon svg { width: 16px; height: 16px; }
+.group-title { font-weight: 510; }
+.empty { box-shadow: none; border: 1px dashed var(--lin-line-2); }
+.modal { border-radius: 12px; border: 0; box-shadow: 0 0 0 1px var(--lin-hairline-strong), var(--shadow-lg); }
+.toast { border-radius: 10px; border: 0; box-shadow: 0 0 0 1px var(--lin-hairline-strong), var(--shadow-lg); border-left: 0; }
+.chart .tip { border-radius: 8px; border: 0; box-shadow: 0 0 0 1px var(--lin-hairline-strong), var(--shadow-lg); }
+
+/* ---------- Pickers and selection: the accent only marks what is chosen ---------- */
+.pick { border: 0; box-shadow: 0 0 0 1px var(--lin-hairline); border-radius: 10px; background: var(--lin-panel);
+  transition: background-color 0.1s var(--lin-ease), box-shadow 0.1s var(--lin-ease); }
+.pick.on { box-shadow: 0 0 0 1px var(--lin-brand); background: var(--lin-panel); }
+.pick .art { border-radius: 6px; background: var(--lin-raised) !important; }
+.pick .pick-name { font-weight: 510; }
+.choice-item { border: 0; box-shadow: 0 0 0 1px var(--lin-hairline); border-radius: 8px; }
+.choice-item:hover { background: var(--lin-wash); }
+.choice-item.on { background: var(--lin-accent-tint); box-shadow: 0 0 0 1px var(--lin-brand); }
+.step { border-radius: 7px; font-weight: 510; }
+.step:hover { background: var(--lin-wash); }
+.step.on { background: var(--lin-wash-strong); color: var(--lin-text-1); }
+.step .num { font-weight: 510; background: var(--lin-raised-2); }
+.step.on .num { background: var(--lin-brand); color: #fff; }
+.tabs { border-bottom-color: var(--lin-hairline); gap: 2px; }
+.tabs button { font-weight: 510; font-size: 13px; color: var(--lin-text-3); padding: 8px 10px; }
+.tabs button:hover { color: var(--lin-text-1); }
+.tabs button.on { color: var(--lin-text-1); border-bottom-color: var(--lin-text-1); }
+
+/* ---------- Fields, switches, values ---------- */
+.input, select.input, textarea.input { height: 32px; border-radius: 6px; border: 0; box-shadow: 0 0 0 1px var(--lin-hairline-strong);
+  background: var(--lin-panel); font-size: 13px; }
+.input:focus { box-shadow: 0 0 0 1px var(--lin-brand); }
+.field { border-top-color: var(--lin-hairline); }
+.field-label { font-weight: 510; }
+.field-value { background: var(--lin-raised); color: var(--lin-text-1); font-weight: 510; border-radius: 5px; }
+.segmented { background: var(--lin-raised); border: 0; border-radius: 8px; }
+.segmented button { border-radius: 6px; font-weight: 510; }
+.segmented button.on { background: var(--lin-panel); box-shadow: 0 0 0 1px var(--lin-hairline-strong); }
+.switch span { background: var(--lin-raised-2); border-color: transparent; }
+.pill { font-weight: 510; border-radius: 6px; border: 0; padding: 2px 8px; }
+.progress { background: var(--lin-raised-2); height: 4px; }
+.progress > div { background: var(--lin-brand); }
+.loading-bar { background: var(--lin-brand); }
+.callout { border-radius: 8px; }
+.part-row.on { background: var(--lin-wash-strong); border-color: transparent; }
+.seg { border: 0; box-shadow: 0 0 0 1px var(--lin-hairline-strong); border-radius: 6px; }
+.seg button.on { background: var(--lin-raised); color: var(--lin-text-1); font-weight: 510; }
+.edit-title, .layer-box .title { text-transform: none; letter-spacing: 0; font-weight: 510; }
+
+/* ---------- Stats: quiet numbers ---------- */
+.stat .label { font-weight: 510; color: var(--lin-text-3); font-size: 12px; }
+.stat .label svg { width: 14px; height: 14px; }
+.stat .value { font-weight: 590; font-size: 22px; letter-spacing: -0.01em; }
+.walker-card .name, .empty .t, .toast .t, .how .t { font-weight: 510; }
+.walker-card .numbers b { font-weight: 590; }
+
+/* ---------- 3D view chrome ---------- */
+.viewer { border: 0; box-shadow: 0 0 0 1px var(--lin-hairline); border-radius: 12px; }
+.vbtn { border-radius: 6px; }
+.vbtn.on { background: var(--lin-brand); }
+.chip { border-radius: 6px; }
+.playbar { border-radius: 8px; background: rgba(8, 9, 10, 0.82); }
+.playbar input[type="range"]::-webkit-slider-runnable-track {
+  background: linear-gradient(90deg, #ffffff 0 var(--fill, 0%), rgba(255, 255, 255, 0.22) var(--fill, 0%) 100%); }
+
+/* ---------- Home: no gradient, the content carries itself ---------- */
+.hero { background: var(--lin-raised); color: var(--lin-text-1); box-shadow: 0 0 0 1px var(--lin-hairline); border-radius: 12px; }
+.hero h1 { font-weight: 590; font-size: 32px; line-height: 1.15; letter-spacing: -0.022em; }
+.hero p { color: var(--lin-text-3); font-size: 15px; }
+.hero .btn.primary { background: var(--lin-brand); color: #fff; }
+.hero .btn.primary:hover { background: var(--accent-2); }
+.hero .btn.light { background: var(--lin-panel); color: var(--lin-text-1); box-shadow: 0 0 0 1px var(--lin-hairline-strong); }
+.hero .btn.light:hover { background: var(--lin-raised-2); }
+.how { cursor: default; }
+.how .n { background: var(--lin-raised-2); color: var(--lin-text-2); font-weight: 510; border-radius: 50%; }

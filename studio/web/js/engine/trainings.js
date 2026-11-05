@@ -7,7 +7,7 @@ import { buildCreature } from "./creatures/index.js";
 import { cleanDesign, designForBody, designSenses } from "./design.js";
 import { observationSize } from "./env.js";
 import { newId, now, rememberSpeed, safeId, systemFacts } from "./library.js";
-import { deleteFiles, deleteRecord, allRecords, getRecord, listFiles, putRecord, readFile, writeFile } from "./storage.js";
+import { allRecords, askToKeepStorage, deleteFiles, deleteRecord, getRecord, listFiles, putRecord, readFile, writeFile } from "./storage.js";
 import { cleanLearning } from "./trainer.js";
 import { worldFromDict, worldToDict } from "./worlds.js";
 
@@ -39,6 +39,7 @@ export async function createTraining(request) {
   };
   if (setup.start_from) await checkStartFrom(setup);
   await putRecord("trainings", { id, setup, status: { state: "starting", steps: 0, total_steps: Math.trunc(learning.million_steps * 1e6), message: "Starting", updated: now() } });
+  askToKeepStorage();  // ask the browser not to clear the studio's storage when the disk gets full
   await startWorker(id, false);
   return setup;
 }
