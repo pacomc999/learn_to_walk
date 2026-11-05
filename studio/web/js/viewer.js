@@ -306,7 +306,7 @@ export class Viewer {
     for (const mesh of this.meshes) {
       const on = this.highlightTest && this.highlightTest(mesh.userData.name);
       mesh.material.emissive = new THREE.Color(on ? 0x6366f1 : 0x000000);
-      mesh.material.emissiveIntensity = on ? 0.55 : 0;
+      mesh.material.emissiveIntensity = on ? 0.3 : 0;
     }
   }
 
