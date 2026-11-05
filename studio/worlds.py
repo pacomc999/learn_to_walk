@@ -61,6 +61,10 @@ SETTING_GROUPS = (
         number("fastest_speed", "Fastest asked speed", "", 0.7, 0.05, 4.0, 0.05, "m/s"),
         number("attempt_seconds", "Attempt length", "How long one practice attempt lasts if the walker does "
                "not fall.", 20, 5, 60, 1, "s"),
+        switch("turning", "Asked to turn", "Each attempt also asks it to turn, left or right, changing every few "
+               "seconds. A walker trained this way can be steered in Live mode. Flat ground only.", default=False),
+        number("turn_rate", "Sharpest turn", "The sharpest turn it is asked for, in degrees per second.", 30, 5, 120,
+               5, "°/s", "turning"),
     )),
     SettingGroup("reward", "What it cares about", "Points the walker earns or loses every moment. Learning is "
                  "the search for more points, so these shape how it walks.", (
@@ -154,6 +158,11 @@ class World:
     def speed_range(self) -> tuple[float, float]:
         low, high = self.values["slowest_speed"], self.values["fastest_speed"]
         return (min(low, high), max(low, high))
+
+    # Turning is only asked on flat ground (the bumpy floors are narrow strips)
+    @property
+    def turning(self) -> bool:
+        return bool(self.values["turning"]) and self.terrain == "flat"
 
     @property
     def grip(self) -> float:

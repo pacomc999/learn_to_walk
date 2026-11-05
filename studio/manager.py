@@ -37,6 +37,9 @@ def create_training(request: dict) -> dict:
     world = world_from_dict(request.get("world") or {})
     design = clean_design(request.get("brain"))
     learning = clean_learning(request.get("learning"))
+    course = _clean_course(request.get("course"))
+    if world.turning or any(world_from_dict(stage["world"]).turning for stage in course):
+        design["values"]["feel_turn"] = True  # it must feel where it is asked to go to learn turning
     if not build_creature(kind.KEY, creature_values).motors:
         raise ValueError("This creature has no motors, so there is nothing for its brain to learn. "
                          "Give at least one part a joint.")
@@ -48,7 +51,7 @@ def create_training(request: dict) -> dict:
                      "id": creature.get("id")},
         "world": world.to_dict(), "brain": design, "learning": learning,
         "start_from": request.get("start_from") or None,
-        "course": _clean_course(request.get("course")),
+        "course": course,
     }
     if setup["start_from"]:
         _check_start_from(setup)

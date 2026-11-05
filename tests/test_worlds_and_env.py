@@ -106,3 +106,25 @@ def test_wind_pushes_and_rocks_fly():
         pushed = pushed or np.any(env.data.xfrc_applied[env.torso, :3] != 0)
         rock_moved = rock_moved or np.linalg.norm(env.data.qpos[env.rock["qpos"]:env.rock["qpos"] + 3] - rock_start) > 0.1
     assert pushed and rock_moved
+
+
+def test_turning_worlds_ask_for_turns_and_score_along_the_asked_heading():
+    import math
+    world = world_from_dict({"values": {"turning": True, "turn_rate": 45}})
+    assert world.turning
+    assert not world_from_dict({"values": {"turning": True, "terrain": "stairs", "terrain_height": 3}}).turning
+    build = build_creature("puppy")
+    env = WalkEnv(build, world, {"feet": True, "turn": True}, target_speed=0.4, turn_rate=30)
+    observation, _ = env.reset(seed=0)
+    assert observation.shape == (observation_size(build, {"feet": True, "turn": True}),)
+    from studio.replay import holder
+    hold = holder(env)
+    for _ in range(50):
+        env.step(hold(None))
+    assert env.asked_heading == pytest.approx(math.radians(30) * 50 * env.control_seconds)
+    # moving sideways to the left counts as forward once the asked heading points left
+    env.asked_heading = math.pi / 2
+    before = env.progress
+    env.data.qpos[1] += 0.1
+    env._reward(float(env.data.qpos[0]), float(env.data.qpos[1]) - 0.1, 0.0, np.zeros(len(build.motors)), False)
+    assert env.progress - before == pytest.approx(0.1)

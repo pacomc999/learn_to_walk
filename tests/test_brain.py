@@ -58,7 +58,7 @@ def test_the_mirror_table_matches_the_physics(animal, body):
     # A random pose and its exact mirror pose: every part must land mirrored, and the senses must match the table
     import mujoco
     build = build_creature(animal, {"body": body()} if body else {})
-    senses = {"feet": True, "ground": True}
+    senses = {"feet": True, "ground": True, "turn": True}
     tables = mirror_tables(build, senses)
     real, mirror = (WalkEnv(build, builtin_worlds()[0], senses, target_speed=0.4) for _ in range(2))
     real.reset(seed=0)
@@ -72,6 +72,8 @@ def test_the_mirror_table_matches_the_physics(animal, body):
     q[real.joint_qpos] = rng.uniform(-0.3, 0.3, len(build.motors))
     v[real.joint_qvel] = rng.normal(size=len(build.motors))
     m_q, m_v = mirror.data.qpos, mirror.data.qvel
+    real.asked_heading, real.turn_rate = 0.3, 0.2         # asked to turn left...
+    mirror.asked_heading, mirror.turn_rate = -0.3, -0.2   # ...is asked to turn right in the mirror
     m_q[0:3] = q[0:3] * [1, -1, 1]
     m_q[3:7] = q[3:7] * [1, -1, 1, -1]
     m_v[0:6] = v[0:6] * [1, -1, 1, -1, 1, -1]

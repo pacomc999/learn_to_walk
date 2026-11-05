@@ -127,3 +127,18 @@ def test_a_course_moves_through_its_stages(tmp_path, tiny, capsys):
     assert "joules_per_metre" in exams[-1]
     replay = json.loads((folder / "replays/best.json").read_text())
     assert replay["ground"]["kind"] == "heights"  # the best walk is on the hills
+
+
+def test_a_turning_world_switches_on_the_asked_direction_sense(tmp_path, tiny, monkeypatch):
+    from studio import library, manager
+    monkeypatch.setattr(library, "LIBRARY", tmp_path)
+    monkeypatch.setattr(manager, "start_process", lambda training_id, resume: None)
+    world = builtin_worlds()[0].to_dict()
+    world["values"].update(turning=True)
+    setup = manager.create_training({"creature": {"animal": "duck", "values": {}}, "world": world,
+                                     "brain": {"layers": [16, 16]}})
+    assert setup["brain"]["values"]["feel_turn"] is True
+    folder = library.training_folder(setup["id"])
+    train.run(folder, resume=False)
+    status = json.loads((folder / "status.json").read_text())
+    assert status["state"] == "finished"

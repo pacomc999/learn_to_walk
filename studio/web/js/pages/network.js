@@ -15,9 +15,10 @@ function senseGroups(info, design) {
   const groups = [
     ["Height and drift", 2], ["Balance (tilt)", 4], ["Body motion", 6], ["Joint angles", motors], ["Joint speeds", motors],
   ];
-  const feet = info.inputs - 13 - 2 * motors - (design.values.see_ground ? 7 : 0);
+  const feet = info.inputs - 13 - 2 * motors - (design.values.see_ground ? 7 : 0) - (design.values.feel_turn ? 3 : 0);
   if (design.values.feel_feet && feet > 0) groups.push(["Feet touching", feet]);
   if (design.values.see_ground) groups.push(["Ground ahead", 7]);
+  if (design.values.feel_turn) groups.push(["Asked direction", 3]);
   groups.push(["Asked speed", 1]);
   return groups;
 }

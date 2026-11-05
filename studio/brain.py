@@ -38,6 +38,8 @@ SETTING_GROUPS = (
         switch("feel_feet", "Feel the feet touching the ground", "Tells the brain which feet are on the ground."),
         switch("see_ground", "See the ground ahead", "Seven heights of the ground just in front of the walker. "
                "Helps a lot on stairs and rocks.", default=False),
+        switch("feel_turn", "Feel the asked direction", "Where it is asked to go, so it can learn to turn and be "
+               "steered. Switched on by itself when the world asks it to turn.", default=False),
     )),
     SettingGroup("habits", "Starting habits", "How the brain behaves before it has learned anything.", (
         Setting("start_wobble", "Starting curiosity", "choice", "auto",
@@ -95,7 +97,7 @@ def design_for_body(design: dict, build) -> dict:
 # The senses switched on by a design, in the environment's words
 def design_senses(design: dict) -> dict:
     values = design["values"]
-    return {"feet": values["feel_feet"], "ground": values["see_ground"]}
+    return {"feet": values["feel_feet"], "ground": values["see_ground"], "turn": values["feel_turn"]}
 
 
 # How many numbers the brain learns (both networks), for the Brain screen

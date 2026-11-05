@@ -54,6 +54,10 @@ def mirror_tables(build: Build, senses: dict) -> MirrorTables:
         order += [position + i for i in range(len(GROUND_SCAN))]  # the ground ahead lies on the middle line
         signs += [1] * len(GROUND_SCAN)
         position += len(GROUND_SCAN)
+    if senses.get("turn", False):  # the asked direction: a turn to the left is a turn to the right in the mirror
+        order += [position, position + 1, position + 2]
+        signs += [-1, 1, -1]
+        position += 3
     order.append(position)  # the asked speed stays
     signs.append(1)
     left = [i for i, motor in enumerate(build.motors) if motor.side == "left"]

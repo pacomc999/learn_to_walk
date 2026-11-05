@@ -47,7 +47,13 @@ PART_NAMES = ["speed", "alive", "energy", "straight", "fall", "end_stops", "leve
 AIR_TIME_GOAL = 0.25
 
 # The senses a brain can have switched on
-DEFAULT_SENSES = {"feet": True, "ground": False}
+DEFAULT_SENSES = {"feet": True, "ground": False, "turn": False}
+
+# Turning: the asked turn changes after a random time in this range (seconds)
+TURN_CHANGE_SECONDS = (3.0, 7.0)
+
+# The asked direction as the brain feels it: three numbers (sine and cosine of the heading error, asked turn rate)
+TURN_SENSES = 3
 
 
 # How many numbers the walker senses with these senses
@@ -57,6 +63,8 @@ def observation_size(build: Build, senses: dict) -> int:
         size += len(build.feet)
     if senses.get("ground", False):
         size += len(GROUND_SCAN)
+    if senses.get("turn", False):
+        size += TURN_SENSES
     return size
 
 
@@ -64,7 +72,7 @@ class WalkEnv(gymnasium.Env):
     metadata = {"render_modes": [], "render_fps": 50}
 
     def __init__(self, build: Build, world: World, senses: dict | None = None, *, target_speed: float | None = None,
-                 terrain_height: float | None = None, scene: Scene | None = None):
+                 terrain_height: float | None = None, scene: Scene | None = None, turn_rate: float | None = None):
         self.build = build
         self.world = world
         self.senses = dict(DEFAULT_SENSES, **(senses or {}))
@@ -73,6 +81,11 @@ class WalkEnv(gymnasium.Env):
         self.data = mujoco.MjData(self.model)
         self.fixed_target_speed = target_speed
         self.fixed_height = terrain_height
+        self.fixed_turn_rate = turn_rate      # degrees per second; None picks them at random when the world turns
+        self.turn_rate = 0.0                  # radians per second asked right now
+        self.asked_heading = 0.0              # radians, where the walker should be heading now
+        self.next_turn_change = 0.0
+        self.progress = 0.0                   # metres moved along the asked heading this attempt
         self.target_speed = target_speed if target_speed is not None else float(np.mean(world.speed_range))
         self.difficulty = 1.0           # raised step by step by training when the world is gradually harder
         self.heights = None             # this attempt's ground, None on the flat plane
@@ -156,6 +169,33 @@ class WalkEnv(gymnasium.Env):
             return float(self.np_random.uniform(0.0, tallest)) if tallest > 0 else 0.0
         return tallest
 
+    def _pick_turn_rate(self) -> float:
+        if self.fixed_turn_rate is not None:
+            return float(np.radians(self.fixed_turn_rate))
+        if not self.world.turning:
+            return 0.0
+        most = np.radians(self.world.values["turn_rate"])
+        return float(self.np_random.uniform(-most, most))
+
+    # The asked heading moves on with the asked turn; in practice the turn changes every few seconds
+    def _advance_heading(self) -> None:
+        self.asked_heading += self.turn_rate * self.control_seconds
+        if self.fixed_turn_rate is None and self.world.turning and self.data.time >= self.next_turn_change:
+            self.turn_rate = self._pick_turn_rate()
+            self.next_turn_change = self.data.time + float(self.np_random.uniform(*TURN_CHANGE_SECONDS))
+
+    def set_turn_rate(self, degrees_per_second: float) -> None:
+        self.fixed_turn_rate = float(degrees_per_second)
+        self.turn_rate = float(np.radians(degrees_per_second))
+
+    # The torso's heading (yaw) and how far it is from the asked heading, in radians from -pi to pi
+    def _yaw(self) -> float:
+        w, x, y, z = self.data.qpos[3:7]
+        return float(np.arctan2(2 * (w * z + x * y), 1 - 2 * (y * y + z * z)))
+
+    def heading_error(self) -> float:
+        return float((self.asked_heading - self._yaw() + np.pi) % (2 * np.pi) - np.pi)
+
     def _pick_speed(self) -> float:
         if self.fixed_target_speed is not None:
             return self.fixed_target_speed
@@ -173,6 +213,10 @@ class WalkEnv(gymnasium.Env):
         mujoco.mj_forward(self.model, self.data)
         self.step_count = 0
         self.start_x = float(self.data.qpos[0])
+        self.asked_heading = 0.0
+        self.progress = 0.0
+        self.turn_rate = self._pick_turn_rate()
+        self.next_turn_change = float(self.np_random.uniform(*TURN_CHANGE_SECONDS))
         self.next_rock = self.next_gust = FIRST_EVENT
         self.rock_thrown_at = None
         self.gust_until = -1.0
@@ -223,6 +267,9 @@ class WalkEnv(gymnasium.Env):
             parts.append(self._foot_contacts())
         if self.senses["ground"]:
             parts.append(self._ground_scan())
+        if self.senses["turn"]:
+            error = self.heading_error()
+            parts.append([np.sin(error), np.cos(error), self.turn_rate])
         parts.append([self.target_speed])
         return np.clip(np.concatenate(parts), -OBSERVATION_LIMIT, OBSERVATION_LIMIT).astype(np.float32)
 
@@ -249,7 +296,7 @@ class WalkEnv(gymnasium.Env):
         finite = self._finite()
         x = float(self.data.qpos[0]) if finite else 0.0
         info = {"x_position": x, "y_position": float(self.data.qpos[1]) if finite else 0.0,
-                "forward_distance": x - self.start_x if finite else 0.0, "reward_parts": reward_parts,
+                "forward_distance": self.progress if finite else 0.0, "reward_parts": reward_parts,
                 "target_speed": self.target_speed, "rock_hits": self.rock_hits}
         if final:
             info.update({f"pts_{name}": value for name, value in self.episode_parts.items()})
@@ -273,6 +320,7 @@ class WalkEnv(gymnasium.Env):
     def step(self, action):
         action = np.clip(np.asarray(action, dtype=np.float64), -1.0, 1.0)
         x_before = float(self.data.qpos[0])
+        y_before = float(self.data.qpos[1])
         self.data.ctrl[:] = self._scale_action(action)
         self._extras_before_step()
         energy = self._simulate()
@@ -280,7 +328,8 @@ class WalkEnv(gymnasium.Env):
         self._extras_after_step()
         self.step_count += 1
         terminated = self._fallen()
-        reward, parts = self._reward(x_before, energy, action, terminated)
+        reward, parts = self._reward(x_before, y_before, energy, action, terminated)
+        self._advance_heading()
         for name, value in parts.items():
             self.episode_parts[name] += value
         truncated = self.step_count >= self.max_steps
@@ -293,16 +342,23 @@ class WalkEnv(gymnasium.Env):
 
     # ---------- Points ----------
 
-    def _reward(self, x_before: float, energy: float, action: np.ndarray, fell: bool) -> tuple[float, dict]:
+    def _reward(self, x_before: float, y_before: float, energy: float, action: np.ndarray,
+                fell: bool) -> tuple[float, dict]:
         if not self._finite():
             return 0.0, {}
         values = self.world.values
-        speed = (float(self.data.qpos[0]) - x_before) / self.control_seconds
+        # Speed is the distance moved along the asked heading (straight ahead, unless it is asked to turn)
+        moved = ((float(self.data.qpos[0]) - x_before) * np.cos(self.asked_heading)
+                 + (float(self.data.qpos[1]) - y_before) * np.sin(self.asked_heading))
+        self.progress += moved
+        speed = moved / self.control_seconds
+        # Walking straight: off the line when it walks straight on, off the asked heading when it turns
+        off_course = abs(self.heading_error()) if self.world.turning or self.fixed_turn_rate else abs(float(self.data.qpos[1]))
         parts = {
             "speed": values["speed_points"] * self._speed_score(speed),
             "alive": values["alive_points"],
             "energy": -values["energy_cost"] * energy,
-            "straight": -values["straight_cost"] * abs(float(self.data.qpos[1])),
+            "straight": -values["straight_cost"] * off_course,
         }
         if fell and values["fall_cost"]:
             parts["fall"] = -values["fall_cost"]
@@ -345,10 +401,9 @@ class WalkEnv(gymnasium.Env):
         self.air_time = np.where(touching, 0.0, self.air_time + self.control_seconds)
         return earned
 
-    # How far the body has turned away from the walking direction, in radians
+    # How far the body has turned away from the asked direction, in radians
     def _heading(self) -> float:
-        w, x, y, z = self.data.qpos[3:7]
-        return float(np.arctan2(2 * (w * z + x * y), 1 - 2 * (y * y + z * z)))
+        return self.heading_error()
 
     # Each joint counts 0 until it enters the last 5% of its range, rising to 1 at the stop
     def _end_stop_closeness(self) -> float:

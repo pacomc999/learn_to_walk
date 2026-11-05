@@ -182,8 +182,13 @@ def deterministic_actor(model, vec_normalize):
 def take_exam(model, vec_normalize, build, world, senses, scene) -> dict:
     act = deterministic_actor(model, vec_normalize)
     scores, falls, distances, qualities, speed_errors, energies = [], 0, [], [], [], []
-    for index, (speed, height) in enumerate(exam_plan(world)):
-        env = WalkEnv(build, world, senses, target_speed=speed, terrain_height=height, scene=scene)
+    plan = exam_plan(world)
+    for index, (speed, height) in enumerate(plan):
+        turn = None
+        if world.turning:  # turns spread from sharp left to sharp right, mixed with the speeds
+            most = world.values["turn_rate"]
+            turn = most * (-1 + 2 * ((index * 5) % len(plan)) / max(len(plan) - 1, 1))
+        env = WalkEnv(build, world, senses, target_speed=speed, terrain_height=height, scene=scene, turn_rate=turn)
         observation, _ = env.reset(seed=EXAM_FIRST_SEED + index)
         total, fell, steps, joules = 0.0, False, 0, 0.0
         while True:
@@ -213,7 +218,8 @@ def take_exam(model, vec_normalize, build, world, senses, scene) -> dict:
 def best_walk_replay(model, vec_normalize, build, world, senses, scene) -> dict:
     speed = float(np.mean(world.speed_range))
     height = world.tallest * 0.75 if world.values["mixed_heights"] else world.tallest
-    env = WalkEnv(build, world, senses, target_speed=speed, terrain_height=height, scene=scene)
+    turn = world.values["turn_rate"] / 2 if world.turning else None  # a turning walker shows a gentle turn
+    env = WalkEnv(build, world, senses, target_speed=speed, terrain_height=height, scene=scene, turn_rate=turn)
     return record(env, deterministic_actor(model, vec_normalize), seed=EXAM_FIRST_SEED,
                   brain=_CellReader(model, vec_normalize))
 
