@@ -336,7 +336,8 @@ async function driveTab(body, id, details, setup) {
   const worlds = [{ ...setup.world, name: `${setup.world.name} (its own)`, own: true }, ...catalog.world_templates.filter((w) => w.id !== setup.world.id), ...mine];
   let chosen = worlds[0];
   const values = () => ({ ...worldDefaults, ...chosen.values });
-  const drive = { speed: null, height: null, seed: 1000, seconds: 20 };
+  const drive = { speed: null, height: null, seed: 1000, seconds: 20, turn: 0 };
+  const steerable = !!setup.brain.values.feel_turn;
 
   const viewerBox = h("div", { class: "viewer-mid" });
   const panel = h("div", { class: "panel" });
@@ -367,6 +368,8 @@ async function driveTab(body, id, details, setup) {
         drive.speed, (value) => { drive.speed = value; }, { defaultValue: drive.speed }),
       tallest > 0 ? settingControl({ key: "height", label: "Ground height", kind: "number", minimum: 0, maximum: Math.max(tallest * 2, 1), step: 0.5, unit: "cm",
         help: "How tall the bumps, stones or steps are in this drive." }, drive.height, (value) => { drive.height = value; }, { defaultValue: drive.height }) : null,
+      steerable ? settingControl({ key: "turn", label: "Asked turn", kind: "number", minimum: -90, maximum: 90, step: 5, unit: "°/s",
+        help: "Plus turns left, minus turns right. It learned turns up to its world's sharpest turn." }, drive.turn, (value) => { drive.turn = value; }, { defaultValue: 0 }) : null,
       settingControl({ key: "seconds", label: "Length", kind: "number", minimum: 5, maximum: 60, step: 5, unit: "s" }, drive.seconds, (value) => { drive.seconds = value; }, { defaultValue: 20 }));
   };
 
@@ -379,7 +382,7 @@ async function driveTab(body, id, details, setup) {
       const v = values();
       const replay = await api(`trainings/${id}/watch`, { method: "POST", body: {
         world: { ...chosen, values: { ...v, attempt_seconds: Math.max(v.attempt_seconds, drive.seconds) } }, speed: drive.speed,
-        height: (drive.height || 0) / 100, seed: drive.seed, seconds: drive.seconds } });
+        height: (drive.height || 0) / 100, seed: drive.seed, seconds: drive.seconds, turn: drive.turn } });
       viewer.load(replay);
       gait.show(replay);
       const s = replay.stats;
@@ -554,6 +557,9 @@ export async function liveTab(body, id, details, setup) {
   let session = null;
   let last = -1;
   let falls = 0;
+  const steerable = !!setup.brain.values.feel_turn;
+  const sharpest = Math.max(30, setup.world.values.turn_rate || 30);
+  let turn = 0;
   let timer = null;
   let disposed = false;
 
@@ -577,6 +583,19 @@ export async function liveTab(body, id, details, setup) {
   };
   speedRange.addEventListener("input", () => setSpeed(Number(speedRange.value)));
   const send = (command) => { if (session) api(`live/${session}`, { method: "POST", body: command }).catch(() => {}); };
+  const turnText = h("div", { class: "live-speed" });
+  const turnRange = h("input", { type: "range", min: -sharpest, max: sharpest, step: 5, value: 0 });
+  const paintTurn = () => {
+    turnText.innerHTML = turn === 0 ? "straight" : `${Math.abs(turn)}<small>°/s ${turn > 0 ? "left" : "right"}</small>`;
+    turnRange.value = turn;
+    turnRange.style.setProperty("--fill", `${(turn + sharpest) / (2 * sharpest) * 100}%`);
+  };
+  const setTurn = (value) => {
+    turn = Math.max(-sharpest, Math.min(sharpest, Math.round(value / 5) * 5));
+    paintTurn();
+    send({ turn });
+  };
+  turnRange.addEventListener("input", () => setTurn(Number(turnRange.value)));
 
   const stats = h("div", { class: "stats", style: { gridTemplateColumns: "repeat(3, 1fr)" } });
   const paintStats = (state) => stats.replaceChildren(
@@ -616,7 +635,8 @@ export async function liveTab(body, id, details, setup) {
       header.marks_to = header.floor_end || 60;
       viewer.showMessage("");
       viewer.startLive(header);
-      viewer.setChips([["World", world.name], ["Keys", "↑ ↓ speed · ← → push · R restart"]]);
+      viewer.setChips([["World", world.name], ["Keys", steerable ? "↑ ↓ speed · ← → steer · A D push · R restart" : "↑ ↓ speed · ← → push · R restart"]]);
+      turn = 0; paintTurn();
       startButton.innerHTML = `${icon.stop}<span>Stop</span>`;
       viewerBox.focus();
       poll();
@@ -637,8 +657,9 @@ export async function liveTab(body, id, details, setup) {
 
   const keys = (event) => {
     if (!session || ["INPUT", "SELECT", "TEXTAREA"].includes(document.activeElement.tagName) && document.activeElement !== speedRange) return;
-    const actions = { ArrowUp: () => setSpeed(speed + 0.1), ArrowDown: () => setSpeed(speed - 0.1), ArrowLeft: () => send({ push: "left" }),
-      ArrowRight: () => send({ push: "right" }), r: () => send({ restart: true }), R: () => send({ restart: true }) };
+    const actions = { ArrowUp: () => setSpeed(speed + 0.1), ArrowDown: () => setSpeed(speed - 0.1),
+      ArrowLeft: () => (steerable ? setTurn(turn + 10) : send({ push: "left" })), ArrowRight: () => (steerable ? setTurn(turn - 10) : send({ push: "right" })),
+      a: () => send({ push: "left" }), d: () => send({ push: "right" }), r: () => send({ restart: true }), R: () => send({ restart: true }) };
     if (actions[event.key]) { event.preventDefault(); actions[event.key](); }
   };
   window.addEventListener("keydown", keys);
@@ -659,6 +680,13 @@ export async function liveTab(body, id, details, setup) {
         h("button", { class: "btn small", onclick: () => setSpeed(own.slowest_speed) }, "Slow"),
         h("button", { class: "btn small", onclick: () => setSpeed((own.slowest_speed + own.fastest_speed) / 2) }, "Medium"),
         h("button", { class: "btn small", onclick: () => setSpeed(own.fastest_speed) }, "Fast"))),
+    steerable ? h("div", { class: "card card-pad stack", style: { gap: "10px", marginBottom: "12px" } },
+      h("div", { class: "spread" }, h("h3", {}, "Steer"), turnText),
+      turnRange,
+      h("div", { class: "btn-row" },
+        h("button", { class: "btn small", onclick: () => setTurn(sharpest / 2) }, "Left"),
+        h("button", { class: "btn small", onclick: () => setTurn(0) }, "Straight"),
+        h("button", { class: "btn small", onclick: () => setTurn(-sharpest / 2) }, "Right"))) : null,
     h("div", { class: "card card-pad stack", style: { gap: "10px", marginBottom: "12px" } },
       h("h3", {}, "Mess with it"),
       h("div", { class: "btn-row" },
@@ -670,6 +698,7 @@ export async function liveTab(body, id, details, setup) {
         h("button", { class: "btn ghost", onclick: () => send({ restart: true }), html: `${icon.restart}<span>Start again</span>` }))),
     stats);
   paintSpeed();
+  paintTurn();
   return { dispose: () => { disposed = true; stopLive(); window.removeEventListener("keydown", keys); viewer.dispose(); } };
 }
 

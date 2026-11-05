@@ -297,7 +297,7 @@ class StudioHandler(BaseHTTPRequestHandler):
         if method == "POST" and action == "watch":
             body = self.read_body()
             return previews.watch(training_id, body.get("world"), body.get("speed"), body.get("height"),
-                                  int(body.get("seed", 1000)), body.get("seconds"))
+                                  int(body.get("seed", 1000)), body.get("seconds"), turn=float(body.get("turn") or 0))
         raise ValueError("Unknown request.")
 
 

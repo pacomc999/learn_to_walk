@@ -209,7 +209,8 @@ def record(env: WalkEnv, act=None, seed: int = 1000, seconds: float | None = Non
         "stats": {"distance": round(distance, 3), "seconds": round(seconds_walked, 2),
                   "fell": fell_at is not None, "target_speed": round(env.target_speed, 3),
                   "average_speed": round(distance / max(seconds_walked, 1e-9), 3), "score": round(total, 1),
-                  "terrain_height_cm": round(env.attempt_height * 100, 1), "rock_hits": env.rock_hits},
+                  "terrain_height_cm": round(env.attempt_height * 100, 1), "rock_hits": env.rock_hits,
+                  "turn_rate": round(float(np.degrees(env.turn_rate)), 1)},
     }
 
 

@@ -265,7 +265,7 @@ export class Viewer {
   // A soft marker that moves at the asked speed, so you can see if the walker keeps up
   _buildPace(replay) {
     if (this.paceMarker) { this.scene.remove(this.paceMarker); this.paceMarker = null; }
-    if (!this.options.pace || !replay.stats || !replay.stats.target_speed) return;
+    if (!this.options.pace || !replay.stats || !replay.stats.target_speed || replay.stats.turn_rate) return;
     const size = Math.max(replay.size || 1, 0.6);
     const marker = new THREE.Mesh(new THREE.RingGeometry(0.06 * size, 0.08 * size, 40),
       new THREE.MeshBasicMaterial({ color: 0x6366f1, transparent: true, opacity: 0.75, side: THREE.DoubleSide, depthWrite: false }));

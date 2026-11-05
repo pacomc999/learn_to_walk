@@ -44,7 +44,7 @@ class LiveSession:
         world["values"] = {**(world.get("values") or {}), "attempt_seconds": 60}
         self.world = world_from_dict(world)
         self.env = WalkEnv(self.build, self.world, design_senses(clean_design(setup.get("brain"))),
-                           target_speed=float(speed), terrain_height=self.world.tallest * 0.75)
+                           target_speed=float(speed), terrain_height=self.world.tallest * 0.75, turn_rate=0.0)
         self.brain = _brain(training_id)
         self.id = uuid.uuid4().hex[:10]
         self.speed = float(speed)
@@ -131,13 +131,15 @@ class LiveSession:
             frames = self.frames[start - self.first_frame:]
             events, self.events = self.events, []
             data = self.env.data
-            state = {"x": float(data.qpos[0]) - self.env.start_x, "speed": float(data.qvel[0]),
+            state = {"x": self.env.progress, "speed": float(np.hypot(data.qvel[0], data.qvel[1])),
                      "asked": self.speed, "fallen": self.fallen_at is not None, "time": float(data.time)}
         return {"first": start, "frames": frames, "events": events, "state": state, "running": self.running}
 
     def command(self, command: dict) -> None:
         self.last_asked = time.time()
         with self.lock:
+            if "turn" in command:  # degrees per second, left is positive
+                self.env.set_turn_rate(float(min(max(float(command["turn"]), -120.0), 120.0)))
             if "speed" in command:
                 self.speed = float(min(max(float(command["speed"]), 0.0), 4.0))
             if command.get("push") in ("left", "right", "front", "back"):

@@ -122,7 +122,7 @@ def drop_test(animal_key: str, values: dict, world_data: dict | None = None, sec
 
 # A trained walker in any world: the best brain of a training session
 def watch(training_id: str, world_data: dict | None, speed: float | None, height: float | None, seed: int,
-          seconds: float | None, ground_half_width: float | None = None) -> dict:
+          seconds: float | None, ground_half_width: float | None = None, turn: float = 0.0) -> dict:
     folder = library.training_folder(training_id)
     setup = library.read_json(folder / "setup.json")
     if not setup:
@@ -136,7 +136,7 @@ def watch(training_id: str, world_data: dict | None, speed: float | None, height
     speed = float(np.mean(world.speed_range)) if speed is None else float(speed)
     if height is None:
         height = world.tallest * 0.75 if world.values["mixed_heights"] else world.tallest
-    env = WalkEnv(build, world, senses, target_speed=speed, terrain_height=float(height))
+    env = WalkEnv(build, world, senses, target_speed=speed, terrain_height=float(height), turn_rate=float(turn or 0.0))
     brain = _brain(training_id)
     replay = record(env, brain.act, seed=int(seed), seconds=seconds, keep_going_after_fall=2.0,
                     ground_half_width=ground_half_width, brain=None if ground_half_width else brain)

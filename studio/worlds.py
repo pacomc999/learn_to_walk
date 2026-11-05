@@ -193,4 +193,4 @@ def builtin_worlds() -> list[World]:
 # The order of the built-in worlds on the page
 _ORDER = {"flat_meadow": 0, "cobblestone_street": 1, "running_track": 2, "rolling_hills": 3, "grand_staircase": 4,
           "frozen_lake": 5, "moon_base": 6, "stormy_crossing": 7, "rocky_canyon": 8, "hurdle_track": 9,
-          "mountain_path": 10}
+          "mountain_path": 10, "turning_field": 11}

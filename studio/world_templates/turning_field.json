@@ -1,0 +1,9 @@
+{
+  "id": "turning_field",
+  "name": "Turning Field",
+  "description": "Flat grass where it is asked to turn left and right, changing every few seconds. Train here to steer it in Live mode.",
+  "values": {
+    "turning": true,
+    "turn_rate": 30
+  }
+}
