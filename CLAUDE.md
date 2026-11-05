@@ -22,16 +22,17 @@ Walk Studio: a no-code web app around the learn_to_walk duck. MuJoCo physics, PP
 - `studio/live.py`: live mode (a session thread runs the brain in real time; the page polls `/api/live/<id>?after=N` for frames and posts speed, push and restart commands; idle sessions stop after 20 s; one at a time)
 - `studio/challenges.py`: the report card (challenge ladders run in a background job; `/api/jobs/<id>`; results in `challenges.json`)
 - `studio/importer.py`: brings learn_to_walk catalogue ducks over (body and world settings mapped, brain weights loaded into `SymmetricPolicy` (identical layer names), sense scaling unpickled without learn_to_walk, saved step size kept, then a studio exam)
-- `studio/previews.py`: creature preview, drop test, brain facts, watching a trained brain in any world, races (replays merged into lanes)
+- `studio/previews.py`: creature preview (with centre of mass and support area), drop test, brain facts, watching a trained brain in any world (with a sample of brain cells per frame), races (replays merged into lanes, labels follow each racer)
+- `studio/sharing.py`: `.walker` files (a zip of setup, status, logs, brains, replays, thumbnail); unpacking only writes known names inside the new folder
 - `studio/library.py`: the `library/` folder (git-ignored; `STUDIO_LIBRARY` overrides it)
 - `studio/server.py`: `ThreadingHTTPServer` on 127.0.0.1:8770, JSON API under `/api/` (catalog, preview/{creature,drop,brain}, creatures, worlds, brains, trainings and their stop/continue/rename/watch/replay)
-- `studio/web/`: `index.html`, `css/studio.css` (tokens with a dark theme), `js/app.js` (state, router, sidebar), `js/ui.js` (elements, setting controls, toasts, dialogs), `js/viewer.js` (three.js, z up, playback, picking, highlighting), `js/charts.js` (SVG charts), `js/pages/*` (home, wizard, builder, network, walker, walkers, library, guide). `vendor/` holds three.js 0.160.0 and the Inter font so it works offline
+- `studio/web/`: `index.html`, `css/studio.css` (tokens with a dark theme), `js/app.js` (state, router, sidebar, notifications), `js/ui.js` (elements, setting controls with `depends`, toasts, dialogs), `js/viewer.js` (three.js, z up, playback, live streaming, picking, highlighting, balance marker, pictures and WebM recording), `js/charts.js` (SVG charts drawn at their real width, stage markers), `js/gait.js` (gait diagram, gait numbers, brain cells, muscle commands), `js/pages/*` (home with quick start, wizard, builder, scoring, network, walker with its tabs and the coach, walkers, race, compare, importer, library, guide). Pages ignore answers to older requests (`latest` counters). `vendor/` holds three.js 0.160.0 and the Inter font so it works offline
 - Launchers: `Start Walk Studio.bat` (Windows, CRLF), `Start Walk Studio.command` (macOS), `start_studio.sh`
 
 ## Commands
 
 - Run: `python -m studio` (add `--no-browser`, `--port`)
-- Tests: `python -m pytest` (about 30 seconds; `tests/test_train.py` runs two tiny real training sessions)
+- Tests: `python -m pytest` (about a minute; `tests/test_train.py` runs tiny real training sessions; `tests/test_importer.py` needs a learn_to_walk folder next to this one or `LEARN_TO_WALK=...`)
 
 ## Owner's rules (from learn_to_walk)
 
