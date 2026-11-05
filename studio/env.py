@@ -89,6 +89,10 @@ class WalkEnv(gymnasium.Env):
         self.joint_ranges = np.array([self.model.joint(m.name).range for m in build.motors])
         self.floor = self.model.geom("floor").id
         self.foot_geoms = [{self.model.geom(name).id for name in foot.geoms} for foot in build.feet]
+        # For each shape, the foot it belongs to (-1 for none): lets contacts be checked all at once
+        self.foot_of_geom = np.full(self.model.ngeom, -1, dtype=int)
+        for index, geoms in enumerate(self.foot_geoms):
+            self.foot_of_geom[list(geoms)] = index
         self.walker_geoms = {g for g in range(self.model.ngeom) if self._belongs_to_walker(g)}
 
         # The extras
@@ -133,7 +137,8 @@ class WalkEnv(gymnasium.Env):
         return float(self.data.xmat[self.torso][8])
 
     def _finite(self) -> bool:
-        return bool(np.all(np.isfinite(self.data.qpos)) and np.all(np.isfinite(self.data.qvel)))
+        # One sum is NaN or infinite as soon as any number in it is (a quick check, run several times a step)
+        return bool(np.isfinite(self.data.qpos.sum() + self.data.qvel.sum()))
 
     # ---------- Starting an attempt ----------
 
@@ -220,31 +225,34 @@ class WalkEnv(gymnasium.Env):
         parts.append([self.target_speed])
         return np.clip(np.concatenate(parts), -OBSERVATION_LIMIT, OBSERVATION_LIMIT).astype(np.float32)
 
-    # 1 for each foot touching the ground, else 0
+    # 1 for each foot touching the ground, else 0 (all contacts checked at once: a Python loop over
+    # contacts cost more than the physics itself)
     def _foot_contacts(self) -> list[float]:
-        touching = [0.0] * len(self.foot_geoms)
-        for contact in self.data.contact[:self.data.ncon]:
-            pair = (contact.geom1, contact.geom2)
-            if self.floor not in pair:
-                continue
-            other = pair[1] if pair[0] == self.floor else pair[0]
-            for index, geoms in enumerate(self.foot_geoms):
-                if other in geoms:
-                    touching[index] = 1.0
-        return touching
+        touching = np.zeros(len(self.foot_geoms))
+        count = self.data.ncon
+        if count:
+            pairs = self.data.contact.geom[:count]
+            other = np.where(pairs[:, 0] == self.floor, pairs[:, 1], np.where(pairs[:, 1] == self.floor, pairs[:, 0], -1))
+            feet = self.foot_of_geom[other[other >= 0]]
+            touching[feet[feet >= 0]] = 1.0
+        return touching.tolist()
 
     # How far below the torso the ground is at points ahead of it
     def _ground_scan(self) -> list[float]:
         x, y, z = self.data.xpos[self.torso]
         return [float(z - self.ground_at(x + step * self.build.size, y)) for step in GROUND_SCAN]
 
-    def _info(self, reward_parts: dict) -> dict:
+    # Facts about the step. The attempt's score totals (pts_...) come only with its last step, which is when
+    # training reads them: sending them every step slowed training down
+    def _info(self, reward_parts: dict, final: bool = False) -> dict:
         finite = self._finite()
         x = float(self.data.qpos[0]) if finite else 0.0
-        return {"x_position": x, "y_position": float(self.data.qpos[1]) if finite else 0.0,
+        info = {"x_position": x, "y_position": float(self.data.qpos[1]) if finite else 0.0,
                 "forward_distance": x - self.start_x if finite else 0.0, "reward_parts": reward_parts,
-                "target_speed": self.target_speed, "rock_hits": self.rock_hits,
-                **{f"pts_{name}": value for name, value in self.episode_parts.items()}}
+                "target_speed": self.target_speed, "rock_hits": self.rock_hits}
+        if final:
+            info.update({f"pts_{name}": value for name, value in self.episode_parts.items()})
+        return info
 
     # ---------- Moving ----------
 
@@ -274,7 +282,7 @@ class WalkEnv(gymnasium.Env):
         for name, value in parts.items():
             self.episode_parts[name] += value
         truncated = self.step_count >= self.max_steps
-        return self._observation(), reward, terminated, truncated, self._info(parts)
+        return self._observation(), reward, terminated, truncated, self._info(parts, final=terminated or truncated)
 
     def _fallen(self) -> bool:
         if not self._finite():
