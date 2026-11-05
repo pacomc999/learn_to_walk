@@ -12,7 +12,7 @@ from studio import library
 from studio.brain import clean_design, count_weights, design_for_body, design_senses
 from studio.creatures import animal, build_creature
 from studio.env import WalkEnv, observation_size
-from studio.replay import WalkerBrain, record, scene_shapes
+from studio.replay import WalkerBrain, ground_patch, record, scene_shapes
 from studio.scene import build_scene, set_stand_pose
 from studio.worlds import DEFAULTS, World, world_from_dict
 
@@ -117,6 +117,9 @@ def drop_test(animal_key: str, values: dict, world_data: dict | None = None, sec
     env = WalkEnv(build, world, terrain_height=height, target_speed=float(np.mean(world.speed_range)))
     replay = record(env, None, seed=7, seconds=seconds)
     replay["stats"]["stood"] = not replay["stats"]["fell"]
+    if world_data:  # show a good stretch of the ground ahead, so stairs, hurdles and slopes can be seen
+        replay["ground"] = ground_patch(env, -1.5, 8.0)
+        replay["marks_to"] = 8
     return replay
 
 

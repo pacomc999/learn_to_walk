@@ -300,6 +300,17 @@ export class Viewer {
     this.controls.update();
   }
 
+  // A wider view that looks a couple of metres ahead, to show the ground of a world
+  frameWide(ahead = 2) {
+    const replay = this.replay;
+    const size = Math.max(replay ? replay.size || 1 : 1, 0.5);
+    const height = replay ? replay.stand_height || 0.25 : 0.25;
+    const x = (replay && replay.frames.length ? replay.frames[0][0] : 0) + ahead * size;
+    this.controls.target.set(x, 0, height * 0.6);
+    this.camera.position.set(x - 1.3 * size, -2.3 * size, height + 1.0 * size);
+    this.controls.update();
+  }
+
   // ---------- Highlighting parts ----------
 
   // test(name) says which shapes to highlight; null clears it
@@ -631,7 +642,7 @@ function heightsMesh(ground, style, texture, tile) {
       const z = data[i] / 10000;
       positions.set([x0 + c * step, y0 + r * step, z], i * 3);
       uvs.set([(x0 + c * step) / tile, (y0 + r * step) / tile], i * 2);
-      mixed.copy(low).lerp(base, Math.min(1, 0.85 + 0.15 * data[i] / top));
+      mixed.copy(low).lerp(base, Math.min(1, 0.62 + 0.38 * data[i] / top));  // higher ground is lighter
       colours.set([mixed.r, mixed.g, mixed.b], i * 3);
     }
   }

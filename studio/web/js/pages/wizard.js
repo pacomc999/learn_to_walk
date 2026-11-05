@@ -292,7 +292,9 @@ async function worldStep(body, draft) {
     try {
       const replay = await api("preview/drop", { method: "POST", body: { animal: draft.creature.animal, values: draft.creature.values, world: draft.world, seconds: 3 } });
       if (request !== latest || viewer.disposed) return;
+      viewer.follow = false;  // the world stays in view while the creature stands
       viewer.load(replay);
+      viewer.frameWide(1.2);
       const v = draft.world.values;
       const terrainName = (catalog.world_groups[0].settings[0].choices.find((c) => c.value === v.terrain) || {}).label;
       viewer.setChips([["Ground", v.terrain === "flat" || !v.terrain_height ? "Flat" : `${terrainName}, up to ${fmtNumber(v.terrain_height, 1)} cm`],
