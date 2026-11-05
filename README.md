@@ -6,6 +6,15 @@ Walk Studio is a point-and-click version of the [learn_to_walk](https://github.c
 
 ![Your walkers](docs/images/walkers.jpg)
 
+## In the browser, with nothing to install
+
+The `studio/web` folder is the whole studio as a plain website: the physics (MuJoCo's official WebAssembly build, the same version as the Python studio), the learning (PPO on the graphics card with TensorFlow.js, WebGPU or WebGL) and the practice (background workers, one per processor core) all run in the visitor's browser. Any static web host can serve it, and GitHub Pages publishes it from this branch (`.github/workflows/pages.yml`).
+
+- Try it locally: `python -m http.server 8772 --directory studio/web`, then open `http://127.0.0.1:8772`.
+- Walkers, creatures and worlds are kept in that browser's own storage, on that computer only. Share a walker with the share button (a `.walker` file) and open it anywhere with **Open a shared walker**.
+- Training runs while the tab is open. Closing the tab pauses it; press **Continue** to carry on from its last save.
+- Walkers trained in the Python studio come over with `python -m studio.export_web walker <walker id or folder>`, which writes a `.walker` file the browser opens. Bringing ducks over from learn_to_walk still needs the Python studio (import there, then convert).
+
 ## Starting it
 
 You need **Python 3.12** (3.11 or 3.13 work too; from [python.org](https://www.python.org/downloads/); on Windows, tick "Add python.exe to PATH" during installation).
