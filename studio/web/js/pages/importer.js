@@ -15,19 +15,22 @@ export async function importDialog() {
     try {
       ducks = await api("import/list", { method: "POST", body: { folder: folderInput.value.trim() } });
       chosen.clear();
-      ducks.filter((d) => d.has_brain).forEach((d) => chosen.add(d.folder));
+      ducks.filter((d) => d.has_brain && d.kind !== "run").forEach((d) => chosen.add(d.folder));  // runs: pick them yourself
       paint();
     } catch (error) {
       list.replaceChildren(h("div", { class: "callout bad" }, error.message));
     }
   };
-  const paint = () => list.replaceChildren(...ducks.map((duck) => h("div", {
+  const paint = () => list.replaceChildren(...ducks.flatMap((duck, index) => [
+    duck.kind === "run" && (index === 0 || ducks[index - 1].kind !== "run")
+      ? h("div", { class: "field-label", style: { margin: "8px 0 2px" } }, "Runs (the best brain of each training run on this computer)") : null,
+    h("div", {
     class: `choice-item ${chosen.has(duck.folder) ? "on" : ""}`, style: { opacity: duck.has_brain ? 1 : 0.5 },
     onclick: () => { if (!duck.has_brain) return; if (chosen.has(duck.folder)) chosen.delete(duck.folder); else chosen.add(duck.folder); paint(); } },
     h("span", { class: "dot" }),
     h("div", { style: { width: "40px", height: "30px", flex: "none" }, html: animalArt("duck").replace('class="animal"', 'style="width:40px;height:30px"') }),
     h("div", { style: { minWidth: 0 } }, h("div", { style: { fontWeight: 600 } }, duck.name),
-      h("div", { class: "faint", style: { fontSize: "12px" } }, duck.has_brain ? `${duck.world} · ${duck.body} body` : "No kept brain yet")))));
+      h("div", { class: "faint", style: { fontSize: "12px" } }, duck.has_brain ? `${duck.world} · ${duck.body} body` : "No kept brain yet")))]));
   folderInput.addEventListener("change", look);
   const body = h("div", {},
     h("div", { class: "row" }, folderInput, h("button", { class: "btn", onclick: look }, "Look")),

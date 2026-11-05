@@ -43,3 +43,24 @@ def test_duck_3_3_walks_as_well_as_in_learn_to_walk(tmp_path, monkeypatch):
     import zipfile
     with zipfile.ZipFile(library.training_folder(training_id) / "brain" / "latest.zip") as archive:
         assert json.loads(archive.read("data"))["learning_rate"] == pytest.approx(1e-5)
+
+
+@needs_folder
+def test_runs_with_a_best_brain_come_along_too(tmp_path, monkeypatch):
+    # A stand-in learn_to_walk folder with one run: Duck 3.2's kept brain as the run's best brain
+    import shutil
+    monkeypatch.setattr(library, "LIBRARY", tmp_path / "library")
+    root = tmp_path / "ltw"
+    (root / "duck_catalogue").mkdir(parents=True)
+    shutil.copytree(FOLDER / "duck_catalogue" / "duck_03_2", root / "duck_catalogue" / "duck_03_2")
+    story = json.loads((FOLDER / "duck_catalogue" / "duck_03_2" / "duck.json").read_text())
+    run = root / "runs" / "duck_03_2" / "from_somewhere"
+    shutil.copytree(FOLDER / "duck_catalogue" / "duck_03_2" / "brain" / "snapshots", run / "best" / "snapshots")
+    (run / "run_settings.json").write_text(json.dumps({"duck": "duck_catalogue/duck_03_2",
+                                                       "world": story["world_settings"], "body": story["body_settings"]}))
+    found = {duck["key"]: duck for duck in importer.find_ducks(str(root))}
+    assert found["duck_03_2/from_somewhere"]["has_brain"]
+    assert found["duck_03_2/from_somewhere"]["name"] == "Duck 3.2 the Fast, run from_somewhere"
+    training_id = importer.import_duck(found["duck_03_2/from_somewhere"]["folder"])
+    status = json.loads((library.training_folder(training_id) / "status.json").read_text())
+    assert status["last_exam"]["falls"] == 0

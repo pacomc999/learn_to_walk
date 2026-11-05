@@ -47,14 +47,34 @@ def find_ducks(folder: str) -> list[dict]:
         snapshot = _brain_snapshot(duck_dir)
         ducks.append({"folder": str(duck_dir), "key": duck_dir.name, "name": data.get("name", duck_dir.name),
                       "summary": data.get("summary", ""), "world": data.get("world"), "body": data.get("body"),
-                      "has_brain": snapshot is not None})
+                      "has_brain": snapshot is not None, "kind": "duck"})
+    ducks += _find_runs(root, catalogue)
     if not ducks:
         raise ValueError("That folder has no catalogue ducks.")
     return ducks
 
 
+# The runs of each catalogue duck (runs/duck_NN/<run>/, only on the computer that trained them): their best
+# brain, in the world and body frozen in their run_settings.json
+def _find_runs(root: Path, catalogue: Path) -> list[dict]:
+    runs = []
+    for run_dir in sorted((root / "runs").glob("duck_*/*")):
+        settings_path = run_dir / "run_settings.json"
+        if not run_dir.is_dir() or not settings_path.exists():
+            continue
+        settings = json.loads(settings_path.read_text(encoding="utf-8"))
+        recipe = catalogue / run_dir.parent.name / "duck.json"
+        duck_name = json.loads(recipe.read_text(encoding="utf-8")).get("name") if recipe.exists() else run_dir.parent.name
+        runs.append({"folder": str(run_dir), "key": f"{run_dir.parent.name}/{run_dir.name}",
+                     "name": f"{duck_name}, run {run_dir.name}", "summary": "",
+                     "world": (settings.get("world") or {}).get("name"), "body": (settings.get("body") or {}).get("name"),
+                     "has_brain": _brain_snapshot(run_dir / "best") is not None, "kind": "run"})
+    return runs
+
+
 def _brain_snapshot(duck_dir: Path) -> Path | None:
-    snapshots = sorted((duck_dir / "brain" / "snapshots").glob("snapshot_*.zip"))
+    folder = duck_dir / "snapshots" if (duck_dir / "snapshots").is_dir() else duck_dir / "brain" / "snapshots"
+    snapshots = sorted(folder.glob("snapshot_*.zip"))
     snapshots = [path for path in snapshots if path.with_name(path.stem + "_norm.pkl").exists()]
     return snapshots[-1] if snapshots else None
 
@@ -134,12 +154,10 @@ def import_duck(duck_folder: str) -> str:
     from studio.train import Folder, Status, best_walk_replay, take_exam, EXAM_HEADER
 
     duck_dir = Path(duck_folder)
-    data = json.loads((duck_dir / "duck.json").read_text(encoding="utf-8"))
-    snapshot = _brain_snapshot(duck_dir)
+    data, snapshot, world_settings, body_settings = _source(duck_dir)
     if snapshot is None:
         raise ValueError(f"{data.get('name', duck_dir.name)} has no kept brain to bring over.")
-    creature = creature_values(data.get("body_settings") or {})
-    world_settings = _kept_brain_world(duck_dir, data)
+    creature = creature_values(body_settings)
     world = world_from_dict({"id": f"ltw_{world_settings.get('name', 'world')}",
                              "name": _title(world_settings.get("name", "learn_to_walk world")),
                              "description": world_settings.get("description", ""),
@@ -222,6 +240,18 @@ def _kept_brain_world(duck_dir: Path, data: dict) -> dict:
         if name and world_file.exists():
             return json.loads(world_file.read_text(encoding="utf-8"))
     return data.get("world_settings") or {}
+
+
+# What to bring over from a catalogue duck or from one of its runs: its story, best brain, world and body
+def _source(folder: Path) -> tuple[dict, Path | None, dict, dict]:
+    if (folder / "run_settings.json").exists():
+        settings = json.loads((folder / "run_settings.json").read_text(encoding="utf-8"))
+        recipe = folder.parent.parent.parent / "duck_catalogue" / folder.parent.name / "duck.json"
+        story = json.loads(recipe.read_text(encoding="utf-8")) if recipe.exists() else {}
+        story = {**story, "name": f"{story.get('name', folder.parent.name)}, run {folder.name}"}
+        return story, _brain_snapshot(folder / "best"), settings.get("world") or {}, settings.get("body") or {}
+    story = json.loads((folder / "duck.json").read_text(encoding="utf-8"))
+    return story, _brain_snapshot(folder), _kept_brain_world(folder, story), story.get("body_settings") or {}
 
 
 def _title(name: str) -> str:
