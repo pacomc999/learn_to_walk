@@ -219,7 +219,7 @@ export class Viewer {
     for (const stick of sticks) {
       const length = stick.from.distanceTo(stick.to);
       const geometry = new THREE.CapsuleGeometry(stick.radius, Math.max(length, 0.001), 6, 14);
-      const material = new THREE.MeshBasicMaterial({ color: 0x22c55e, transparent: true, opacity: 0.75, depthTest: false });
+      const material = new THREE.MeshBasicMaterial({ color: 0x3a9a5f, transparent: true, opacity: 0.75, depthTest: false });
       const mesh = new THREE.Mesh(geometry, material);
       mesh.renderOrder = 10;
       mesh.position.copy(stick.from.clone().add(stick.to).multiplyScalar(0.5));
@@ -350,7 +350,7 @@ export class Viewer {
     if (!this.options.pace || !replay.stats || !replay.stats.target_speed || replay.stats.turn_rate) return;
     const size = Math.max(replay.size || 1, 0.6);
     const marker = new THREE.Mesh(new THREE.RingGeometry(0.06 * size, 0.08 * size, 40),
-      new THREE.MeshBasicMaterial({ color: 0x6366f1, transparent: true, opacity: 0.75, side: THREE.DoubleSide, depthWrite: false }));
+      new THREE.MeshBasicMaterial({ color: 0x2f7d4f, transparent: true, opacity: 0.75, side: THREE.DoubleSide, depthWrite: false }));
     marker.renderOrder = 2;
     this.paceMarker = marker;
     this.paceStart = replay.frames[0][0];
@@ -398,7 +398,7 @@ export class Viewer {
   _paintHighlight() {
     for (const mesh of this.meshes) {
       const on = this.highlightTest && this.highlightTest(mesh.userData.name);
-      mesh.material.emissive = new THREE.Color(on ? 0x6366f1 : 0x000000);
+      mesh.material.emissive = new THREE.Color(on ? 0x3a9a5f : 0x000000);
       mesh.material.emissiveIntensity = on ? 0.3 : 0;
     }
   }
