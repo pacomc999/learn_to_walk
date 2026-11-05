@@ -57,7 +57,7 @@ export async function render(main, params) {
         : details.status.state !== "finished" || details.status.steps < details.status.total_steps
           ? h("button", { class: "btn primary", onclick: carryOn, html: `${icon.play}<span>Continue</span>` })
           : null,
-      !running && details.has_brain ? h("button", { class: "btn", onclick: trainLonger, html: `${icon.clock}<span>Train longer</span>` }) : null,
+      !running && details.has_brain ? h("button", { class: "btn", onclick: trainLonger, dataset: { action: "longer" }, html: `${icon.clock}<span>Train longer</span>` }) : null,
       details.has_brain ? h("button", { class: "btn", onclick: trainMore, html: `${icon.sparkle}<span>Teach a new world</span>` }) : null,
       h("a", { class: "btn ghost icon-btn", title: "Share: save this walker as a file", href: `/api/trainings/${id}/share`, download: "", html: icon.share }),
       h("button", { class: "btn ghost icon-btn", title: "Rename", onclick: rename, html: icon.edit }),
@@ -214,7 +214,20 @@ function trainingTab(body, id, details, setup) {
       (setup.course || []).length ? statCard("Stage", `${(status.stage || 0) + 1}<small>of ${setup.course.length + 1}</small>`,
         status.stage_world || setup.world.name, icon.flag) : null,
       setup.world.values.gradually_harder && !(setup.course || []).length ? statCard("Ground height", `${fmtNumber((status.difficulty ?? 1) * 100)}<small>%</small>`, "of the tallest, rising as it learns", icon.stairs) : null].filter(Boolean));
-    story.replaceChildren(storyCallout(status, exams, progress));
+    const active = ["starting", "training", "examining"].includes(status.state);
+    const tips = !active || (status.steps || 0) > 1.5e6 ? coachAdvice(data, {
+      report: () => go(`#/walker/${id}/report`),
+      longer: active ? null : () => document.querySelector('button[data-action="longer"]')?.click(),
+      copy: (changes, what) => retrainWith(setup, changes, what),
+    }) : [];
+    story.replaceChildren(storyCallout(status, exams, progress), tips.length ? h("div", { class: "card card-pad", style: { marginTop: "12px" } },
+      h("h3", { style: { marginBottom: "10px" } }, "Coach's notes"),
+      h("div", { class: "stack", style: { gap: "8px" } }, ...tips.map(([kind, title, text, ...actions]) => {
+        const note = h("div", { class: `callout ${kind === "info" ? "" : kind}`, html: `${icon.info}<div><b>${title}.</b> ${text}</div>` });
+        const buttons = actions.filter(Boolean).map(([label, run]) => h("button", { class: "btn small", onclick: run }, label));
+        if (buttons.length) note.lastElementChild.append(h("div", { class: "btn-row", style: { marginTop: "8px" } }, ...buttons));
+        return note;
+      }))) : null);
 
     // Charts
     const examPoints = (key) => exams.map((exam) => [exam.steps, exam[key]]);
@@ -251,6 +264,20 @@ function trainingTab(body, id, details, setup) {
   };
   update(details);
   return { update, dispose: () => viewer.dispose() };
+}
+
+// A new walker like this one with a change, ready on the Training step of the designer
+function retrainWith(setup, changes, what) {
+  store.draft = {
+    name: `${setup.name} (${what})`,
+    creature: { ...setup.creature, values: { ...setup.creature.values, ...(changes.creature || {}) }, id: null },
+    world: { ...JSON.parse(JSON.stringify(setup.world)), builtin: false, values: { ...setup.world.values, ...(changes.world || {}) } },
+    brain: JSON.parse(JSON.stringify(setup.brain)), brainPreset: null, learning: { ...setup.learning }, learningPreset: null,
+    start_from: null, course: JSON.parse(JSON.stringify(setup.course || [])),
+  };
+  store.saveDraft();
+  toast("Ready to train", "Check the plan and press Start training.");
+  go("#/new/plan");
 }
 
 // A picture of the best walk for the walker's card, taken once it is under way (once per best brain)
@@ -641,4 +668,56 @@ export async function liveTab(body, id, details, setup) {
     stats);
   paintSpeed();
   return { dispose: () => { disposed = true; stopLive(); window.removeEventListener("keydown", keys); viewer.dispose(); } };
+}
+
+// ---------- The coach: plain-words advice from the results ----------
+
+export function coachAdvice(details, act = {}) {
+  const { setup, status, exams, progress } = details;
+  const tips = [];
+  const steps = status.steps || 0;
+  const best = status.best_quality || 0;
+  const last = exams[exams.length - 1];
+  const world = setup.world.values;
+  const creature = setup.creature.values || {};
+  const direct = (creature.motor_type || "force") === "force";
+  const recent = progress.slice(-10);
+  const mean = (key) => (recent.length ? recent.reduce((sum, row) => sum + (row[key] || 0), 0) / recent.length : 0);
+  const speedPoints = mean("pts_speed"), endStops = mean("pts_end_stops"), energy = mean("pts_energy");
+  const hard = world.terrain !== "flat" && world.terrain_height > 0;
+
+  if (best >= 85) {
+    tips.push(["good", "A fine walker", "It covers nearly all of the asked distance. Try the Report card to see what else it can handle, race it, or teach it a harder world.",
+      act.report && ["Take the report card", act.report]]);
+  }
+  if (steps >= 1.5e6 && best < 10) {
+    tips.push(["warn", "It has not found a way forward yet", direct
+      ? "Direct muscles take a while: learn_to_walk's Duck 4 needed about 2.5 million steps. Train longer, or try springy muscles, which hold the body up from the start and usually learn sooner."
+      : "Train longer, check the drop test on the Creature step (can its muscles hold it up?), or make energy cheaper so moving costs less.",
+      act.longer && ["Train longer", act.longer], direct && act.copy && ["Try springy muscles", () => act.copy({ creature: { motor_type: "position" } }, "springy")]]);
+  }
+  if (last && best >= 20 && last.falls >= last.attempts / 2) {
+    tips.push(["warn", "It walks, but falls a lot", hard && !world.gradually_harder
+      ? "Switch on Gradually harder for this world, so it learns on easier ground first, or give it the sense See the ground ahead."
+      : "More practice usually helps. A narrower range of asked speeds also makes the task easier.",
+      hard && !world.gradually_harder && act.copy ? ["Retrain with Gradually harder", () => act.copy({ world: { gradually_harder: true } }, "gradually harder")]
+        : act.longer && ["Train longer", act.longer]]);
+  }
+  if (last && best >= 20 && last.speed_error > 0.3 * ((world.slowest_speed + world.fastest_speed) / 2)) {
+    tips.push(["info", "It does not keep the asked speed well", "Raise the points for moving forward, or lower the energy cost, so going at the asked speed pays more."]);
+  }
+  const walks = best >= 20 && steps >= 500000;  // advice about style only makes sense once it walks a little
+  if (walks && world.end_stops && speedPoints > 0 && -endStops > 0.3 * speedPoints) {
+    tips.push(["info", "It leans on its joint limits a lot", "Resting joints on their stops holds it up for free, so it pays the joint limit penalty instead of moving them. This is the crouch learn_to_walk's Duck 4 learned. A bit more penalty may push it out of the habit; too much and it may give up."]);
+  }
+  if (!world.end_stops && direct && best >= 30) {
+    tips.push(["info", "Watch out for crouches", "With direct muscles and no joint limit penalty, walkers often lock joints against their stops. Look at Inside the walk: muscles stuck at one end show it."]);
+  }
+  if (walks && speedPoints > 0 && -energy > 0.8 * speedPoints) {
+    tips.push(["info", "Energy is expensive here", "Most of what it earns goes on muscle work. A lower energy cost lets it move more freely; a higher one gives calmer, more careful walking."]);
+  }
+  if (status.state === "finished" && (status.message || "").includes("stopped getting better") && best < 60) {
+    tips.push(["info", "It stopped getting better", "Try a curiosity bonus (Training step, How it studies), a different brain size, or continue in a slightly easier world first with a course."]);
+  }
+  return tips;
 }
