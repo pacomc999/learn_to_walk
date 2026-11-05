@@ -112,7 +112,8 @@ def start_process(training_id: str, resume: bool) -> None:
     flags = 0
     if sys.platform == "win32":
         flags = subprocess.CREATE_NO_WINDOW | subprocess.BELOW_NORMAL_PRIORITY_CLASS
-    _processes[training_id] = subprocess.Popen(command, cwd=library.PROJECT_ROOT, stdout=log,
+    environment = dict(os.environ, PYTHONIOENCODING="utf-8")  # names with any letters print safely on Windows
+    _processes[training_id] = subprocess.Popen(command, cwd=library.PROJECT_ROOT, stdout=log, env=environment,
                                                stderr=subprocess.STDOUT, creationflags=flags)
     if resume:
         status = library.read_json(folder / "status.json", {}) or {}
