@@ -140,3 +140,21 @@ def test_custom_parts_that_point_anywhere_build_and_stand_on_the_ground():
         for _ in range(50):
             mujoco.mj_step(scene.model, data)
         assert np.all(np.isfinite(data.qpos)), attempt
+
+
+def test_every_ready_made_body_stands_in_the_drop_test():
+    from studio.creatures.custom import TEMPLATES
+    from studio.env import WalkEnv
+    from studio.replay import record
+    from studio.worlds import builtin_worlds
+    for key, template in TEMPLATES.items():
+        if key == "starter":
+            continue  # one pair of legs side by side: tipping over is the point
+        env = WalkEnv(build_creature("custom", {"body": template}), builtin_worlds()[0], target_speed=0.4)
+        assert not record(env, None, seed=7, seconds=3)["stats"]["fell"], key
+
+
+def test_a_creature_without_motors_can_still_be_shown():
+    from studio import previews
+    assert previews.creature_preview("custom", {"body": {"parts": []}})["facts"]["motors"] == 0
+    assert previews.drop_test("custom", {"body": {"parts": []}}, None, 0.5)["frames"]

@@ -84,9 +84,9 @@ class WalkEnv(gymnasium.Env):
 
         # Where things are in the simulation's lists
         self.torso = self.model.body("torso").id
-        self.joint_qpos = np.array([self.model.joint(m.name).qposadr[0] for m in build.motors])
-        self.joint_qvel = np.array([self.model.joint(m.name).dofadr[0] for m in build.motors])
-        self.joint_ranges = np.array([self.model.joint(m.name).range for m in build.motors])
+        self.joint_qpos = np.array([self.model.joint(m.name).qposadr[0] for m in build.motors], dtype=int)
+        self.joint_qvel = np.array([self.model.joint(m.name).dofadr[0] for m in build.motors], dtype=int)
+        self.joint_ranges = np.array([self.model.joint(m.name).range for m in build.motors]).reshape(-1, 2)
         self.floor = self.model.geom("floor").id
         self.foot_geoms = [{self.model.geom(name).id for name in foot.geoms} for foot in build.feet]
         # For each shape, the foot it belongs to (-1 for none): lets contacts be checked all at once

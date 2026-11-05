@@ -101,6 +101,33 @@ TEMPLATES = {
                    _part("foot", "Foot", "shin", shape="plate", length=0.14, width=0.1, thickness=0.012, pitch=0,
                          joint="swing", motion=40, strength=12, foot=True),
                ]},
+    "spider": {"name": "Eight-legged spider", "description": "A round body on eight long, bent legs.",
+               "torso": _torso("ellipsoid", 0.2, 0.16, 0.1, 0.6, "#334155"),
+               "parts": [
+                   _part(pid, name, "torso", x=x, y=0.9, z=-0.2, pitch=-15, yaw=yaw, joint="hip", motion=50,
+                         length=0.12, thickness=0.01, strength=6, mirror=True, colour="#475569")
+                   for pid, name, x, yaw in (("l1", "Leg 1", 0.7, 40), ("l2", "Leg 2", 0.25, 75),
+                                             ("l3", "Leg 3", -0.25, 105), ("l4", "Leg 4", -0.7, 140))
+               ] + [
+                   _part(f"{pid}_tip", f"{name} tip", pid, pitch=75, yaw=yaw, joint="swing", motion=60, length=0.16,
+                         thickness=0.008, strength=5, foot=True, colour="#f97316")
+                   for pid, name, yaw in (("l1", "Leg 1", 40), ("l2", "Leg 2", 75), ("l3", "Leg 3", 105),
+                                          ("l4", "Leg 4", 140))
+               ]},
+    "kangaroo": {"name": "Kangaroo", "description": "Two big back legs with long feet, and a heavy tail to lean on.",
+                 "torso": _torso("ellipsoid", 0.26, 0.16, 0.2, 1.4, "#b45309"),
+                 "parts": [
+                     _part("thigh", "Thigh", "torso", x=-0.4, y=0.7, z=-0.7, pitch=60, joint="hip", motion=80,
+                           length=0.14, thickness=0.025, strength=25, mirror=True, colour="#92400e"),
+                     _part("shin", "Shin", "thigh", pitch=110, joint="swing", motion=90, length=0.16,
+                           thickness=0.018, strength=25, colour="#92400e"),
+                     _part("foot", "Foot", "shin", shape="plate", length=0.16, width=0.05, thickness=0.012, pitch=0,
+                           joint="swing", motion=50, strength=12, foot=True, colour="#78350f"),
+                     _part("tail", "Tail", "torso", x=-1, z=-0.3, pitch=50, yaw=180, joint="swing", motion=50,
+                           length=0.42, thickness=0.03, strength=10, foot=True, colour="#b45309"),
+                     _part("head", "Head", "torso", x=1, z=0.8, shape="ball", length=0.06, thickness=0.05,
+                           pitch=-50, joint="swing", motion=40, strength=3, colour="#b45309"),
+                 ]},
     "starter": {"name": "Just a body", "description": "A body with one pair of legs. Add the rest yourself.",
                 "torso": _torso(),
                 "parts": [_part("leg", "Leg", "torso", x=0, y=1, z=-1, joint="hip", motion=50, length=0.18,
