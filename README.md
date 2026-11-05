@@ -33,6 +33,9 @@ The first start downloads the physics and learning libraries (about 1 GB), which
 | Moon Base | Low gravity and dusty craters |
 | Stormy Crossing | Gusts of wind and rocks thrown from the side |
 | Rocky Canyon | Big flat-topped rocks of different heights |
+| Hurdle Track | Low bars across the track to step over |
+| Mountain Path | Long even climbs and descents |
+| Turning Field | Flat grass where it is asked to turn left and right: train here to steer it |
 
 You also design its **scoring**: points for moving forward (exactly at the asked speed, close to it, or as fast as possible), for staying up, for saving energy, for walking straight, a cost for falling, and optional style rules, each with an on/off switch and a strength: no leaning on joint limits, keep the body level, stand tall, smooth moves, lift its feet, face forward, steady ride. **Scoring at a glance** shows what standing still, walking, crouching and rushing are worth under your rules, and warns you about the traps (when standing still or falling on purpose pays better than walking). During training, a chart shows where its points come from.
 
@@ -42,7 +45,7 @@ You also design its **scoring**: points for moving forward (exactly at the asked
 
 **Test drive.** Take any trained walker into any world, even ones it never practised in, at any speed. A blue ring moves at the asked speed so you can see if it keeps up. Below the 3D view, **Inside the walk** shows when each foot touches the ground (its gait) and what the brain tells every muscle, moment by moment.
 
-**Live.** Let a trained walker go in real time: change the asked speed with a slider or the arrow keys, push it from the side and watch it recover, or try it in another world. learn_to_walk's drive tool, in the browser.
+**Live.** Let a trained walker go in real time: change the asked speed with a slider or the arrow keys, push it from the side and watch it recover, or try it in another world. learn_to_walk's drive tool, in the browser. A walker trained in a world that asks it to turn (such as the Turning Field) can be **steered** with the left and right arrow keys.
 
 **Report card.** Seven challenge ladders (speed, cobblestones, stairs, ice, a backpack, wind, other planets) that hand out medals, with every attempt to watch.
 

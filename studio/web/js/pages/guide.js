@@ -35,6 +35,7 @@ const SECTIONS = [
   ["Watching, testing and racing", [
     "Every exam is recorded in 3D. On a walker's page you can scroll through them to watch it grow up, and the panel Inside the walk shows its gait (when each foot is on the ground) and what the brain tells every muscle.",
     "The Live tab lets it walk in real time while you change the asked speed (arrow keys up and down) and push it from the side (arrow keys left and right). The Test drive tab sends a trained walker into any world at any speed, and the Report card runs seven challenge ladders (speed, cobblestones, stairs, ice, a backpack, wind, other planets) and hands out medals. Race puts up to six walkers side by side. Every 3D view can save a picture or record a video.",
+    "Walkers normally only walk straight ahead. Switch on Asked to turn in a world (or train in the Turning Field) and each attempt also asks it to turn, left or right, changing every few seconds; its brain gets a sense of the asked direction. Such a walker can be steered in Live mode with the arrow keys.",
     "Your learn_to_walk ducks can come along: on My walkers, Bring over learn_to_walk ducks reads your catalogue and turns every duck with a kept brain into a walker here.",
   ]],
   ["The brain", [
