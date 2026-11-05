@@ -135,10 +135,13 @@ async function creatureStep(body, draft) {
   const viewer = new Viewer(stageBox, { autoplay: true, loop: false });
   const animal = store.animal(draft.creature.animal);
 
+  let latest = 0;  // only the newest preview is shown, even if an older one answers later
   const refresh = async (reframe = false) => {
+    const request = ++latest;
     viewer.setLoading(true);
     try {
       const preview = await api("preview/creature", { method: "POST", body: { animal: draft.creature.animal, values: draft.creature.values } });
+      if (request !== latest || viewer.disposed) return;
       viewer.load(preview, { keepCamera: !reframe && viewer.lastAnimal === draft.creature.animal });
       viewer.lastAnimal = draft.creature.animal;
       const facts = preview.facts;
@@ -159,9 +162,11 @@ async function creatureStep(body, draft) {
   const refreshSoon = debounce(() => refresh(false), 140);
 
   const dropTest = async () => {
+    const request = ++latest;
     viewer.setLoading(true);
     try {
       const replay = await api("preview/drop", { method: "POST", body: { animal: draft.creature.animal, values: draft.creature.values, seconds: 4 } });
+      if (request !== latest || viewer.disposed) return;
       viewer.load(replay, { keepCamera: true });
       viewer.lastAnimal = draft.creature.animal;
       const stats = replay.stats;
@@ -280,10 +285,13 @@ async function worldStep(body, draft) {
   const catalog = store.catalog;
   const worldDefaults = Object.fromEntries(catalog.world_groups.flatMap((group) => group.settings.map((s) => [s.key, s.default])));
 
+  let latest = 0;
   const show = async () => {
+    const request = ++latest;
     viewer.setLoading(true);
     try {
       const replay = await api("preview/drop", { method: "POST", body: { animal: draft.creature.animal, values: draft.creature.values, world: draft.world, seconds: 3 } });
+      if (request !== latest || viewer.disposed) return;
       viewer.load(replay);
       const v = draft.world.values;
       const terrainName = (catalog.world_groups[0].settings[0].choices.find((c) => c.value === v.terrain) || {}).label;

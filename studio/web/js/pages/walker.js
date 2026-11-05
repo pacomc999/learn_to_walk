@@ -375,7 +375,10 @@ async function driveTab(body, id, details, setup) {
 
   const result = h("div");
   const runButton = h("button", { class: "btn primary big", style: { width: "100%" }, html: `${icon.play}<span>Drive</span>` });
+  let latest = 0;
   const run = async () => {
+    const request = ++latest;  // only the newest drive is shown, even if an older one answers later
+    const asked = chosen;
     runButton.disabled = true;
     viewer.setLoading(true);
     try {
@@ -383,19 +386,22 @@ async function driveTab(body, id, details, setup) {
       const replay = await api(`trainings/${id}/watch`, { method: "POST", body: {
         world: { ...chosen, values: { ...v, attempt_seconds: Math.max(v.attempt_seconds, drive.seconds) } }, speed: drive.speed,
         height: (drive.height || 0) / 100, seed: drive.seed, seconds: drive.seconds, turn: drive.turn } });
+      if (request !== latest || viewer.disposed) return;
       viewer.load(replay);
       gait.show(replay);
       const s = replay.stats;
-      viewer.setChips([["World", chosen.name], ["Result", s.fell ? `fell after ${fmtNumber(s.seconds, 1)} s` : `walked all ${fmtNumber(s.seconds, 0)} s`],
+      viewer.setChips([["World", asked.name], ["Result", s.fell ? `fell after ${fmtNumber(s.seconds, 1)} s` : `walked all ${fmtNumber(s.seconds, 0)} s`],
         ["Distance", `${fmtNumber(s.distance, 2)} m`], ["Speed", `${fmtNumber(s.average_speed, 2)} of ${fmtNumber(s.target_speed, 2)} m/s`]]);
       result.replaceChildren(h("div", { class: `callout ${s.fell ? "warn" : "good"}`, html: `${icon.info}<div>${s.fell
         ? `It fell after ${fmtNumber(s.seconds, 1)} seconds, ${fmtNumber(s.distance, 2)} m from the start.`
         : `It stayed up for all ${fmtNumber(s.seconds, 0)} seconds and went ${fmtNumber(s.distance, 2)} m, at ${fmtNumber(s.average_speed, 2)} m/s (asked: ${fmtNumber(s.target_speed, 2)}).`}${s.rock_hits ? ` Rocks hit it ${s.rock_hits} times.` : ""} The blue ring moves at the asked speed.</div>` }));
     } catch (error) {
-      toast("The drive failed", error.message, "bad");
+      if (request === latest) toast("The drive failed", error.message, "bad");
     } finally {
-      runButton.disabled = false;
-      viewer.setLoading(false);
+      if (request === latest) {
+        runButton.disabled = false;
+        viewer.setLoading(false);
+      }
     }
   };
   runButton.addEventListener("click", run);
@@ -476,10 +482,13 @@ export async function reportTab(body, id, details) {
   const viewer = new Viewer(viewerBox, { pace: true });
   viewer.showMessage("Click a level below to watch that attempt.");
 
+  let latestLevel = 0;
   const watchLevel = async (challenge, level) => {
+    const request = ++latestLevel;
     viewer.setLoading(true);
     try {
       const result = await api(`trainings/${id}/challenges/${challenge.key}`, { method: "POST", body: { level: level.level } });
+      if (request !== latestLevel || viewer.disposed) return;
       viewer.showMessage("");
       viewer.load(result.replay);
       viewer.setChips([[challenge.title, `${fmtNumber(level.level, 1)} ${challenge.unit}`],

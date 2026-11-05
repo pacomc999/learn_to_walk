@@ -4,7 +4,7 @@ Design a creature, build its world, shape its brain, and watch it teach itself t
 
 Walk Studio is a point-and-click version of the [learn_to_walk](https://github.com/pacomc999/learn_to_walk) project: the same physics (MuJoCo), the same learning (PPO with a left/right symmetric brain), and the same duck, now with a puppy, a build-your-own creature kit and nine worlds to train in.
 
-![Designing a creature](docs/images/creature.jpg)
+![Your walkers](docs/images/walkers.jpg)
 
 ## Starting it
 
@@ -63,7 +63,13 @@ You also design its **scoring**: points for moving forward (exactly at the asked
 
 ![Building your own creature](docs/images/builder.jpg)
 
-![Following a training](docs/images/training.jpg)
+![Choosing a world and its scoring](docs/images/world.jpg)
+
+![A test drive, with the gait, the brain at work and the muscle commands](docs/images/drive.jpg)
+
+![The report card](docs/images/report.jpg)
+
+![A race](docs/images/race.jpg)
 
 ## How long training takes
 
