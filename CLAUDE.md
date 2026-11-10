@@ -39,6 +39,7 @@ The same studio running entirely in the browser; `studio/web` is a static site (
 - Sharing (`sharing.js`): `.walker` = gzip JSON, typed arrays as `{"$f32": base64}`. `python -m studio.export_web walker <id|folder|old .walker>` converts Python walkers (brains included) to it
 - Vendored: `vendor/mujoco` (@mujoco/mujoco 3.17.0, single-threaded, needs no special headers), `vendor/tfjs` (TensorFlow.js 4.22.0 full bundle plus the WebGPU backend; use plain function calls such as `tf.square(x)`; in Node load it through `tests/js/tf_node.mjs`)
 - WebGPU: never read numbers back per minibatch (`dataSync` stalls the graphics card); add them up on the card and read once
+- WebGPU: never use `tf.addN` (in TensorFlow.js 4.22.0 it gives 0 or junk for 8 or more tensors; in `clipGradients` that flipped the gradients and the brain never learned); add pairwise with `tf.add`. The Node tests run on the processor and cannot see WebGPU faults, so check new graphics card maths in Chrome against the processor backend
 
 ## Commands
 

@@ -261,12 +261,15 @@ export class Learner {
     return kept;
   }
 
-  // Scale all gradients down together when their total length is above maxGradNorm (torch's clip_grad_norm_)
+  // Scale all gradients down together when their total length is above maxGradNorm (torch's clip_grad_norm_).
+  // The squares are added one pair at a time: on WebGPU tf.addN of 8 or more tensors gives 0 or junk, which made
+  // the scale wrong, even negative, so the brain studied backwards and never learned
   clipGradients(grads) {
     const tf = this.tf;
     return tf.tidy(() => {
       const names = Object.keys(grads);
-      const total = tf.sqrt(tf.addN(names.map((name) => tf.sum(tf.square(grads[name])))));
+      const squares = names.map((name) => tf.sum(tf.square(grads[name])));
+      const total = tf.sqrt(squares.reduce((sum, square) => tf.add(sum, square)));
       const scale = tf.minimum(tf.div(PPO_FIXED.maxGradNorm, tf.add(total, 1e-6)), 1.0);
       return Object.fromEntries(names.map((name) => [name, tf.mul(grads[name], scale)]));
     });

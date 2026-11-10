@@ -57,6 +57,34 @@ cases.forEach((item, index) => {
   });
 });
 
+// On WebGPU (TensorFlow.js 4.22.0) tf.addN of 8 or more tensors gives 0, which made the gradient clipping scale
+// wrong, even negative, so the brain studied backwards. This TensorFlow refuses such an addN.
+test("studying does not depend on tf.addN, which WebGPU gets wrong for 8 or more tensors", () => {
+  const brokenTf = { ...tf, addN: (list) => {
+    if (list.length >= 8) throw new Error(`tf.addN of ${list.length} tensors (wrong on WebGPU)`);
+    return tf.addN(list);
+  } };
+  const item = cases[0];
+  const learner = new Learner(brokenTf, {
+    kind: item.design.symmetric ? "symmetric" : "free", activation: item.design.activation, inputSize: item.inputSize,
+    motorCount: item.motorCount, actorLayers: item.design.layers, criticLayers: item.design.layers, mirror: item.mirror,
+    learningRate: 1e-3,
+  });
+  try {
+    learner.loadBrain(item.before);
+    const count = item.returns.length;
+    learner.update({ observations: Float32Array.from(item.observations), actions: Float32Array.from(item.actions),
+      logProbs: Float32Array.from(item.logProbs), advantages: Float32Array.from(item.advantages),
+      returns: Float32Array.from(item.returns), count }, { epochs: 1, batchSize: count, entropyWeight: item.entropy, learningRate: 1e-3 });
+    const after = learner.toBrain();
+    let worst = 0;
+    after.actor.head.w.forEach((value, i) => { worst = Math.max(worst, Math.abs(value - item.after.actor.head.w[i])); });
+    assert.ok(worst < 2e-5, `actor head weights: largest difference ${worst}`);
+  } finally {
+    learner.dispose();
+  }
+});
+
 test("studying does not leave tensors behind, lesson after lesson", () => {
   const inputs = 12, motors = 4;
   const learner = new Learner(tf, { kind: "free", activation: "tanh", inputSize: inputs, motorCount: motors, actorLayers: [16], criticLayers: [16] });
