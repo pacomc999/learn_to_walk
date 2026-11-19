@@ -1,9 +1,10 @@
-// The library: creatures, worlds and brain designs the user saved. A port of studio/library.py,
-// kept in the browser's storage instead of files.
+// The library: trained walkers, creatures, worlds and brain designs the user saved. A port of studio/library.py,
+// kept in the browser's storage instead of files. Trained walkers are saved and opened by sharing.js
+// (saveWalkerToLibrary, trainFromLibrary); listing and deleting them works like the other kinds.
 
 import { allRecords, deleteRecord, getRecord, putRecord } from "./storage.js";
 
-export const KINDS = ["creatures", "worlds", "brains"];
+export const KINDS = ["walkers", "creatures", "worlds", "brains"];
 
 // A short id made from a name, for example "big_legs_duck_3f2a"
 export function newId(name) {
@@ -42,6 +43,7 @@ export async function getItem(kind, itemId) {
 // Saving over an existing item keeps its id; anything else (new, or a built-in template) gets a new one
 export async function saveItem(kind, data) {
   checkKind(kind);
+  if (kind === "walkers") throw new Error("Save a trained walker with Save to library on its own page.");
   data = { ...data };
   const name = String(data.name || "Untitled").trim().slice(0, 80) || "Untitled";
   data.name = name;

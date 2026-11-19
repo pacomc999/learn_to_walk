@@ -5,7 +5,7 @@ import { icon, animalArt, worldArt } from "../icons.js";
 import { Viewer } from "../viewer.js";
 import { lineChart, legend } from "../charts.js";
 import { GaitPanel } from "../gait.js";
-import { packWalker, saveFile } from "../engine/sharing.js";
+import { packWalker, saveFile, saveWalkerToLibrary } from "../engine/sharing.js";
 import { store, go } from "../app.js";
 
 const ACTIVE = ["starting", "training", "examining"];
@@ -33,7 +33,8 @@ export async function render(main, params) {
   // ---------- Header ----------
   const title = h("h1", {}, setup.name);
   const statePill = h("span");
-  const actions = h("div", { class: "btn-row" });
+  // The header buttons stay on one row on a wide screen (the walker's name wraps instead); see .walker-actions
+  const actions = h("div", { class: "btn-row walker-actions" });
   page.append(h("div", { class: "page-head" },
     h("div", { class: "row", style: { gap: "16px", alignItems: "center" } },
       h("div", { style: { width: "64px", height: "54px", borderRadius: "14px", background: "var(--surface)", border: "1px solid var(--border)", display: "grid", placeItems: "center" },
@@ -63,6 +64,7 @@ export async function render(main, params) {
           : null,
       !running && details.has_brain ? h("button", { class: "btn", onclick: trainLonger, dataset: { action: "longer" }, html: `${icon.clock}<span>Train longer</span>` }) : null,
       details.has_brain ? h("button", { class: "btn", onclick: trainMore, html: `${icon.sparkle}<span>Teach a new world</span>` }) : null,
+      details.has_brain ? h("button", { class: "btn", onclick: saveToLibrary, html: `${icon.library}<span>Save to library</span>` }) : null,
       h("button", { class: "btn ghost icon-btn", title: "Share: save this walker as a file", onclick: share, html: icon.share }),
       h("button", { class: "btn ghost icon-btn", title: "Rename", onclick: rename, html: icon.edit }),
       h("button", { class: "btn ghost icon-btn danger", title: "Delete", onclick: remove, html: icon.trash })].filter(Boolean));
@@ -96,6 +98,21 @@ export async function render(main, params) {
       const { blob, filename } = await packWalker(id);
       saveFile(blob, filename);
       toast("Saved as a file", `${filename}: send it to anyone, they open it with "Open a shared walker".`, "good");
+    } catch (error) {
+      toast("Could not save it", error.message, "bad");
+    }
+  };
+  // Keep a copy of this trained walker (both brains, charts, replays) in the library, to train again any time
+  const saveToLibrary = async () => {
+    const running = ACTIVE.includes(details.status.state);
+    const text = running
+      ? "It is still training: the copy has what it has saved so far. Pause it first to keep its very latest brain."
+      : "A copy of this walker with its trained brain goes into your Library. Train it again from there whenever you like.";
+    const name = await askName("Save to library", text, setup.name);
+    if (!name) return;
+    try {
+      await saveWalkerToLibrary(id, name);
+      toast("Saved to the library", `${name}: find it in Library, Trained walkers.`, "good");
     } catch (error) {
       toast("Could not save it", error.message, "bad");
     }

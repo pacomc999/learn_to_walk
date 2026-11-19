@@ -1,13 +1,14 @@
 // Storage in the browser: IndexedDB, the browser's own database. Everything the user makes lives here, on their
 // computer only. One store per kind of thing; every record is a plain object found by its key.
 //   creatures, worlds, brains: { id, name, ... }       library items, by id
+//   walkers: { id, name, ..., file }                    trained walkers saved to the library (file: a packed .walker)
 //   trainings: { id, setup, status, ... }               one record per training session, by id
 //   files: { key: "<training id>/<name>", value }      bigger pieces of a training (replays, brain weights, charts)
 //   system: { key, value }                              facts about this computer (measured practice speed)
 
 const DB_NAME = "walk_studio";
-const DB_VERSION = 1;
-const STORES = { creatures: "id", worlds: "id", brains: "id", trainings: "id", files: "key", system: "key" };
+const DB_VERSION = 2;  // 2 added the walkers store
+const STORES = { creatures: "id", worlds: "id", brains: "id", walkers: "id", trainings: "id", files: "key", system: "key" };
 
 let opening = null;
 
@@ -15,13 +16,23 @@ function openDatabase() {
   if (!opening) {
     opening = new Promise((resolve, reject) => {
       const request = indexedDB.open(DB_NAME, DB_VERSION);
+      // A new version adds the missing stores; the existing ones and everything in them are kept
       request.onupgradeneeded = () => {
         for (const [name, keyPath] of Object.entries(STORES)) {
           if (!request.result.objectStoreNames.contains(name)) request.result.createObjectStore(name, { keyPath });
         }
       };
-      request.onsuccess = () => resolve(request.result);
-      request.onerror = () => reject(new Error("The browser would not open its storage. Private windows sometimes block it."));
+      request.onsuccess = () => {
+        const db = request.result;
+        db.onversionchange = () => db.close();  // let a newer studio in another tab upgrade the storage
+        resolve(db);
+      };
+      request.onerror = () => { opening = null; reject(new Error("The browser would not open its storage. Private windows sometimes block it.")); };
+      // An older studio still open in another tab holds the storage: it has to close before the upgrade
+      request.onblocked = () => {
+        opening = null;
+        reject(new Error("The studio is open in another tab with an older version. Close that tab, then reload this one."));
+      };
     });
   }
   return opening;

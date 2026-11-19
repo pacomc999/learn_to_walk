@@ -13,6 +13,7 @@ Walk Studio is a point-and-click version of the [learn_to_walk](https://github.c
 Open **https://pacomc999.github.io/learn_to_walk/** in a recent browser (Chrome or Edge work best). You do not need Python or anything else. The physics (MuJoCo's official WebAssembly build, the same version as the desktop studio), the learning (PPO on the graphics card with TensorFlow.js, WebGPU or WebGL) and the practice (background workers, one per processor core) all run in your browser.
 
 - Walkers, creatures and worlds are kept in that browser's own storage, on that computer only. Share a walker with the share button (a `.walker` file) and open it anywhere with **Open a shared walker**.
+- Happy with a trained walker? Press **Save to library** on its page. The Library keeps a copy with its trained brain; **Train it again** puts a fresh copy in My walkers to continue, train longer or teach a new world, and **Download** gives you its `.walker` file.
 - Training runs while the tab is open. Closing the tab pauses it; press **Continue** to carry on from its last save.
 - Walkers trained in the desktop studio come over with `python -m studio.export_web walker <walker id or folder>`, which writes a `.walker` file the browser opens. Bringing ducks over from learn_to_walk still needs the desktop studio (import there, then convert).
 - For developers: the `studio/web` folder is the whole browser version as a plain website, so any static web host can serve it. GitHub Pages publishes it from this branch (`.github/workflows/pages.yml`). To run it from this folder: `python -m http.server 8772 --directory studio/web`, then open `http://127.0.0.1:8772`.
@@ -90,7 +91,9 @@ On a laptop with 8 processor cores the studio practises roughly 1,000 to 2,000 s
 
 ## Where your work is kept
 
-Everything you make goes into the `library` folder next to the studio: saved creatures, worlds and brain designs, and one folder per training with its brains, charts and 3D replays. It is plain files, so you can back it up or copy it to another computer.
+The studio page, online or started from the desktop version, keeps everything in your browser's own storage on that computer: your walkers in **My walkers**, and in the **Library** the trained walkers you saved plus saved creatures, worlds and brain designs. To back a walker up or move it to another computer, use the share button or **Download** in the Library and keep the `.walker` file. Clearing the browser's site data deletes the rest.
+
+The desktop version's command line tools (`python -m studio.train`, importing learn_to_walk ducks) work with the `library` folder next to the studio instead: plain files, one folder per training with its brains, charts and 3D replays.
 
 ## For developers
 

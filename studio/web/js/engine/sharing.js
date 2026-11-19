@@ -3,7 +3,7 @@
 // with number arrays (brain weights) written as base64. The Python studio can write the same format
 // (python -m studio.export_web walker ...), so walkers trained there can come over.
 
-import { newId, now } from "./library.js";
+import { newId, now, safeId } from "./library.js";
 import { getRecord, listFiles, putRecord, readFile, writeFile } from "./storage.js";
 
 export const FORMAT = "walk-studio-walker";
@@ -69,8 +69,8 @@ export async function packWalker(trainingId) {
   return { blob: await gzip(JSON.stringify(data, replacer)), filename: `${name}.walker` };
 }
 
-// Open a .walker file as a new walker; returns its id
-export async function openWalker(file) {
+// Open a .walker file as a new walker; returns its id. The note becomes the walker's status message
+export async function openWalker(file, note = "Opened from a shared walker file.") {
   if (file.size > MOST_BYTES) throw new Error("That file is too big to be a walker.");
   const start = new Uint8Array(await file.slice(0, 2).arrayBuffer());
   if (start[0] === 0x50 && start[1] === 0x4b) {  // "PK": a zip from the Python studio
@@ -88,7 +88,7 @@ export async function openWalker(file) {
   const setup = { ...data.setup, id, start_from: null, shared: true };
   const status = { ...(data.status || {}) };
   if (["starting", "training", "examining"].includes(status.state)) status.state = "stopped";
-  Object.assign(status, { message: "Opened from a shared walker file.", updated: now() });
+  Object.assign(status, { message: note, updated: now() });
   delete status.pid;
   await putRecord("trainings", { id, setup, status, thumbnail: typeof data.thumbnail === "string" ? data.thumbnail : null });
   await writeFile(id, "progress", Array.isArray(data.progress) ? data.progress : []);
@@ -99,6 +99,47 @@ export async function openWalker(file) {
   }
   for (const which of ["best", "latest"]) if (data.brains && data.brains[which]) await writeFile(id, `brain/${which}`, data.brains[which]);
   return id;
+}
+
+// ---------- Trained walkers in the library ----------
+// A saved walker is the same packed .walker file, kept in the library with a few facts for its card.
+// It is a copy: deleting or training the walker in My walkers does not change it.
+
+// Save a copy of a trained walker in the library; returns the library item (without its file)
+export async function saveWalkerToLibrary(trainingId, name) {
+  const record = await getRecord("trainings", trainingId);
+  if (!record) throw new Error("That walker was not found.");
+  if (!(await readFile(trainingId, "brain/best"))) throw new Error("It has no trained brain yet: wait for its first exam.");
+  const { blob } = await packWalker(trainingId);
+  const setup = record.setup, status = record.status || {};
+  const stamp = now();
+  const item = {
+    id: newId(name || setup.name || "walker"), name: String(name || setup.name || "Walker").trim().slice(0, 80) || "Walker",
+    created: stamp, updated: stamp, from_walker: trainingId,
+    animal: setup.creature.animal, creature_name: setup.creature.name || "", creature_values: setup.creature.values || {},
+    world_name: setup.world.name || "", steps: status.steps || 0, best_quality: status.best_quality ?? null,
+    thumbnail: typeof record.thumbnail === "string" ? record.thumbnail : null,
+    file: blob,
+  };
+  await putRecord("walkers", item);
+  const { file, ...facts } = item;
+  return facts;
+}
+
+// Put a fresh copy of a saved walker in My walkers, ready to continue or train more; returns its new id
+export async function trainFromLibrary(itemId) {
+  const item = await getRecord("walkers", safeId(itemId));
+  if (!item || !item.file) throw new Error("That saved walker was not found.");
+  return openWalker(item.file, `Taken from the library (${item.name}).`);
+}
+
+// Download a saved walker as a .walker file
+export async function downloadFromLibrary(itemId) {
+  const item = await getRecord("walkers", safeId(itemId));
+  if (!item || !item.file) throw new Error("That saved walker was not found.");
+  const filename = `${String(item.name).replace(/[^A-Za-z0-9 \-_.()]/g, "_").trim() || "walker"}.walker`;
+  saveFile(item.file, filename);
+  return filename;
 }
 
 // Hand a file to the person (the browser saves it in their downloads)
