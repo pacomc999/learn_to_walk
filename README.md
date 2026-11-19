@@ -4,18 +4,22 @@ Design a creature, build its world, shape its brain, and watch it teach itself t
 
 Walk Studio is a point-and-click version of the [learn_to_walk](https://github.com/pacomc999/learn_to_walk) project: the same physics (MuJoCo), the same learning (PPO with a left/right symmetric brain), and the same duck, now with a puppy, a build-your-own creature kit (with ready-made bodies from a four-legged table to an eight-legged spider and a kangaroo) and twelve worlds to train in.
 
+**Try it now, nothing to install: https://pacomc999.github.io/learn_to_walk/**
+
 ![Your walkers](docs/images/walkers.jpg)
 
 ## In the browser, with nothing to install
 
-The `studio/web` folder is the whole studio as a plain website: the physics (MuJoCo's official WebAssembly build, the same version as the Python studio), the learning (PPO on the graphics card with TensorFlow.js, WebGPU or WebGL) and the practice (background workers, one per processor core) all run in the visitor's browser. Any static web host can serve it, and GitHub Pages publishes it from this branch (`.github/workflows/pages.yml`).
+Open **https://pacomc999.github.io/learn_to_walk/** in a recent browser (Chrome or Edge work best). You do not need Python or anything else. The physics (MuJoCo's official WebAssembly build, the same version as the desktop studio), the learning (PPO on the graphics card with TensorFlow.js, WebGPU or WebGL) and the practice (background workers, one per processor core) all run in your browser.
 
-- Try it locally: `python -m http.server 8772 --directory studio/web`, then open `http://127.0.0.1:8772`.
 - Walkers, creatures and worlds are kept in that browser's own storage, on that computer only. Share a walker with the share button (a `.walker` file) and open it anywhere with **Open a shared walker**.
 - Training runs while the tab is open. Closing the tab pauses it; press **Continue** to carry on from its last save.
-- Walkers trained in the Python studio come over with `python -m studio.export_web walker <walker id or folder>`, which writes a `.walker` file the browser opens. Bringing ducks over from learn_to_walk still needs the Python studio (import there, then convert).
+- Walkers trained in the desktop studio come over with `python -m studio.export_web walker <walker id or folder>`, which writes a `.walker` file the browser opens. Bringing ducks over from learn_to_walk still needs the desktop studio (import there, then convert).
+- For developers: the `studio/web` folder is the whole browser version as a plain website, so any static web host can serve it. GitHub Pages publishes it from this branch (`.github/workflows/pages.yml`). To run it from this folder: `python -m http.server 8772 --directory studio/web`, then open `http://127.0.0.1:8772`.
 
-## Starting it
+## The desktop version (needs Python)
+
+The same studio also runs as a program on your computer. You only need it to bring ducks over from learn_to_walk, or if you prefer training outside the browser.
 
 You need **Python 3.12** (3.11 or 3.13 work too; from [python.org](https://www.python.org/downloads/); on Windows, tick "Add python.exe to PATH" during installation).
 
